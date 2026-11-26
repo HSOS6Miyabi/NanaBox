@@ -222,7 +222,8 @@ namespace
     Snapshot ReadHostSnapshot(winrt::guid const& InterfaceId)
     {
         NET_LUID Luid{};
-        winrt::check_win32(::ConvertInterfaceGuidToLuid(&InterfaceId, &Luid));
+        GUID NativeInterfaceId = InterfaceId;
+        winrt::check_win32(::ConvertInterfaceGuidToLuid(&NativeInterfaceId, &Luid));
         MIB_IF_ROW2 If{};
         If.InterfaceLuid = Luid;
         winrt::check_win32(::GetIfEntry2(&If));
@@ -474,7 +475,9 @@ struct NanaBox::MirroredNetworking::Impl
     Endpoint Attach(winrt::guid const& Network)
     {
         Endpoint Entry;
-        winrt::check_hresult(::CoCreateGuid(&Entry.Id));
+        GUID EndpointId{};
+        winrt::check_hresult(::CoCreateGuid(&EndpointId));
+        Entry.Id = EndpointId;
         auto Info = QueryHostNetwork(Network);
         auto NetworkProperties = Json::parse(winrt::to_string(Info.Properties));
         Json Settings = {{"SchemaVersion", {{"Major", 2}, {"Minor", 0}}},
@@ -487,10 +490,10 @@ struct NanaBox::MirroredNetworking::Impl
                 {{"Type", "Firewall"}, {"Settings", {{"VmCreatorId", Configuration.MirroredFirewallCreatorId}, {"PolicyFlags", 0}}}}
             });
         }
-        auto Handle = HcnCreateEndpoint(HcnOpenNetwork(Network), Entry.Id, winrt::to_hstring(Settings.dump()));
+        auto Handle = NanaBox::HcnCreateEndpoint(NanaBox::HcnOpenNetwork(Network), Entry.Id, winrt::to_hstring(Settings.dump()));
         try
         {
-            auto Properties = Json::parse(winrt::to_string(HcnQueryEndpointProperties(Handle)));
+            auto Properties = Json::parse(winrt::to_string(NanaBox::HcnQueryEndpointProperties(Handle)));
             Entry.Mac = Properties.at("MacAddress").get<std::string>();
             auto Constraint = Properties.value("InterfaceConstraint", Json::object());
             if (!Constraint.contains("InterfaceGuid")) Constraint = NetworkProperties.at("InterfaceConstraint");
@@ -501,7 +504,7 @@ struct NanaBox::MirroredNetworking::Impl
         catch (...)
         {
             Handle = HcnEndpoint();
-            try { HcnDeleteEndpoint(Entry.Id); } catch (...) {}
+            try { NanaBox::HcnDeleteEndpoint(Entry.Id); } catch (...) {}
             throw;
         }
         return Entry;
@@ -515,7 +518,7 @@ struct NanaBox::MirroredNetworking::Impl
                 Json{{"EndpointId", GuidString(Entry.Id)}, {"MacAddress", Entry.Mac}});
         }
         catch (...) {}
-        try { HcnDeleteEndpoint(Entry.Id); } catch (...) {}
+        try { NanaBox::HcnDeleteEndpoint(Entry.Id); } catch (...) {}
     }
 
     void Send(Endpoint const& Entry, char const* Resource, char const* Action, Json const& Settings)

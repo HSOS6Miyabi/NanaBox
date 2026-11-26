@@ -1481,4 +1481,151 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredPortsLabel" xml:space="preserve">
     <value>镜像网络端口列表</value>
   </data>
+  <data name="TabHostManagement.Header" xml:space="preserve">
+    <value>宿主机管理</value>
+  </data>
+  <data name="ManagedSwitchTitle.Text" xml:space="preserve">
+    <value>Hyper-V 虚拟交换机</value>
+  </data>
+  <data name="ManagedSwitchNote.Text" xml:space="preserve">
+    <value>创建和删除 NanaBox 管理的虚拟交换机。交换机对应的 HCN 网络可在网卡设置中选择。</value>
+  </data>
+  <data name="ManagedSwitchesComboBox.Header" xml:space="preserve">
+    <value>虚拟交换机</value>
+  </data>
+  <data name="SwitchListButton.Content" xml:space="preserve">
+    <value>刷新交换机</value>
+  </data>
+  <data name="SwitchDeleteButton.Content" xml:space="preserve">
+    <value>删除所选交换机</value>
+  </data>
+  <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve">
+    <value>新交换机名称</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBox.Header" xml:space="preserve">
+    <value>交换机类型</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxInternal.Content" xml:space="preserve">
+    <value>内部</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxPrivate.Content" xml:space="preserve">
+    <value>专用</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxExternal.Content" xml:space="preserve">
+    <value>外部</value>
+  </data>
+  <data name="PhysicalAdaptersComboBox.Header" xml:space="preserve">
+    <value>物理网卡（外部交换机）</value>
+  </data>
+  <data name="AdapterListButton.Content" xml:space="preserve">
+    <value>刷新物理网卡</value>
+  </data>
+  <data name="SwitchCreateButton.Content" xml:space="preserve">
+    <value>创建交换机</value>
+  </data>
+  <data name="FirewallManagerTitle.Text" xml:space="preserve">
+    <value>Hyper-V 防火墙</value>
+  </data>
+  <data name="FirewallManagerNote.Text" xml:space="preserve">
+    <value>为 NanaBox 注册专用防火墙创建者。设置将应用于使用该创建者的所有端点。其他应用的创建者仅可查看。</value>
+  </data>
+  <data name="FirewallCreatorsComboBox.Header" xml:space="preserve">
+    <value>防火墙创建者</value>
+  </data>
+  <data name="CreatorListButton.Content" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="FirewallInspectButton.Content" xml:space="preserve">
+    <value>查看</value>
+  </data>
+  <data name="UseCreatorButton.Content" xml:space="preserve">
+    <value>用于镜像网络</value>
+  </data>
+  <data name="FirewallCreatorNameTextBox.Header" xml:space="preserve">
+    <value>新创建者名称</value>
+  </data>
+  <data name="CreatorRegisterButton.Content" xml:space="preserve">
+    <value>注册创建者</value>
+  </data>
+  <data name="FirewallInboundComboBox.Header" xml:space="preserve">
+    <value>默认入站操作</value>
+  </data>
+  <data name="FirewallInboundComboBoxAllow.Content" xml:space="preserve">
+    <value>允许</value>
+  </data>
+  <data name="FirewallInboundComboBoxBlock.Content" xml:space="preserve">
+    <value>阻止</value>
+  </data>
+  <data name="FirewallOutboundComboBox.Header" xml:space="preserve">
+    <value>默认出站操作</value>
+  </data>
+  <data name="FirewallOutboundComboBoxAllow.Content" xml:space="preserve">
+    <value>允许</value>
+  </data>
+  <data name="FirewallOutboundComboBoxBlock.Content" xml:space="preserve">
+    <value>阻止</value>
+  </data>
+  <data name="FirewallLoopbackCheckBox.Content" xml:space="preserve">
+    <value>允许宿主机与客户机回环通信</value>
+  </data>
+  <data name="FirewallMergeCheckBox.Content" xml:space="preserve">
+    <value>合并宿主机防火墙策略</value>
+  </data>
+  <data name="FirewallConfigureButton.Content" xml:space="preserve">
+    <value>应用防火墙设置</value>
+  </data>
+  <data name="FirewallRulesComboBox.Header" xml:space="preserve">
+    <value>现有防火墙规则</value>
+  </data>
+  <data name="RuleEnableButton.Content" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="RuleDisableButton.Content" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="RuleDeleteButton.Content" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="FirewallRuleNameTextBox.Header" xml:space="preserve">
+    <value>新规则名称</value>
+  </data>
+  <data name="FirewallDirectionComboBox.Header" xml:space="preserve">
+    <value>方向</value>
+  </data>
+  <data name="FirewallDirectionComboBoxInbound.Content" xml:space="preserve">
+    <value>入站</value>
+  </data>
+  <data name="FirewallDirectionComboBoxOutbound.Content" xml:space="preserve">
+    <value>出站</value>
+  </data>
+  <data name="FirewallActionComboBox.Header" xml:space="preserve">
+    <value>规则操作</value>
+  </data>
+  <data name="FirewallActionComboBoxAllow.Content" xml:space="preserve">
+    <value>允许</value>
+  </data>
+  <data name="FirewallActionComboBoxBlock.Content" xml:space="preserve">
+    <value>阻止</value>
+  </data>
+  <data name="FirewallProtocolComboBox.Header" xml:space="preserve">
+    <value>协议</value>
+  </data>
+  <data name="FirewallProtocolComboBoxTCP.Content" xml:space="preserve">
+    <value>TCP</value>
+  </data>
+  <data name="FirewallProtocolComboBoxUDP.Content" xml:space="preserve">
+    <value>UDP</value>
+  </data>
+  <data name="FirewallPortsTextBox.Header" xml:space="preserve">
+    <value>端口（使用逗号分隔，1–65535）</value>
+  </data>
+  <data name="RuleCreateButton.Content" xml:space="preserve">
+    <value>创建规则</value>
+  </data>
+  <data name="HostManagementResult.Header" xml:space="preserve">
+    <value>操作结果</value>
+  </data>
+  <data name="HostManagementConfirm" xml:space="preserve">
+    <value>是否应用此宿主机设置？请先确认相关虚拟机和网络连接。</value>
+  </data>
 </root>

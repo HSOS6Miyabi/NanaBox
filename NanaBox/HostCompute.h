@@ -214,6 +214,7 @@ namespace NanaBox
     HostNetworkInfo QueryHostNetwork(winrt::guid const& Id);
     void CreateManagedNetwork(winrt::hstring const& Name, bool Firewall);
     void DeleteManagedNetwork(winrt::guid const& Id);
+    winrt::hstring RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments);
 
     HcnEndpoint HcnCreateEndpoint(
         HcnNetwork const& NetworkHandle,

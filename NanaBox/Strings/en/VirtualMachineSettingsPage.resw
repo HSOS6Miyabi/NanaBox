@@ -1481,4 +1481,151 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredPortsLabel" xml:space="preserve">
     <value>Mirrored network port list</value>
   </data>
+  <data name="TabHostManagement.Header" xml:space="preserve">
+    <value>Host management</value>
+  </data>
+  <data name="ManagedSwitchTitle.Text" xml:space="preserve">
+    <value>Hyper-V virtual switches</value>
+  </data>
+  <data name="ManagedSwitchNote.Text" xml:space="preserve">
+    <value>Create and remove NanaBox-managed switches. Connect a VM through the HCN network picker when the switch is exposed by HCN.</value>
+  </data>
+  <data name="ManagedSwitchesComboBox.Header" xml:space="preserve">
+    <value>Switches</value>
+  </data>
+  <data name="SwitchListButton.Content" xml:space="preserve">
+    <value>Refresh switches</value>
+  </data>
+  <data name="SwitchDeleteButton.Content" xml:space="preserve">
+    <value>Delete selected switch</value>
+  </data>
+  <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve">
+    <value>New switch name</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBox.Header" xml:space="preserve">
+    <value>Switch type</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxInternal.Content" xml:space="preserve">
+    <value>Internal</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxPrivate.Content" xml:space="preserve">
+    <value>Private</value>
+  </data>
+  <data name="ManagedSwitchTypeComboBoxExternal.Content" xml:space="preserve">
+    <value>External</value>
+  </data>
+  <data name="PhysicalAdaptersComboBox.Header" xml:space="preserve">
+    <value>Physical adapter (external switch)</value>
+  </data>
+  <data name="AdapterListButton.Content" xml:space="preserve">
+    <value>Refresh adapters</value>
+  </data>
+  <data name="SwitchCreateButton.Content" xml:space="preserve">
+    <value>Create switch</value>
+  </data>
+  <data name="FirewallManagerTitle.Text" xml:space="preserve">
+    <value>Hyper-V firewall</value>
+  </data>
+  <data name="FirewallManagerNote.Text" xml:space="preserve">
+    <value>Create a dedicated firewall creator for NanaBox. Changes apply to every endpoint using that creator. External creators are read-only.</value>
+  </data>
+  <data name="FirewallCreatorsComboBox.Header" xml:space="preserve">
+    <value>Firewall creators</value>
+  </data>
+  <data name="CreatorListButton.Content" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="FirewallInspectButton.Content" xml:space="preserve">
+    <value>Inspect</value>
+  </data>
+  <data name="UseCreatorButton.Content" xml:space="preserve">
+    <value>Use for mirrored networking</value>
+  </data>
+  <data name="FirewallCreatorNameTextBox.Header" xml:space="preserve">
+    <value>New creator name</value>
+  </data>
+  <data name="CreatorRegisterButton.Content" xml:space="preserve">
+    <value>Register creator</value>
+  </data>
+  <data name="FirewallInboundComboBox.Header" xml:space="preserve">
+    <value>Default inbound</value>
+  </data>
+  <data name="FirewallInboundComboBoxAllow.Content" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="FirewallInboundComboBoxBlock.Content" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="FirewallOutboundComboBox.Header" xml:space="preserve">
+    <value>Default outbound</value>
+  </data>
+  <data name="FirewallOutboundComboBoxAllow.Content" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="FirewallOutboundComboBoxBlock.Content" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="FirewallLoopbackCheckBox.Content" xml:space="preserve">
+    <value>Allow host/guest loopback</value>
+  </data>
+  <data name="FirewallMergeCheckBox.Content" xml:space="preserve">
+    <value>Merge host firewall policy</value>
+  </data>
+  <data name="FirewallConfigureButton.Content" xml:space="preserve">
+    <value>Apply firewall settings</value>
+  </data>
+  <data name="FirewallRulesComboBox.Header" xml:space="preserve">
+    <value>Existing firewall rules</value>
+  </data>
+  <data name="RuleEnableButton.Content" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="RuleDisableButton.Content" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="RuleDeleteButton.Content" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="FirewallRuleNameTextBox.Header" xml:space="preserve">
+    <value>New rule name</value>
+  </data>
+  <data name="FirewallDirectionComboBox.Header" xml:space="preserve">
+    <value>Direction</value>
+  </data>
+  <data name="FirewallDirectionComboBoxInbound.Content" xml:space="preserve">
+    <value>Inbound</value>
+  </data>
+  <data name="FirewallDirectionComboBoxOutbound.Content" xml:space="preserve">
+    <value>Outbound</value>
+  </data>
+  <data name="FirewallActionComboBox.Header" xml:space="preserve">
+    <value>Rule action</value>
+  </data>
+  <data name="FirewallActionComboBoxAllow.Content" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="FirewallActionComboBoxBlock.Content" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="FirewallProtocolComboBox.Header" xml:space="preserve">
+    <value>Protocol</value>
+  </data>
+  <data name="FirewallProtocolComboBoxTCP.Content" xml:space="preserve">
+    <value>TCP</value>
+  </data>
+  <data name="FirewallProtocolComboBoxUDP.Content" xml:space="preserve">
+    <value>UDP</value>
+  </data>
+  <data name="FirewallPortsTextBox.Header" xml:space="preserve">
+    <value>Ports (comma-separated, 1–65535)</value>
+  </data>
+  <data name="RuleCreateButton.Content" xml:space="preserve">
+    <value>Create rule</value>
+  </data>
+  <data name="HostManagementResult.Header" xml:space="preserve">
+    <value>Operation result</value>
+  </data>
+  <data name="HostManagementConfirm" xml:space="preserve">
+    <value>Apply this host-wide change? Check all dependent VMs and network connections first.</value>
+  </data>
 </root>

@@ -73,6 +73,7 @@ namespace winrt::NanaBox::implementation
         void CreateNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void InspectNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void HostManagementButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void DiskManagerButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void SerialPipeButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
 

@@ -15,6 +15,9 @@
 
 #include <Mile.Json.h>
 #include <SetupAPI.h>
+#include <wincrypt.h>
+#include <string>
+#pragma comment(lib, "crypt32.lib")
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -403,7 +406,7 @@ winrt::hstring NanaBox::HcnQueryEndpointProperties(
     ::CheckHcnCall(
         ::HcnQueryEndpointProperties(
             EndpointHandle.get(),
-            Query.c_str(),
+            Query.empty() ? nullptr : Query.c_str(),
             RawResult.put(),
             RawErrorRecord.put()),
         RawErrorRecord);
@@ -565,4 +568,218 @@ void NanaBox::DeleteManagedNetwork(winrt::guid const& Id)
     winrt::cotaskmem_string Error;
     HRESULT Status = ::HcnDeleteNetwork(Id, Error.put());
     ::CheckHcnCall(Status, Error);
+}
+
+
+namespace
+{
+    std::wstring EncodeHostCommand(void const* Data, size_t Size)
+    {
+        if (Size > 1024 * 1024) throw winrt::hresult_invalid_argument();
+        DWORD Count = 0;
+        auto Bytes = reinterpret_cast<BYTE const*>(Data);
+        winrt::check_bool(::CryptBinaryToStringW(Bytes, static_cast<DWORD>(Size),
+            CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &Count));
+        std::wstring Result(Count, L'\0');
+        winrt::check_bool(::CryptBinaryToStringW(Bytes, static_cast<DWORD>(Size),
+            CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, Result.data(), &Count));
+        Result.resize(std::wcslen(Result.c_str()));
+        return Result;
+    }
+
+    // Only this fixed command set is executable. User data is supplied as encoded JSON.
+    constexpr wchar_t ManagementScript[] = LR"PS(
+function ManagedCreator($id) {
+    $id = ([guid]$id).ToString('B')
+    $c = @(Get-NetFirewallHyperVVMCreator | Where-Object { [guid]$_.VMCreatorId -eq [guid]$id })
+    if ($c.Count -ne 1 -or $c[0].FriendlyName -notlike 'NanaBox.Managed.*') {
+        throw 'Select a NanaBox-managed firewall creator.'
+    }
+    return $id
+}
+function ManagedSwitch($id) {
+    $s = @(Get-VMSwitch | Where-Object { $_.Id -eq [guid]$id })
+    if ($s.Count -ne 1 -or $s[0].Name -notlike 'NanaBox.Managed.*') {
+        throw 'Select a NanaBox-managed switch.'
+    }
+    return $s[0]
+}
+function Rule($id, $name) {
+    $r = @(Get-NetFirewallHyperVRule -VMCreatorId $id | Where-Object {
+        $_.Name -eq $name -and $_.Name -like 'NanaBox.Managed.*'
+    })
+    if ($r.Count -ne 1) { throw 'Select a NanaBox-managed rule.' }
+    return $r[0]
+}
+try {
+    $result = switch ($a.Action) {
+        'SwitchList' {
+            @(Get-VMSwitch | ForEach-Object {
+                [pscustomobject]@{Id=[string]$_.Id; Name=$_.Name; Type=[string]$_.SwitchType; Adapter=$_.NetAdapterInterfaceDescription}
+            })
+        }
+        'SwitchCreate' {
+            $name = 'NanaBox.Managed.' + $a.Name.Trim()
+            if ($name -eq 'NanaBox.Managed.' -or $a.Name.Length -gt 100) { throw 'Invalid switch name.' }
+            if (@(Get-VMSwitch | Where-Object Name -eq $name).Count) { throw 'Switch name already exists.' }
+            if ($a.Type -eq 'External') {
+                $adapter = @(Get-NetAdapter -Physical | Where-Object Name -eq $a.Adapter)
+                if ($adapter.Count -ne 1) { throw 'Specify the exact physical adapter name.' }
+                New-VMSwitch -Name $name -NetAdapterName $adapter[0].Name -AllowManagementOS $true | Out-Null
+            } elseif ($a.Type -in @('Internal','Private')) {
+                New-VMSwitch -Name $name -SwitchType $a.Type | Out-Null
+            } else { throw 'Invalid switch type.' }
+            @{Success=$true; Name=$name}
+        }
+        'SwitchDelete' {
+            $s = ManagedSwitch $a.Id
+            $connected = @(Get-VM | Get-VMNetworkAdapter | Where-Object SwitchId -eq $s.Id)
+            if ($connected.Count) { throw 'Disconnect all virtual machine adapters first.' }
+            # No force deletion of a switch that may be in use by another workload.
+            Remove-VMSwitch -VMSwitch $s -Confirm:$false
+            @{Success=$true}
+        }
+        'AdapterList' {
+            @(Get-NetAdapter -Physical | ForEach-Object {
+                [pscustomobject]@{Name=$_.Name; Description=$_.InterfaceDescription; Status=[string]$_.Status}
+            })
+        }
+        'CreatorList' {
+            @(Get-NetFirewallHyperVVMCreator | ForEach-Object {
+                [pscustomobject]@{Id=[string]$_.VMCreatorId; Name=$_.FriendlyName}
+            })
+        }
+        'CreatorRegister' {
+            $name = 'NanaBox.Managed.' + $a.Name.Trim()
+            if ($name -eq 'NanaBox.Managed.' -or $a.Name.Length -gt 100) { throw 'Invalid creator name.' }
+            $id = [guid]::NewGuid().ToString('B')
+            $r = Invoke-CimMethod -Namespace root/standardcimv2 -ClassName MSFT_NetFirewallHyperVVMCreator -MethodName RegisterHyperVVMCreator -Arguments @{VMCreatorId=$id;FriendlyName=$name}
+            if ($r.ReturnValue -ne 0) { throw ('Registration failed: ' + $r.ReturnValue) }
+            @{Id=$id; Name=$name}
+        }
+        'FirewallInspect' {
+            $id = ([guid]$a.Id).ToString('B')
+            $setting = @(Get-NetFirewallHyperVVMSetting -Name $id -PolicyStore ActiveStore)
+            $rules = @(Get-NetFirewallHyperVRule -VMCreatorId $id | ForEach-Object {
+                [pscustomobject]@{Id=$_.Name; Name=$_.DisplayName; Direction=[string]$_.Direction; Action=[string]$_.Action; Protocol=[string]$_.Protocol; LocalPorts=@($_.LocalPorts); RemotePorts=@($_.RemotePorts); Enabled=[string]$_.Enabled}
+            })
+            @{Settings=@($setting | Select-Object Name,Enabled,DefaultInboundAction,DefaultOutboundAction,LoopbackEnabled,AllowHostPolicyMerge); Rules=$rules}
+        }
+        'FirewallConfigure' {
+            $id = ManagedCreator $a.Id
+            if ($a.Inbound -notin @('Allow','Block') -or $a.Outbound -notin @('Allow','Block')) { throw 'Invalid firewall action.' }
+            Set-NetFirewallHyperVVMSetting -Name $id -Enabled True -DefaultInboundAction $a.Inbound -DefaultOutboundAction $a.Outbound -LoopbackEnabled ([string][bool]$a.Loopback) -AllowHostPolicyMerge ([string][bool]$a.Merge)
+            @{Success=$true}
+        }
+        'RuleCreate' {
+            $id = ManagedCreator $a.Id
+            if ($a.Name.Trim() -eq '' -or $a.Direction -notin @('Inbound','Outbound') -or $a.RuleAction -notin @('Allow','Block') -or $a.Protocol -notin @('TCP','UDP')) { throw 'Invalid rule.' }
+            $ports = @($a.Ports -split '[,\s]+' | Where-Object { $_ })
+            if (-not $ports.Count) { throw 'Specify at least one port.' }
+            foreach ($port in $ports) {
+                if ($port -notmatch '^\d{1,5}$' -or [int]$port -lt 1 -or [int]$port -gt 65535) { throw 'Invalid port.' }
+            }
+            $name = 'NanaBox.Managed.' + [guid]::NewGuid().ToString()
+            $parameters = @{Name=$name; DisplayName=$a.Name; VMCreatorId=$id; Direction=$a.Direction; Action=$a.RuleAction; Protocol=$a.Protocol}
+            if ($a.Direction -eq 'Inbound') { $parameters.LocalPorts=$ports } else { $parameters.RemotePorts=$ports }
+            New-NetFirewallHyperVRule @parameters | Out-Null
+            @{Success=$true; Id=$name}
+        }
+        'RuleEnable' {
+            $id = ManagedCreator $a.Id
+            $rule = Rule $id $a.Rule
+            Enable-NetFirewallHyperVRule -InputObject $rule | Out-Null
+            @{Success=$true}
+        }
+        'RuleDisable' {
+            $id = ManagedCreator $a.Id
+            $rule = Rule $id $a.Rule
+            Disable-NetFirewallHyperVRule -InputObject $rule | Out-Null
+            @{Success=$true}
+        }
+        'RuleDelete' {
+            $id = ManagedCreator $a.Id
+            $rule = Rule $id $a.Rule
+            Remove-NetFirewallHyperVRule -InputObject $rule -Confirm:$false | Out-Null
+            @{Success=$true}
+        }
+        default { throw 'Unsupported host management operation.' }
+    }
+    if ($a.Action -in @('SwitchList','AdapterList','CreatorList')) { $result = @($result | Where-Object { $_ -ne $null }) }
+    [Console]::WriteLine((ConvertTo-Json -InputObject $result -Depth 8 -Compress))
+    exit 0
+} catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
+}
+)PS";
+}
+
+winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments)
+{
+    auto Data = nlohmann::json::parse(winrt::to_string(Arguments));
+    if (!Data.is_object()) throw winrt::hresult_invalid_argument();
+    Data["Action"] = winrt::to_string(Action);
+    auto Payload = Data.dump();
+    std::wstring Script = L"$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';"
+        L"$WarningPreference='SilentlyContinue';[Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false);"
+        L"$a=ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('";
+    Script += EncodeHostCommand(Payload.data(), Payload.size());
+    Script += L"')));";
+    Script += ManagementScript;
+    std::wstring Command = L"powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand ";
+    Command += EncodeHostCommand(Script.data(), Script.size() * sizeof(wchar_t));
+    if (Command.size() > 32000) throw winrt::hresult_invalid_argument();
+
+    wchar_t System[MAX_PATH]{}, Temp[MAX_PATH]{}, Name[40]{};
+    auto N = ::GetSystemDirectoryW(System, ARRAYSIZE(System));
+    if (!N || N >= ARRAYSIZE(System)) winrt::throw_last_error();
+    N = ::GetTempPathW(ARRAYSIZE(Temp), Temp);
+    if (!N || N >= ARRAYSIZE(Temp)) winrt::throw_last_error();
+    GUID Id{};
+    winrt::check_hresult(::CoCreateGuid(&Id));
+    winrt::check_bool(::StringFromGUID2(Id, Name, ARRAYSIZE(Name)) != 0);
+    std::wstring Exe = std::wstring(System) + L"\\WindowsPowerShell\\v1.0\\powershell.exe";
+    std::wstring File = std::wstring(Temp) + L"NanaBox-" + Name + L".log";
+    SECURITY_ATTRIBUTES Security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+    HANDLE RawOutput = ::CreateFileW(File.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (RawOutput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
+    winrt::handle Output(RawOutput);
+    HANDLE RawInput = ::CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        &Security, OPEN_EXISTING, 0, nullptr);
+    if (RawInput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
+    winrt::handle Input(RawInput);
+
+    STARTUPINFOW Startup{};
+    Startup.cb = sizeof(Startup);
+    Startup.dwFlags = STARTF_USESTDHANDLES;
+    Startup.hStdOutput = Startup.hStdError = Output.get();
+    Startup.hStdInput = Input.get();
+    PROCESS_INFORMATION Process{};
+    winrt::check_bool(::CreateProcessW(Exe.c_str(), Command.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
+        nullptr, nullptr, &Startup, &Process));
+    winrt::handle Child(Process.hProcess), Thread(Process.hThread);
+    DWORD Wait = ::WaitForSingleObject(Child.get(), 60000);
+    if (Wait == WAIT_TIMEOUT)
+    {
+        ::TerminateProcess(Child.get(), ERROR_TIMEOUT);
+        ::WaitForSingleObject(Child.get(), 5000);
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT), L"Host management timed out.");
+    }
+    if (Wait != WAIT_OBJECT_0) winrt::throw_last_error();
+    DWORD Exit = 0;
+    winrt::check_bool(::GetExitCodeProcess(Child.get(), &Exit));
+    LARGE_INTEGER Size{}, Start{};
+    winrt::check_bool(::GetFileSizeEx(Output.get(), &Size));
+    if (Size.QuadPart < 0 || Size.QuadPart > 4 * 1024 * 1024) throw winrt::hresult_error(E_UNEXPECTED);
+    winrt::check_bool(::SetFilePointerEx(Output.get(), Start, nullptr, FILE_BEGIN));
+    std::string Result(static_cast<size_t>(Size.QuadPart), '\0');
+    DWORD Read = 0;
+    if (!Result.empty())
+        winrt::check_bool(::ReadFile(Output.get(), Result.data(), static_cast<DWORD>(Result.size()), &Read, nullptr));
+    Result.resize(Read);
+    if (Exit != 0)
+        throw winrt::hresult_error(E_FAIL, winrt::to_hstring(Result.empty() ? "Host management failed." : Result));
+    return winrt::to_hstring(nlohmann::json::parse(Result).dump());
 }
