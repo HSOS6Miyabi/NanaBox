@@ -1,0 +1,20 @@
+[Unit]
+Description=NanaBox guest network configuration service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/nanabox-gns/gns.py serve
+Restart=on-failure
+RestartSec=5
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=CAP_NET_ADMIN
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_VSOCK
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,71 @@
+# NanaBox Guest Network Service
+
+A guest network configuration agent for Windows and Linux virtual machines. It accepts versioned network configuration requests from the Hyper-V parent partition over Hyper-V sockets (Linux VSOCK port 27453). It identifies a hardware network adapter by its MAC address and applies IPv4/IPv6 addresses, routes, DNS servers and interface state/MTU. It does not accept executable commands.
+
+This component implements the guest-side network configuration transport and operations. Automatic host interface mirroring additionally requires HCN flow-steering/GNS registration, endpoint lifecycle management and port reservation coordination in the host application.
+
+## Installation
+
+Run `RegisterHost.ps1` as an administrator on the Windows Hyper-V host.
+
+On a Linux guest with systemd, Python 3, iproute2 and systemd-resolved:
+
+```sh
+sudo install -d -m 755 /opt/nanabox-gns
+sudo install -m 644 gns.py /opt/nanabox-gns/gns.py
+sudo install -m 644 nanabox-gns.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now nanabox-gns.service
+```
+
+On a Windows guest with Python 3.12 or later installed for all users, run as administrator:
+
+```powershell
+.\InstallWindowsGuest.ps1 -PythonPath 'C:\Program Files\Python313\python.exe'
+```
+
+Specify the installed interpreter's actual path. The startup task runs as SYSTEM. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
+
+## Host requests
+
+Use Python 3.12+ on Windows. Send a request to the running HCS VM's runtime GUID:
+
+```powershell
+python gns.py send <runtime-vm-guid> request.json
+```
+
+Example request (replace the MAC and addresses with the target interface's values):
+
+```json
+{
+  "Version": 1,
+  "AdapterMac": "00-15-5D-12-34-56",
+  "ResourceType": "IPAddress",
+  "RequestType": "Add",
+  "Settings": {
+    "Address": "192.0.2.20",
+    "OnLinkPrefixLength": 24
+  }
+}
+```
+
+| ResourceType | RequestType | Settings |
+|---|---|---|
+| IPAddress | Add, Update, Remove | Address, OnLinkPrefixLength |
+| Route | Add, Update, Remove | DestinationPrefix, NextHop (optional for on-link routes), Metric |
+| DNS | Add, Update, Remove | ServerList (array of IP addresses; Remove restores resolver defaults) |
+| Interface | Add, Update | Connected (boolean), NlMtu |
+
+Messages use a 4-byte big-endian length followed by UTF-8 JSON (maximum 256 KiB); one request and one response per connection. Replies include Version, Success and, on failure, Error. Linux route operations use protocol number 242 to distinguish agent-managed routes. Linux DNS management requires systemd-resolved. On Windows the agent calls the NetTCPIP and DnsClient PowerShell cmdlets.
+
+## Testing
+
+```sh
+python -m unittest discover -s GuestNetworkService -v
+```
+
+The tests verify protocol framing, validation, error replies and command generation for both platforms without modifying runner network settings. Actual Hyper-V socket connectivity and network changes require a Hyper-V host and installed guest agent.
+
+## Architecture references
+
+The guest-side operations follow the approach in Microsoft's MIT-licensed [WSL GnsEngine](https://github.com/microsoft/WSL/blob/master/src/linux/init/GnsEngine.cpp), [NetworkManager](https://github.com/microsoft/WSL/blob/master/src/linux/init/NetworkManager.cpp) and [HCN schema](https://github.com/microsoft/WSL/blob/master/src/shared/inc/hns_schema.h). NanaBox uses its own transport and implementation for ordinary Windows and Linux guests. See also [Hyper-V socket integration services](https://learn.microsoft.com/virtualization/hyper-v-on-windows/user-guide/make-integration-service).
