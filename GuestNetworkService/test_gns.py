@@ -1,5 +1,7 @@
 import json
 import pathlib
+import platform
+import subprocess
 import socket
 import tempfile
 import threading
@@ -176,6 +178,76 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(args[0][0], 'powershell.exe')
         self.assertEqual(json.loads(kwargs['input'])['Settings']['Servers'], ['192.0.2.53'])
         self.assertTrue(kwargs['check'])
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'Requires Windows PowerShell')
+    def test_windows_reconcile_disconnected_adapter(self):
+        # Run the actual reconciliation script, replacing only OS-specific
+        # cmdlets. A disabled target has no IP interface, address or route rows.
+        # Unrelated interfaces must never be modified.
+        setup = r'''
+$ErrorActionPreference = 'Stop'
+$adapter = [pscustomobject]@{
+    MacAddress='00-15-5D-12-34-56'; HardwareInterface=$true
+    InterfaceDescription='Microsoft Hyper-V Network Adapter'; ifIndex=42; Status='Disabled'
+}
+function Get-NetAdapter {
+    param([switch]$IncludeHidden, [int]$InterfaceIndex)
+    $adapter
+}
+function Get-NetIPInterface {
+    param([int]$InterfaceIndex, [string]$PolicyStore)
+    if ($PSBoundParameters.ContainsKey('InterfaceIndex')) { throw 'No matching IP interface' }
+    [pscustomobject]@{InterfaceIndex=43; AddressFamily='IPv4'; NlMtu=1500}
+}
+function Get-NetIPAddress {
+    param([int]$InterfaceIndex, [string]$PolicyStore)
+    if ($PSBoundParameters.ContainsKey('InterfaceIndex')) { throw 'No matching IP address' }
+    [pscustomobject]@{InterfaceIndex=43; IPAddress='198.51.100.10'; PrefixLength=24}
+}
+function Get-NetRoute {
+    param([int]$InterfaceIndex, [string]$PolicyStore)
+    if ($PSBoundParameters.ContainsKey('InterfaceIndex')) { throw 'No matching route' }
+    [pscustomobject]@{InterfaceIndex=43; DestinationPrefix='0.0.0.0/0'; NextHop='198.51.100.1'; RouteMetric=10; Protocol='NetMgmt'}
+}
+function Get-DnsClientServerAddress {
+    param([int]$InterfaceIndex)
+    if ($InterfaceIndex -ne 42) { throw 'Wrong DNS interface' }
+    [pscustomobject]@{ServerAddresses=@()}
+}
+function Get-DnsClient {
+    param([int]$InterfaceIndex)
+    if ($InterfaceIndex -ne 42) { throw 'Wrong DNS client' }
+    [pscustomobject]@{ConnectionSpecificSuffix=''}
+}
+function netsh.exe {
+    if ($args -notcontains 'show') { throw 'Unexpected port range change' }
+    $global:LASTEXITCODE = 0
+    'Start Port : 49152'
+    'Number of Ports : 4096'
+}
+function Set-NetIPInterface { throw 'Unexpected interface mutation' }
+function Remove-NetIPAddress { throw 'Unexpected address mutation' }
+function Remove-NetRoute { throw 'Unexpected route mutation' }
+function New-NetIPAddress { throw 'Unexpected address mutation' }
+function New-NetRoute { throw 'Unexpected route mutation' }
+function Set-NetRoute { throw 'Unexpected route mutation' }
+function Set-DnsClientServerAddress { throw 'Unexpected DNS mutation' }
+function Set-DnsClient { throw 'Unexpected DNS suffix mutation' }
+function Enable-NetAdapter { throw 'Unexpected adapter enable' }
+function Disable-NetAdapter { throw 'Unexpected adapter disable' }
+'''
+        settings = {
+            'Interface': {'Connected': False, 'NlMtu': 1000, 'Mirrored': True},
+            'Addresses': [], 'Routes': [], 'DNS': {'ServerList': [], 'Suffix': ''},
+            'PortRange': {'Start': 49152, 'End': 53247}
+        }
+        target, _, _, snapshot = gns.normalize(request('Reconcile', 'Update', **settings))
+        result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command',
+                                 setup + gns.WINDOWS_RECONCILE],
+                                input=json.dumps({'Target': target, 'Settings': snapshot}),
+                                encoding='utf-8', capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {'ListeningPorts': []})
 
     def test_port_range_validation(self):
         value = gns.normalize(request('PortRange', 'Update', Start=49152, End=53247))

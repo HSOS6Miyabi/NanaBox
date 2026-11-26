@@ -508,9 +508,23 @@ $i = $m[0].ifIndex
 if ($s.Interface.Connected -and [string]$m[0].Status -eq 'Disabled') {
     $m[0] | Enable-NetAdapter -Confirm:$false
 }
-foreach ($iface in @(Get-NetIPInterface -InterfaceIndex $i -PolicyStore ActiveStore)) {
+function ReadInterfaces {
+    @(Get-NetIPInterface -PolicyStore ActiveStore | Where-Object InterfaceIndex -eq $i)
+}
+function InterfaceMtu($iface) {
+    # IPv6 requires a minimum IP MTU of 1280. IPv4-only mirrored
+    # snapshots may use a smaller MTU without enabling IPv6 addressing.
+    if ([string]$iface.AddressFamily -eq 'IPv6') {
+        return [uint32][Math]::Max(1280, [int]$s.Interface.Mtu)
+    }
+    return [uint32]$s.Interface.Mtu
+}
+$interfaces = @(ReadInterfaces)
+if ($s.Interface.Connected -and -not $interfaces.Count) { throw 'Guest IP interface not available' }
+foreach ($iface in $interfaces) {
     $params = @{InterfaceIndex=$i; AddressFamily=$iface.AddressFamily; PolicyStore='ActiveStore'}
-    if ($iface.NlMtu -ne $s.Interface.Mtu -and $iface.NlMtuBytes -ne $s.Interface.Mtu) { $params.NlMtuBytes = [uint32]$s.Interface.Mtu }
+    $mtu = InterfaceMtu $iface
+    if ($iface.NlMtu -ne $mtu -and $iface.NlMtuBytes -ne $mtu) { $params.NlMtuBytes = $mtu }
     if ($iface.DadTransmits -ne 0) { $params.DadTransmits = 0 }
     if ([string]$iface.AddressFamily -eq 'IPv4' -and [string]$iface.Dhcp -ne 'Disabled') { $params.Dhcp = 'Disabled' }
     if ([string]$iface.RouterDiscovery -ne 'Disabled') { $params.RouterDiscovery = 'Disabled' }
@@ -525,13 +539,15 @@ function AddressKey($address,$prefix) { return ([ipaddress]$address).ToString() 
 function RouteKey($destination,$hop,$metric) { return $destination + '|' + ([ipaddress]$hop).ToString() + '|' + $metric }
 function IsDirect($hop) { return $hop -in @('0.0.0.0','::') }
 function ReadAddresses {
-    @(Get-NetIPAddress -InterfaceIndex $i -PolicyStore ActiveStore | Where-Object {
-        $ip = [ipaddress]$_.IPAddress
-        -not [ipaddress]::IsLoopback($ip) -and -not $ip.IsIPv6LinkLocal -and -not $ip.IsIPv6Multicast
+    @(Get-NetIPAddress -PolicyStore ActiveStore | Where-Object {
+        if ($_.InterfaceIndex -eq $i) {
+            $ip = [ipaddress]$_.IPAddress
+            -not [ipaddress]::IsLoopback($ip) -and -not $ip.IsIPv6LinkLocal -and -not $ip.IsIPv6Multicast
+        }
     })
 }
 function ReadRoutes {
-    @(Get-NetRoute -InterfaceIndex $i -PolicyStore ActiveStore)
+    @(Get-NetRoute -PolicyStore ActiveStore | Where-Object InterfaceIndex -eq $i)
 }
 $desiredAddresses = @{}
 foreach ($a in $s.Addresses) { $desiredAddresses[(AddressKey $a.Address $a.Prefix)] = $a }
@@ -614,8 +630,11 @@ $dns = @((Get-DnsClientServerAddress -InterfaceIndex $i).ServerAddresses | Where
 if ((@($dns | Sort-Object) -join ',') -ne (@($wantedDns | Sort-Object) -join ',')) { throw 'Guest DNS did not converge' }
 $actualAdapter = Get-NetAdapter -InterfaceIndex $i -IncludeHidden
 if (([string]$actualAdapter.Status -ne 'Disabled') -ne [bool]$s.Interface.Connected) { throw 'Guest interface state did not converge' }
-foreach ($iface in @(Get-NetIPInterface -InterfaceIndex $i -PolicyStore ActiveStore)) {
-    if ($iface.NlMtu -ne $s.Interface.Mtu -and $iface.NlMtuBytes -ne $s.Interface.Mtu) { throw 'Guest MTU did not converge' }
+$interfaces = @(ReadInterfaces)
+if ($s.Interface.Connected -and -not $interfaces.Count) { throw 'Guest IP interface disappeared' }
+foreach ($iface in $interfaces) {
+    $mtu = InterfaceMtu $iface
+    if ($iface.NlMtu -ne $mtu -and $iface.NlMtuBytes -ne $mtu) { throw 'Guest MTU did not converge' }
 }
 $ports = @()
 if ($s.DiscoverPorts -and $s.Interface.Connected) {
