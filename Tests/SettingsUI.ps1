@@ -10,7 +10,7 @@ $Executable = (Resolve-Path $Executable).Path
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $config = Join-Path $OutputDirectory 'ui-test.7b'
 $initial = @{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} | ConvertTo-Json -Depth 10
-[IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($true)))
 
 $process = Start-Process -FilePath $Executable -ArgumentList ('--edit-config "' + $config + '"') -PassThru
 $root = [System.Windows.Automation.AutomationElement]::RootElement
