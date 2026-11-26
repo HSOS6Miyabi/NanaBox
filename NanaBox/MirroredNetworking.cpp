@@ -396,6 +396,11 @@ struct NanaBox::MirroredNetworking::Impl
     UnregisterRpc Unregister = nullptr;
     std::map<std::string, Endpoint> Endpoints;
     std::atomic<bool> Stop{false};
+    std::atomic<bool> NetworkChanged{true};
+    std::atomic<bool> ServiceDisconnected{false};
+    HCN_CALLBACK HcnCallbackHandle = nullptr;
+    HANDLE AddressNotification = nullptr, RouteNotification = nullptr, InterfaceNotification = nullptr;
+    std::map<std::string, std::pair<winrt::guid, std::string>> EndpointIdentities;
     mutable std::mutex Mutex;
     std::condition_variable Wake;
     std::wstring CurrentStatus = L"Connecting";
@@ -404,6 +409,70 @@ struct NanaBox::MirroredNetworking::Impl
     Impl(VirtualMachineConfiguration const& Config, winrt::guid const& Id) :
         RuntimeId(Id), Configuration(Config)
     {
+    }
+
+    void RequestRefresh() noexcept
+    {
+        NetworkChanged.store(true);
+        Wake.notify_all();
+    }
+
+    static void CALLBACK HcnNotification(DWORD Type, void* Context, HRESULT, PCWSTR) noexcept
+    {
+        auto Self = static_cast<Impl*>(Context);
+        if (Type == HcnNotificationServiceDisconnect) Self->ServiceDisconnected.store(true);
+        // Notifications can be delivered while the HCN operation is still executing.
+        // The callback never calls HCN/HCS or waits on the worker.
+        if (Type == HcnNotificationServiceDisconnect ||
+            Type == HcnNotificationNetworkCreate || Type == HcnNotificationNetworkPreDelete ||
+            Type == HcnNotificationNetworkDelete)
+            Self->RequestRefresh();
+    }
+
+    static void CALLBACK AddressChanged(void* Context, PMIB_UNICASTIPADDRESS_ROW, MIB_NOTIFICATION_TYPE) noexcept
+    {
+        static_cast<Impl*>(Context)->RequestRefresh();
+    }
+
+    static void CALLBACK RouteChanged(void* Context, PMIB_IPFORWARD_ROW2, MIB_NOTIFICATION_TYPE) noexcept
+    {
+        static_cast<Impl*>(Context)->RequestRefresh();
+    }
+
+    static void CALLBACK InterfaceChanged(void* Context, PMIB_IPINTERFACE_ROW, MIB_NOTIFICATION_TYPE) noexcept
+    {
+        static_cast<Impl*>(Context)->RequestRefresh();
+    }
+
+    void SubscribeHcn()
+    {
+        if (HcnCallbackHandle) return;
+        winrt::check_hresult(::HcnRegisterServiceCallback(HcnNotification, this, &HcnCallbackHandle));
+    }
+
+    void UnsubscribeHcn() noexcept
+    {
+        if (HcnCallbackHandle)
+        {
+            ::HcnUnregisterServiceCallback(HcnCallbackHandle);
+            HcnCallbackHandle = nullptr;
+        }
+    }
+
+    void SubscribeHost()
+    {
+        SubscribeHcn();
+        winrt::check_win32(::NotifyUnicastIpAddressChange(AF_UNSPEC, AddressChanged, this, FALSE, &AddressNotification));
+        winrt::check_win32(::NotifyRouteChange2(AF_UNSPEC, RouteChanged, this, FALSE, &RouteNotification));
+        winrt::check_win32(::NotifyIpInterfaceChange(AF_UNSPEC, InterfaceChanged, this, FALSE, &InterfaceNotification));
+    }
+
+    void UnsubscribeHost() noexcept
+    {
+        UnsubscribeHcn();
+        for (auto Handle : {AddressNotification, RouteNotification, InterfaceNotification})
+            if (Handle) ::CancelMibChangeNotify2(Handle);
+        AddressNotification = RouteNotification = InterfaceNotification = nullptr;
     }
 
     void StopWorker()
@@ -424,21 +493,12 @@ struct NanaBox::MirroredNetworking::Impl
     ~Impl()
     {
         StopWorker();
+        UnsubscribeHost();
         for (auto& Entry : Endpoints)
         {
             try { RemoveEndpoint(Entry.second); } catch (...) {}
         }
-        if (Release)
-        {
-            for (auto const& Entry : AutomaticPorts) Release(Entry.second);
-            for (auto Handle : Reservations) Release(Handle);
-        }
-        if (Service)
-        {
-            HcnText Error;
-            if (DeleteGns) DeleteGns(RuntimeId, &Error.Value);
-            if (CloseGns) CloseGns(Service);
-        }
+        ReleaseGuestService();
         if (RpcRegistered && Unregister) Unregister(&RpcId);
         if (Dependencies) ::FreeLibrary(Dependencies);
         if (NetworkModule) ::FreeLibrary(NetworkModule);
@@ -488,9 +548,45 @@ struct NanaBox::MirroredNetworking::Impl
         winrt::check_hresult(Register(Descriptor, &RpcId));
         RpcRegistered = true;
 
+        NetworkModule = ::LoadLibraryExW(L"computenetwork.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        winrt::check_pointer(NetworkModule);
+        CreateGns = Import<CreateService>(NetworkModule, "HcnCreateGuestNetworkService");
+        DeleteGns = Import<DeleteService>(NetworkModule, "HcnDeleteGuestNetworkService");
+        CloseGns = Import<CloseService>(NetworkModule, "HcnCloseGuestNetworkService");
+        ModifyGns = Import<ModifyService>(NetworkModule, "HcnModifyGuestNetworkService");
+        AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
+        Release = Import<ReleasePort>(NetworkModule, "HcnReleaseGuestNetworkServicePortReservationHandle");
+        RegisterGuestSocket();
+        SubscribeHost();
+        CreateGuestService();
+        StartWorker();
+    }
+
+    void ReleaseGuestService() noexcept
+    {
+        if (Release)
+        {
+            for (auto const& Entry : AutomaticPorts) Release(Entry.second);
+            for (auto Handle : Reservations) Release(Handle);
+        }
+        AutomaticPorts.clear();
+        Reservations.clear();
+        ExplicitPorts.clear();
+        Range = {};
+        if (Service)
+        {
+            HcnText Error;
+            if (DeleteGns) DeleteGns(RuntimeId, &Error.Value);
+            if (CloseGns) CloseGns(Service);
+            Service = nullptr;
+        }
+    }
+
+    void CreateGuestService()
+    {
         bool Firewall = !Configuration.MirroredFirewallCreatorId.empty();
         if (Firewall) (void)winrt::guid(Configuration.MirroredFirewallCreatorId);
-        // The filtered query asks HNS to create flow-steering networks.
+        // Subscribe before querying so newly created flow-steering networks cannot be missed.
         (void)MirroredNetworks(Firewall);
         Json Request = {{"VirtualMachineId", GuidString(RuntimeId)}, {"MirrorHostNetworking", true},
             {"SchemaVersion", {{"Major", 2}, {"Minor", 0}}},
@@ -498,19 +594,10 @@ struct NanaBox::MirroredNetworking::Impl
             {"Flags", 3}};
         HcnText ServiceError;
         auto Text = winrt::to_hstring(Request.dump());
-        NetworkModule = ::LoadLibraryExW(L"computenetwork.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-        winrt::check_pointer(NetworkModule);
-        CreateGns = Import<CreateService>(NetworkModule, "HcnCreateGuestNetworkService");
-        DeleteGns = Import<DeleteService>(NetworkModule, "HcnDeleteGuestNetworkService");
-        CloseGns = Import<CloseService>(NetworkModule, "HcnCloseGuestNetworkService");
-        ModifyGns = Import<ModifyService>(NetworkModule, "HcnModifyGuestNetworkService");
         auto Hr = CreateGns(RuntimeId, Text.c_str(), &Service, &ServiceError.Value);
         CheckHcn(Hr, ServiceError);
-        RegisterGuestSocket();
         SetState("Bootstrapping");
         auto AllocateRange = Import<ReserveRange>(NetworkModule, "HcnReserveGuestNetworkServicePortRange");
-        AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
-        Release = Import<ReleasePort>(NetworkModule, "HcnReleaseGuestNetworkServicePortReservationHandle");
         HRESULT RangeResult = E_FAIL;
         for (USHORT Count = 4095; Count >= 511; Count /= 2)
         {
@@ -542,7 +629,24 @@ struct NanaBox::MirroredNetworking::Impl
                 ExplicitPorts.emplace(List.first, static_cast<USHORT>(Port));
             }
         }
-        StartWorker();
+    }
+
+    void ReconnectService()
+    {
+        Status(L"Reconnecting to HCN");
+        UnsubscribeHcn();
+        ReleaseGuestService();
+        try
+        {
+            SubscribeHcn();
+            CreateGuestService();
+        }
+        catch (...)
+        {
+            ReleaseGuestService();
+            UnsubscribeHcn();
+            throw;
+        }
     }
 
     void PauseSynchronization()
@@ -551,7 +655,7 @@ struct NanaBox::MirroredNetworking::Impl
         StopWorker();
         try
         {
-            SetState("Paused");
+            if (Service) SetState("Paused");
             Status(L"Paused");
         }
         catch (...)
@@ -564,7 +668,7 @@ struct NanaBox::MirroredNetworking::Impl
     void ResumeSynchronization()
     {
         if (Worker.joinable()) return;
-        try { SetState("Desynchronized"); } catch (...) {}
+        if (Service) { try { SetState("Desynchronized"); } catch (...) {} }
         StartWorker();
     }
 
@@ -573,7 +677,7 @@ struct NanaBox::MirroredNetworking::Impl
         StopWorker();
         try
         {
-            if (Status() != L"Paused") SetState("Paused");
+            if (Service && Status() != L"Paused") SetState("Paused");
             for (auto It = Endpoints.begin(); It != Endpoints.end();)
             {
                 RemoveEndpoint(It->second);
@@ -598,9 +702,15 @@ struct NanaBox::MirroredNetworking::Impl
     Endpoint Attach(winrt::guid const& Network)
     {
         Endpoint Entry;
-        GUID EndpointId{};
-        winrt::check_hresult(::CoCreateGuid(&EndpointId));
-        Entry.Id = EndpointId;
+        auto Key = GuidString(Network);
+        auto Identity = EndpointIdentities.find(Key);
+        if (Identity == EndpointIdentities.end())
+        {
+            GUID EndpointId{};
+            winrt::check_hresult(::CoCreateGuid(&EndpointId));
+            Identity = EndpointIdentities.emplace(Key, std::make_pair(winrt::guid(EndpointId), std::string())).first;
+        }
+        Entry.Id = Identity->second.first;
         auto Info = QueryHostNetwork(Network);
         auto NetworkProperties = Json::parse(winrt::to_string(Info.Properties));
         Json Settings = {{"SchemaVersion", {{"Major", 2}, {"Minor", 0}}},
@@ -613,6 +723,7 @@ struct NanaBox::MirroredNetworking::Impl
                 {{"Type", "Firewall"}, {"Settings", {{"VmCreatorId", Configuration.MirroredFirewallCreatorId}, {"PolicyFlags", 0}}}}
             });
         }
+        if (!Identity->second.second.empty()) Settings["MacAddress"] = Identity->second.second;
         auto Handle = NanaBox::HcnCreateEndpoint(NanaBox::HcnOpenNetwork(Network), Entry.Id, winrt::to_hstring(Settings.dump()));
         try
         {
@@ -624,6 +735,7 @@ struct NanaBox::MirroredNetworking::Impl
             ModifyVm(Vm.get(), "VirtualMachine/Devices/NetworkAdapters/" + GuidString(Entry.Id), "Add",
                 Json{{"EndpointId", GuidString(Entry.Id)}, {"MacAddress", Entry.Mac}});
             Entry.Attached = true;
+            Identity->second.second = Entry.Mac;
         }
         catch (...)
         {
@@ -719,14 +831,23 @@ struct NanaBox::MirroredNetworking::Impl
         bool Synchronized = false;
         while (!Stop)
         {
+            NetworkChanged.exchange(false);
             try
             {
+                if (ServiceDisconnected.exchange(false) || !Service || !HcnCallbackHandle)
+                {
+                    Synchronized = false;
+                    ReconnectService();
+                }
                 auto Networks = MirroredNetworks(!Configuration.MirroredFirewallCreatorId.empty());
                 std::set<std::string> Active;
                 for (auto const& Network : Networks) Active.insert(GuidString(Network));
                 for (auto It = Endpoints.begin(); It != Endpoints.end();)
                 {
-                    if (!Active.count(It->first) || !It->second.Attached)
+                    bool Present = Active.count(It->first) != 0 && It->second.Attached;
+                    if (Present)
+                        Present = static_cast<bool>(NanaBox::HcnOpenOwnedEndpoint(It->second.Id, Configuration.Name));
+                    if (!Present)
                     {
                         RemoveEndpoint(It->second);
                         It = Endpoints.erase(It);
@@ -757,7 +878,9 @@ struct NanaBox::MirroredNetworking::Impl
                     if (Stop) break;
                     if (!Errors.empty()) throw winrt::hresult_error(E_FAIL, winrt::hstring(Errors));
                     auto Conflicts = ReconcileAutomaticPorts(Ports);
-                    if (!Synchronized) SetState("Synchronized");
+                    // Verify the service handle on each reconciliation, including after HNS restart.
+                    try { SetState("Synchronized"); }
+                    catch (...) { ServiceDisconnected.store(true); throw; }
                     Synchronized = true;
                     Status(Conflicts.empty() ? L"Synchronized" : L"Synchronized; port conflicts: " + Conflicts);
                 }
@@ -767,16 +890,20 @@ struct NanaBox::MirroredNetworking::Impl
                 if (!Stop)
                 {
                     auto Error = Mile::WinRT::ToHResultError();
-                    if (Synchronized)
+                    if (Synchronized && Service)
                     {
-                        try { SetState("Desynchronized"); } catch (...) {}
-                        Synchronized = false;
+                        try { SetState("Desynchronized"); }
+                        catch (...) { ServiceDisconnected.store(true); }
                     }
+                    Synchronized = false;
                     Status(std::wstring(Error.message().c_str()));
                 }
             }
             std::unique_lock Lock(Mutex);
-            Wake.wait_for(Lock, std::chrono::seconds(5), [this]() { return Stop.load(); });
+            // Event notifications accelerate reconciliation; the periodic check
+            // still detects guest-only configuration drift and listening sockets.
+            Wake.wait_for(Lock, std::chrono::seconds(5),
+                [this]() { return Stop.load() || NetworkChanged.load(); });
         }
     }
 };
