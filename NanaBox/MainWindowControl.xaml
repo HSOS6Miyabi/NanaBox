@@ -35,7 +35,7 @@
         Click="EnhancedSessionButtonClick"
         Icon="NewWindow"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Enhanced Session]" />
+        ToolTipService.ToolTip="[Enhanced Session]" AutomationProperties.AutomationId="EnhancedSessionButton" />
       <AppBarButton
         x:Uid="/MainWindow/FullScreenButton"
         Width="48"
@@ -43,7 +43,7 @@
         Click="FullScreenButtonClick"
         Icon="FullScreen"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Full Screen]" />
+        ToolTipService.ToolTip="[Full Screen]" AutomationProperties.AutomationId="FullScreenButton" />
       <AppBarSeparator />
       <AppBarToggleButton
         x:Uid="/MainWindow/PauseVirtualMachineButton"
@@ -52,7 +52,7 @@
         Click="PauseVirtualMachineButtonClick"
         Icon="Pause"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Pause Virtual Machine]" />
+        ToolTipService.ToolTip="[Pause Virtual Machine]" AutomationProperties.AutomationId="PauseVirtualMachineButton" />
       <AppBarButton
         x:Uid="/MainWindow/RestartVirtualMachineButton"
         Width="48"
@@ -60,14 +60,14 @@
         Click="RestartVirtualMachineButtonClick"
         Icon="Refresh"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Restart Virtual Machine]" />
+        ToolTipService.ToolTip="[Restart Virtual Machine]" AutomationProperties.AutomationId="RestartVirtualMachineButton" />
       <AppBarButton Icon="Stop" Width="48" LabelPosition="Collapsed"
-        x:Uid="/MainWindow/PowerMenu" AutomationProperties.Name="Power options" ToolTipService.ToolTip="Power options">
+        x:Uid="/MainWindow/PowerMenu" AutomationProperties.Name="Power options" ToolTipService.ToolTip="Power options" AutomationProperties.AutomationId="PowerMenu">
         <AppBarButton.Flyout>
           <MenuFlyout>
-            <MenuFlyoutItem x:Uid="/MainWindow/ShutdownAction" Text="Shut down guest" Tag="Shutdown" Click="PowerActionClick" />
-            <MenuFlyoutItem x:Uid="/MainWindow/SaveAction" Text="Save state and close" Tag="Save" Click="PowerActionClick" />
-            <MenuFlyoutItem x:Uid="/MainWindow/PowerOffAction" Text="Force power off" Tag="PowerOff" Click="PowerActionClick" />
+            <MenuFlyoutItem x:Uid="/MainWindow/ShutdownAction" Text="Shut down guest" Tag="Shutdown" Click="PowerActionClick" AutomationProperties.AutomationId="ShutdownAction" />
+            <MenuFlyoutItem x:Uid="/MainWindow/SaveAction" Text="Save state and close" Tag="Save" Click="PowerActionClick" AutomationProperties.AutomationId="SaveAction" />
+            <MenuFlyoutItem x:Uid="/MainWindow/PowerOffAction" Text="Force power off" Tag="PowerOff" Click="PowerActionClick" AutomationProperties.AutomationId="PowerOffAction" />
           </MenuFlyout>
         </AppBarButton.Flyout>
       </AppBarButton>
@@ -79,7 +79,7 @@
         Click="VirtualMachineSettingsButtonClick"
         Icon="Setting"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Virtual Machine Settings]" />
+        ToolTipService.ToolTip="[Virtual Machine Settings]" AutomationProperties.AutomationId="VirtualMachineSettingsButton" />
       <AppBarToggleButton
         x:Name="RedirectKeyboardNavigationButton"
         x:Uid="/MainWindow/RedirectKeyboardNavigationButton"
@@ -88,7 +88,7 @@
         Click="RedirectKeyboardNavigationButtonClick"
         Icon="Keyboard"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Redirect Keyboard Navigation]" />
+        ToolTipService.ToolTip="[Redirect Keyboard Navigation]" AutomationProperties.AutomationId="RedirectKeyboardNavigationButton" />
       <AppBarButton
         x:Uid="/MainWindow/RestoreVirtualMachineWindowSizeButton"
         Width="48"
@@ -96,7 +96,7 @@
         Click="RestoreVirtualMachineWindowSizeButtonClick"
         Icon="BackToWindow"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Restore Virtual Machine Window Size]" />
+        ToolTipService.ToolTip="[Restore Virtual Machine Window Size]" AutomationProperties.AutomationId="RestoreVirtualMachineWindowSizeButton" />
       <AppBarButton
         x:Uid="/MainWindow/CopyScreenshotButton"
         Width="48"
@@ -104,7 +104,7 @@
         Click="CopyScreenshotButtonClick"
         Icon="Camera"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Copy Screenshot]" />
+        ToolTipService.ToolTip="[Copy Screenshot]" AutomationProperties.AutomationId="CopyScreenshotButton" />
       <AppBarToggleButton
         x:Name="RecordVideoButton"
         x:Uid="/MainWindow/RecordVideoButton"
@@ -113,7 +113,7 @@
         Click="RecordVideoButtonClick"
         Icon="Video"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Record Video]" />
+        ToolTipService.ToolTip="[Record Video]" AutomationProperties.AutomationId="RecordVideoButton" />
       <AppBarSeparator />
       <AppBarButton
         x:Uid="/MainWindow/CreateVirtualHardDiskButton"
@@ -122,7 +122,7 @@
         Click="CreateVirtualHardDiskButtonClick"
         Icon="Add"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Create Virtual Hard Disk]" />
+        ToolTipService.ToolTip="[Create Virtual Hard Disk]" AutomationProperties.AutomationId="CreateVirtualHardDiskButton" />
       <AppBarButton
         x:Uid="/MainWindow/ResizeVirtualHardDiskButton"
         Width="48"
@@ -130,7 +130,7 @@
         Click="ResizeVirtualHardDiskButtonClick"
         Icon="Zoom"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Resize Virtual Hard Disk]" />
+        ToolTipService.ToolTip="[Resize Virtual Hard Disk]" AutomationProperties.AutomationId="ResizeVirtualHardDiskButton" />
       <AppBarButton
         x:Uid="/MainWindow/CompactVirtualHardDiskButton"
         Width="48"
@@ -138,7 +138,7 @@
         Click="CompactVirtualHardDiskButtonClick"
         Icon="BackToWindow"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[Compact Virtual Hard Disk]" />
+        ToolTipService.ToolTip="[Compact Virtual Hard Disk]" AutomationProperties.AutomationId="CompactVirtualHardDiskButton" />
       <AppBarButton
         x:Uid="/MainWindow/AboutButton"
         Width="48"
@@ -146,7 +146,7 @@
         Click="AboutButtonClick"
         Icon="Help"
         LabelPosition="Collapsed"
-        ToolTipService.ToolTip="[About NanaBox]" />
+        ToolTipService.ToolTip="[About NanaBox]" AutomationProperties.AutomationId="AboutButton" />
     </CommandBar>
     <Button
       x:Name="SponsorButton"
@@ -155,6 +155,6 @@
       VerticalAlignment="Center"
       Background="Transparent"
       Click="SponsorButtonClick"
-      Content="[Sponsor NanaBox]" />
+      Content="[Sponsor NanaBox]" AutomationProperties.AutomationId="SponsorButton" />
   </Grid>
 </Page>

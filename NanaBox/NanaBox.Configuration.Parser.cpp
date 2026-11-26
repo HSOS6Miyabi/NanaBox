@@ -1107,8 +1107,8 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
     Result.ProcessorCount = static_cast<std::uint32_t>(Mile::Json::ToUInt64(
         Mile::Json::GetSubKey(Value, "ProcessorCount")));
 
-    Result.MemorySize = static_cast<std::uint32_t>(Mile::Json::ToUInt64(
-        Mile::Json::GetSubKey(Value, "MemorySize")));
+    Result.MemorySize = Mile::Json::ToUInt64(
+        Mile::Json::GetSubKey(Value, "MemorySize"));
 
     Result.ComPorts = NanaBox::ToComPortsConfiguration(
         Mile::Json::GetSubKey(Value, "ComPorts"));

@@ -17,6 +17,10 @@
 #include "App.h"
 #include "MainWindow.h"
 #include "QuickStartPage.h"
+#include "VirtualMachineSettingsPage.h"
+#include <shellapi.h>
+#include <virtdisk.h>
+#pragma comment(lib, "virtdisk.lib")
 #include "SponsorPage.h"
 
 #include <Mile.Project.Version.h>
@@ -119,6 +123,39 @@ int WINAPI wWinMain(
         catch (...) { return 4; }
     }
 
+    if (0 == ::_wcsicmp(lpCmdLine, L"--disk-self-test"))
+    {
+        try
+        {
+            wchar_t Temp[MAX_PATH + 1]{};
+            DWORD Length = ::GetTempPathW(ARRAYSIZE(Temp), Temp);
+            if (!Length || Length >= ARRAYSIZE(Temp)) return 10;
+            GUID Id{};
+            winrt::check_hresult(::CoCreateGuid(&Id));
+            std::wstring Path = Temp;
+            Path += ::FromGuid(Id).c_str();
+            Path += L".vhdx";
+            auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(Path.c_str()); });
+            HANDLE Disk = INVALID_HANDLE_VALUE;
+            if (::SimpleCreateVirtualDisk(Path.c_str(), 32ull << 20, &Disk) != ERROR_SUCCESS) return 11;
+            ::CloseHandle(Disk);
+            if (::SimpleResizeVirtualDisk(Path.c_str(), 64ull << 20) != ERROR_SUCCESS) return 12;
+            if (::SimpleCompactVirtualDisk(Path.c_str()) != ERROR_SUCCESS) return 13;
+            VIRTUAL_STORAGE_TYPE Type{VIRTUAL_STORAGE_TYPE_DEVICE_VHDX, VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT};
+            OPEN_VIRTUAL_DISK_PARAMETERS Open{};
+            Open.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+            if (::OpenVirtualDisk(&Type, Path.c_str(), VIRTUAL_DISK_ACCESS_GET_INFO,
+                OPEN_VIRTUAL_DISK_FLAG_NONE, &Open, &Disk) != ERROR_SUCCESS) return 14;
+            auto Close = Mile::ScopeExitTaskHandler([&]() { ::CloseHandle(Disk); });
+            GET_VIRTUAL_DISK_INFO Info{};
+            Info.Version = GET_VIRTUAL_DISK_INFO_SIZE;
+            ULONG Size = sizeof(Info);
+            if (::GetVirtualDiskInformation(Disk, &Size, &Info, nullptr) != ERROR_SUCCESS) return 15;
+            return Info.Size.VirtualSize == (64ull << 20) ? 0 : 16;
+        }
+        catch (...) { return 17; }
+    }
+
     ::SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
 
     winrt::init_apartment(winrt::apartment_type::single_threaded);
@@ -134,6 +171,37 @@ int WINAPI wWinMain(
     {
         App->Close();
     });
+
+    // The configuration editor also works on computers without Hyper-V.
+    int ArgumentCount = 0;
+    auto Arguments = ::CommandLineToArgvW(::GetCommandLineW(), &ArgumentCount);
+    if (Arguments)
+    {
+        auto FreeArguments = Mile::ScopeExitTaskHandler([&]() { ::LocalFree(Arguments); });
+        if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--edit-config"))
+        {
+            if (ArgumentCount != 3) return ERROR_INVALID_PARAMETER;
+            try
+            {
+                std::wstring Path = ::GetAbsolutePath(Arguments[2]);
+                HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
+                if (!WindowHandle) return -1;
+                auto Page = winrt::make<winrt::NanaBox::implementation::VirtualMachineSettingsPage>(
+                    WindowHandle, Path);
+                if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
+                {
+                    ::DestroyWindow(WindowHandle);
+                    return -1;
+                }
+                return ::ShowXamlWindow(WindowHandle, 900, 700, nullptr);
+            }
+            catch (...)
+            {
+                ::ShowErrorMessageDialog(Mile::WinRT::ToHResultError());
+                return -1;
+            }
+        }
+    }
 
     std::wstring ApplicationName;
     std::map<std::wstring, std::wstring> OptionsAndParameters;

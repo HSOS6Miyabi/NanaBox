@@ -173,6 +173,7 @@ namespace
 
         winrt::hstring Help = ::GetSettingsString(HelpResource);
         winrt::AutomationProperties::SetName(Input, Label.Text());
+        winrt::AutomationProperties::SetAutomationId(Input, winrt::hstring(LabelResource));
         winrt::AutomationProperties::SetHelpText(Input, Help);
         winrt::ToolTipService::SetToolTip(Input, winrt::box_value(Help));
         winrt::Grid::SetColumn(Input, 1);
@@ -747,6 +748,7 @@ namespace winrt::NanaBox::implementation
 
         {
             Result.Gpu.SelectedDevices.clear();
+            if (Result.Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List)
             for (GpuDeviceSettings const& Row : this->m_GpuDeviceSettings)
             {
                 std::string DeviceInterface =
@@ -765,6 +767,8 @@ namespace winrt::NanaBox::implementation
         }
 
         {
+            if (Result.Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List && Result.Gpu.SelectedDevices.empty())
+                ::InvalidSetting(::GetSettingsString(L"GpuDeviceDeviceInterfaceLabel"));
             Result.NetworkAdapters.clear();
             std::set<std::string> EndpointIds;
             for (NetworkAdapterSettings const& Row :
@@ -1373,6 +1377,7 @@ namespace winrt::NanaBox::implementation
         Row.PartitionId.HorizontalAlignment(winrt::HorizontalAlignment::Left);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        winrt::AutomationProperties::SetAutomationId(RemoveButton, L"GpuRemove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));
         RemoveButton.Visibility(winrt::Visibility::Visible);
@@ -1575,6 +1580,7 @@ namespace winrt::NanaBox::implementation
             this->m_MainWindow && Existing);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        winrt::AutomationProperties::SetAutomationId(RemoveButton, L"NetworkRemove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));
         RemoveButton.Visibility(winrt::Visibility::Visible);
@@ -1726,6 +1732,7 @@ namespace winrt::NanaBox::implementation
             true);
 
         winrt::Windows::UI::Xaml::Controls::Button BrowseButton;
+        winrt::AutomationProperties::SetAutomationId(BrowseButton, L"ScsiBrowse");
         BrowseButton.Content(winrt::box_value(L"..."));
         BrowseButton.Margin(winrt::ThicknessHelper::FromLengths(8, 0, 0, 0));
         BrowseButton.Visibility(
@@ -1781,6 +1788,7 @@ namespace winrt::NanaBox::implementation
         });
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        winrt::AutomationProperties::SetAutomationId(RemoveButton, L"ScsiRemove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));
         RemoveButton.Visibility(!(this->m_MainWindow && Existing)
@@ -1890,6 +1898,7 @@ namespace winrt::NanaBox::implementation
             false);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        winrt::AutomationProperties::SetAutomationId(RemoveButton, L"Plan9Remove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));
         RemoveButton.Click([
@@ -1988,6 +1997,7 @@ namespace winrt::NanaBox::implementation
             false);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        winrt::AutomationProperties::SetAutomationId(RemoveButton, L"SmbRemove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));
         RemoveButton.Click([

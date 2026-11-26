@@ -34,12 +34,12 @@
           x:Uid="/ResizeVirtualHardDiskPage/FileNameTextBox"
           Grid.Column="0"
           IsReadOnly="True"
-          PlaceholderText="[Please use &quot;...&quot; button to specify the save location.]" />
+          PlaceholderText="[Please use &quot;...&quot; button to specify the save location.]" AutomationProperties.AutomationId="FileNameTextBox" />
         <Button
           x:Name="FileNameBrowseButton"
           Grid.Column="1"
           Click="FileNameBrowseButtonClickHandler"
-          Content="..." />
+          Content="..." AutomationProperties.AutomationId="FileNameBrowseButton" />
       </Grid>
       <TextBlock
         x:Uid="/ResizeVirtualHardDiskPage/SizeTextBlock"
@@ -53,12 +53,12 @@
         <TextBox
           x:Name="SizeTextBox"
           BeforeTextChanging="NaturalNumberTextBoxBeforeTextChanging"
-          Text="0" />
+          Text="0" AutomationProperties.AutomationId="SizeTextBox" />
         <ComboBox
           x:Name="SizeUnitComboBox"
           Grid.Column="1"
           HorizontalAlignment="Stretch"
-          SelectedIndex="5">
+          SelectedIndex="5" AutomationProperties.AutomationId="SizeUnitComboBox">
           <x:String>B</x:String>
           <x:String>KB (1000 B)</x:String>
           <x:String>KiB (1024 B)</x:String>
@@ -85,14 +85,14 @@
         x:Uid="/ResizeVirtualHardDiskPage/ResizeButton"
         HorizontalAlignment="Stretch"
         Click="ResizeButtonClick"
-        Content="[Resize]" />
+        Content="[Resize]" AutomationProperties.AutomationId="ResizeButton" />
       <Button
         x:Uid="/ResizeVirtualHardDiskPage/CancelButton"
         Grid.Column="2"
         HorizontalAlignment="Stretch"
         Click="CancelButtonClick"
         Content="[Cancel]"
-        TabIndex="1" />
+        TabIndex="1" AutomationProperties.AutomationId="CancelButton" />
     </Grid>
   </Grid>
 </Page>
