@@ -1460,4 +1460,25 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="TabAdvanced.Header" xml:space="preserve">
     <value>Advanced</value>
   </data>
+  <data name="MirroredTitle.Text" xml:space="preserve">
+    <value>Mirrored networking</value>
+  </data>
+  <data name="MirroredEnabled.Content" xml:space="preserve">
+    <value>Enable HCN mirrored networking</value>
+  </data>
+  <data name="MirroredNote.Text" xml:space="preserve">
+    <value>Requires a compatible Windows host, WSL networking dependency and the NanaBox Guest Network Service in the guest. Reserve listening ports before starting the VM.</value>
+  </data>
+  <data name="MirroredFirewallCreator.Header" xml:space="preserve">
+    <value>Hyper-V firewall creator GUID (optional)</value>
+  </data>
+  <data name="MirroredTcpPorts.Header" xml:space="preserve">
+    <value>Reserved TCP ports (one per line)</value>
+  </data>
+  <data name="MirroredUdpPorts.Header" xml:space="preserve">
+    <value>Reserved UDP ports (one per line)</value>
+  </data>
+  <data name="MirroredPortsLabel" xml:space="preserve">
+    <value>Mirrored network port list</value>
+  </data>
 </root>

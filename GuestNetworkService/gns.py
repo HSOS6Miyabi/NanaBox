@@ -74,6 +74,12 @@ def normalize(request):
         if type(settings.get('Connected')) is not bool:
             raise ValueError('Connected must be Boolean')
         return target, resource, action, {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 1280, 65535)}
+    if resource == 'PortRange' and action == 'Update':
+        start = number(settings['Start'], 1024, 65535)
+        end = number(settings['End'], start, 65535)
+        if end - start + 1 < 255:
+            raise ValueError('Dynamic port range must contain at least 255 ports')
+        return target, resource, action, {'Start': start, 'End': end}
     if resource == 'DNS':
         servers = settings.get('ServerList', [])
         if isinstance(servers, str):
@@ -110,7 +116,9 @@ class LinuxBackend:
 
     def apply(self, target, resource, action, s):
         dev = self.adapter(target)
-        if resource == 'Interface':
+        if resource == 'PortRange':
+            self.execute(['sysctl', '-w', f"net.ipv4.ip_local_port_range={s['Start']} {s['End']}"])
+        elif resource == 'Interface':
             self.execute(['ip', 'link', 'set', 'dev', dev, 'mtu', str(s['Mtu'])])
             self.execute(['ip', 'link', 'set', 'dev', dev, 'up' if s['Connected'] else 'down'])
         elif resource == 'IPAddress':
@@ -149,6 +157,15 @@ $i = $m[0].ifIndex
 $s = $r.Settings
 $remove = $r.Action -eq 'Remove'
 switch ($r.Resource) {
+  'PortRange' {
+    $count = [int]$s.End - [int]$s.Start + 1
+    foreach ($af in @('ipv4','ipv6')) {
+      foreach ($protocol in @('tcp','udp')) {
+        & netsh.exe int $af set dynamicport $protocol ("start=" + $s.Start) ("num=" + $count)
+        if ($LASTEXITCODE -ne 0) { throw "Could not set $af $protocol dynamic port range" }
+      }
+    }
+  }
   'IPAddress' {
     $af = if ($s.Family -eq 4) { 'IPv4' } else { 'IPv6' }
     $old = @(Get-NetIPAddress -InterfaceIndex $i -AddressFamily $af -PolicyStore ActiveStore -ErrorAction SilentlyContinue | Where-Object IPAddress -eq $s.Address)

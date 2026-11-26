@@ -488,6 +488,12 @@ namespace winrt::NanaBox::implementation
         }
 
         {
+            this->MirroredNetworkingPanel().Visibility(this->m_MainWindow
+                ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+            this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
+            this->MirroredFirewallCreatorTextBox().Text(winrt::to_hstring(this->m_Configuration.MirroredFirewallCreatorId));
+            this->MirroredTcpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredTcpPorts));
+            this->MirroredUdpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredUdpPorts));
             this->NetworkAdapterPanel().Children().Clear();
             this->m_NetworkAdapterSettings.clear();
             this->AddNetworkAdapterButton().IsEnabled(true);
@@ -769,6 +775,27 @@ namespace winrt::NanaBox::implementation
         {
             if (Result.Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List && Result.Gpu.SelectedDevices.empty())
                 ::InvalidSetting(::GetSettingsString(L"GpuDeviceDeviceInterfaceLabel"));
+            if (!this->m_MainWindow)
+            {
+                Result.MirroredNetworking = this->MirroredNetworkingCheckBox().IsChecked().Value();
+                Result.MirroredFirewallCreatorId = winrt::to_string(this->MirroredFirewallCreatorTextBox().Text());
+                if (!Result.MirroredFirewallCreatorId.empty())
+                    (void)winrt::guid(Result.MirroredFirewallCreatorId);
+                Result.MirroredTcpPorts = ::ReadSettingLines(this->MirroredTcpPortsTextBox());
+                Result.MirroredUdpPorts = ::ReadSettingLines(this->MirroredUdpPortsTextBox());
+                for (auto const& Ports : {Result.MirroredTcpPorts, Result.MirroredUdpPorts})
+                {
+                    std::set<unsigned> Unique;
+                    for (auto const& Port : Ports)
+                    {
+                        unsigned Value = 0;
+                        auto End = Port.data() + Port.size();
+                        auto Parse = std::from_chars(Port.data(), End, Value);
+                        if (Parse.ec != std::errc() || Parse.ptr != End || !Value || Value > 65535 || !Unique.insert(Value).second)
+                            ::InvalidSetting(::GetSettingsString(L"MirroredPortsLabel"));
+                    }
+                }
+            }
             Result.NetworkAdapters.clear();
             std::set<std::string> EndpointIds;
             for (NetworkAdapterSettings const& Row :

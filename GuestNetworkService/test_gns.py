@@ -63,6 +63,20 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(json.loads(kwargs['input'])['Settings']['Servers'], ['192.0.2.53'])
         self.assertTrue(kwargs['check'])
 
+    def test_port_range_validation(self):
+        value = gns.normalize(request('PortRange', 'Update', Start=49152, End=53247))
+        self.assertEqual(value[3], {'Start': 49152, 'End': 53247})
+        with self.assertRaises(ValueError):
+            gns.normalize(request('PortRange', 'Update', Start=49152, End=49160))
+        with tempfile.TemporaryDirectory() as temp:
+            adapter = pathlib.Path(temp, 'eth9')
+            adapter.mkdir()
+            (adapter / 'device').mkdir()
+            (adapter / 'address').write_text('00:15:5d:12:34:56')
+            execute = Mock(return_value='')
+            gns.LinuxBackend(execute, temp).apply(*value)
+            execute.assert_called_once_with(['sysctl', '-w', 'net.ipv4.ip_local_port_range=49152 53247'])
+
     def test_oversized_frame(self):
         a, b = socket.socketpair()
         with a, b:

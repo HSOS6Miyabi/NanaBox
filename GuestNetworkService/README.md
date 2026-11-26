@@ -2,7 +2,7 @@
 
 A guest network configuration agent for Windows and Linux virtual machines. It accepts versioned network configuration requests from the Hyper-V parent partition over Hyper-V sockets (Linux VSOCK port 27453). It identifies a hardware network adapter by its MAC address and applies IPv4/IPv6 addresses, routes, DNS servers and interface state/MTU. It does not accept executable commands.
 
-This component implements the guest-side network configuration transport and operations. Automatic host interface mirroring additionally requires HCN flow-steering/GNS registration, endpoint lifecycle management and port reservation coordination in the host application.
+The NanaBox host's MirroredNetworking component registers an HCN guest network service using Microsoft's installed WSL RPC dependency, creates endpoints on HCN flow-steering networks, reserves an ephemeral port range and configured TCP/UDP listening ports, and synchronizes host interface changes over this protocol. Enable Mirrored networking in the VM's Network settings before boot. Use a dedicated guest with its network manager configured for host-managed adapters. This mode uses explicit listening-port reservations; it does not intercept arbitrary application bind calls.
 
 ## Installation
 
@@ -55,6 +55,7 @@ Example request (replace the MAC and addresses with the target interface's value
 | Route | Add, Update, Remove | DestinationPrefix, NextHop (optional for on-link routes), Metric |
 | DNS | Add, Update, Remove | ServerList (array of IP addresses; Remove restores resolver defaults) |
 | Interface | Add, Update | Connected (boolean), NlMtu |
+| PortRange | Update | Start, End (inclusive dynamic port range, at least 255 ports) |
 
 Messages use a 4-byte big-endian length followed by UTF-8 JSON (maximum 256 KiB); one request and one response per connection. Replies include Version, Success and, on failure, Error. Linux route operations use protocol number 242 to distinguish agent-managed routes. Linux DNS management requires systemd-resolved. On Windows the agent calls the NetTCPIP and DnsClient PowerShell cmdlets.
 

@@ -161,6 +161,7 @@ void NanaBox::MainWindow::OnCommand(
     }
     case NanaBox::MainWindowCommands::RestartVirtualMachine:
     {
+        this->m_MirroredNetworking.reset();
         this->m_VirtualMachineRestarting = true;
         this->m_VirtualMachine->Terminate();
         this->m_VirtualMachine = nullptr;
@@ -420,6 +421,15 @@ void NanaBox::MainWindow::ReloadVirtualMachineSettings()
 void NanaBox::MainWindow::OnTimer(
     UINT_PTR nIDEvent)
 {
+    if (nIDEvent == NanaBox::MainWindowTimerEvents::MirroredNetworkStatus)
+    {
+        if (this->m_MirroredNetworking)
+        {
+            std::wstring Title = this->m_WindowTitle + L" | Mirrored: " + this->m_MirroredNetworking->Status();
+            this->SetWindowTextW(Title.c_str());
+        }
+        return;
+    }
     if (nIDEvent == NanaBox::MainWindowTimerEvents::SyncDisplaySettings)
     {
         if (this->m_RdpClientMode != RdpClientMode::EnhancedVideoSyncedSession)
@@ -620,6 +630,8 @@ void NanaBox::MainWindow::OnClose()
 void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
 {
     if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine) return;
+    if (this->m_MirroredNetworking)
+        throw winrt::hresult_error(E_NOTIMPL, L"Shut down the guest before changing or saving mirrored network state.");
     // Temporarily disable the GPU-PV settings because virtual machine
     // doen't support save the state when GPU-PV is enabled.
     NanaBox::GpuConfiguration Gpu;
@@ -678,6 +690,8 @@ void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
 
 void NanaBox::MainWindow::OnDestroy()
 {
+    this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
+    this->m_MirroredNetworking.reset();
     ::SetEvent(this->m_RecordingStop.get());
     ::SetEvent(this->m_ScreenshotStop.get());
     HANDLE Threads[2] = {};
@@ -872,6 +886,12 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     nlohmann::json Properties = nlohmann::json::parse(
         winrt::to_string(this->m_VirtualMachine->GetProperties()));
     this->m_VirtualMachineGuid = Properties["RuntimeId"];
+    if (this->m_Configuration.MirroredNetworking)
+    {
+        this->m_MirroredNetworking = std::make_unique<NanaBox::MirroredNetworking>(
+            this->m_Configuration, winrt::guid(this->m_VirtualMachineGuid));
+        this->SetTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus, 1500);
+    }
 
     this->m_WindowTitle = Mile::ToWideString(
         CP_UTF8,

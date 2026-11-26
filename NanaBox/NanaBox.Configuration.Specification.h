@@ -170,6 +170,10 @@ namespace NanaBox
         ComPortsConfiguration ComPorts;
         GpuConfiguration Gpu;
         std::vector<NetworkAdapterConfiguration> NetworkAdapters;
+        bool MirroredNetworking = false;
+        std::string MirroredFirewallCreatorId;
+        std::vector<std::string> MirroredTcpPorts;
+        std::vector<std::string> MirroredUdpPorts;
         std::vector<ScsiDeviceConfiguration> ScsiDevices;
         bool SecureBoot = false;
         bool Tpm = false;

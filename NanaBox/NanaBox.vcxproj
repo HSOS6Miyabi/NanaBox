@@ -51,6 +51,7 @@
     </ClCompile>
     <ClCompile Include="ConfigurationManager.cpp" />
     <ClCompile Include="HostCompute.cpp" />
+    <ClCompile Include="MirroredNetworking.cpp" />
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="VirtualMachineCapture.cpp" />
     <ClCompile Include="MainWindowControl.cpp">
@@ -167,6 +168,7 @@
     <ClInclude Include="NanaBox.Configuration.Parser.h" />
     <ClInclude Include="NanaBox.Configuration.Specification.h" />
     <ClInclude Include="HostCompute.h" />
+    <ClInclude Include="MirroredNetworking.h" />
     <ClInclude Include="MainWindow.h" />
     <ClInclude Include="VirtualMachineCapture.h" />
     <ClInclude Include="MainWindowControl.h">

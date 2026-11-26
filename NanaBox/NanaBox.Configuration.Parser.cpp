@@ -945,6 +945,23 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
 
     Result["Gpu"] = NanaBox::FromGpuConfiguration(Value.Gpu);
 
+    if (Value.MirroredNetworking)
+    {
+        Result["MirroredNetworking"] = true;
+    }
+    if (!Value.MirroredFirewallCreatorId.empty())
+    {
+        Result["MirroredFirewallCreatorId"] = Value.MirroredFirewallCreatorId;
+    }
+    if (!Value.MirroredTcpPorts.empty())
+    {
+        Result["MirroredTcpPorts"] = Value.MirroredTcpPorts;
+    }
+    if (!Value.MirroredUdpPorts.empty())
+    {
+        Result["MirroredUdpPorts"] = Value.MirroredUdpPorts;
+    }
+
     if (!Value.NetworkAdapters.empty())
     {
         nlohmann::json NetworkAdapters;
@@ -1115,6 +1132,15 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
 
     Result.Gpu = NanaBox::ToGpuConfiguration(
         Mile::Json::GetSubKey(Value, "Gpu"));
+
+    Result.MirroredNetworking = Mile::Json::ToBoolean(
+        Mile::Json::GetSubKey(Value, "MirroredNetworking"));
+    Result.MirroredFirewallCreatorId = Mile::Json::ToString(
+        Mile::Json::GetSubKey(Value, "MirroredFirewallCreatorId"));
+    for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredTcpPorts")))
+        Result.MirroredTcpPorts.push_back(Mile::Json::ToString(Port));
+    for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredUdpPorts")))
+        Result.MirroredUdpPorts.push_back(Mile::Json::ToString(Port));
 
     for (nlohmann::json const& NetworkAdapter : Mile::Json::ToArray(
         Mile::Json::GetSubKey(Value, "NetworkAdapters")))

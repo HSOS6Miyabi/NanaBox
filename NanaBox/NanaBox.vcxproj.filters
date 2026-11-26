@@ -5,6 +5,9 @@
     <ClCompile Include="RdpClient.cpp">
       <Filter>RdpClient</Filter>
     </ClCompile>
+    <ClCompile Include="MirroredNetworking.cpp">
+      <Filter>HostCompute</Filter>
+    </ClCompile>
     <ClCompile Include="HostCompute.cpp">
       <Filter>HostCompute</Filter>
     </ClCompile>
@@ -34,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="RdpClient.h">
       <Filter>RdpClient</Filter>
+    </ClInclude>
+    <ClInclude Include="MirroredNetworking.h">
+      <Filter>HostCompute</Filter>
     </ClInclude>
     <ClInclude Include="HostCompute.h">
       <Filter>HostCompute</Filter>

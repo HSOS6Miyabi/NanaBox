@@ -12,6 +12,7 @@
 #include "RdpBase.h"
 #include "HostCompute.h"
 #include "ConfigurationManager.h"
+#include "MirroredNetworking.h"
 
 #include "MainWindowControl.h"
 #include "VirtualMachineCapture.h"
@@ -24,6 +25,7 @@ namespace NanaBox
         enum
         {
             SyncDisplaySettings = 1,
+            MirroredNetworkStatus = 2,
         };
     }
 
@@ -119,6 +121,7 @@ namespace NanaBox
         std::wstring m_ConfigurationFilePath;
         NanaBox::VirtualMachineConfiguration m_Configuration;
         winrt::com_ptr<NanaBox::ComputeSystem> m_VirtualMachine;
+        std::unique_ptr<NanaBox::MirroredNetworking> m_MirroredNetworking;
         std::string m_VirtualMachineGuid;
         bool m_VirtualMachineRunning = false;
         bool m_VirtualMachineRestarting = false;

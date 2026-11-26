@@ -156,6 +156,10 @@
               }
             }
           },
+          "MirroredNetworking": { "type": "boolean" },
+          "MirroredFirewallCreatorId": { "type": "string" },
+          "MirroredTcpPorts": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{1,5}$" } },
+          "MirroredUdpPorts": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{1,5}$" } },
           "NetworkAdapters": {
             "type": "array",
             "description": "The network adapters setting object array of virtual machine.",

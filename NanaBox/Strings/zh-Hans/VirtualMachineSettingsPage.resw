@@ -1460,4 +1460,25 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="TabAdvanced.Header" xml:space="preserve">
     <value>高级</value>
   </data>
+  <data name="MirroredTitle.Text" xml:space="preserve">
+    <value>镜像网络</value>
+  </data>
+  <data name="MirroredEnabled.Content" xml:space="preserve">
+    <value>启用 HCN 镜像网络</value>
+  </data>
+  <data name="MirroredNote.Text" xml:space="preserve">
+    <value>需要兼容的 Windows 宿主机、WSL 网络依赖组件，并在客户机中安装 NanaBox Guest Network Service。启动虚拟机前请配置需要监听的端口。</value>
+  </data>
+  <data name="MirroredFirewallCreator.Header" xml:space="preserve">
+    <value>Hyper-V 防火墙创建者 GUID（可选）</value>
+  </data>
+  <data name="MirroredTcpPorts.Header" xml:space="preserve">
+    <value>预留 TCP 端口（每行一个）</value>
+  </data>
+  <data name="MirroredUdpPorts.Header" xml:space="preserve">
+    <value>预留 UDP 端口（每行一个）</value>
+  </data>
+  <data name="MirroredPortsLabel" xml:space="preserve">
+    <value>镜像网络端口列表</value>
+  </data>
 </root>
