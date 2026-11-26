@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Executable,
-    [string]$OutputDirectory = (Join-Path $env:TEMP ('NanaBox-UI-' + [guid]::NewGuid()))
+    [string]$OutputDirectory = (Join-Path $env:TEMP ('NanaBox-UI-' + [guid]::NewGuid())),
+    [switch]$HostIntegration
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
@@ -8,8 +9,8 @@ Add-Type -AssemblyName System.Drawing, System.Windows.Forms
 $Executable = (Resolve-Path $Executable).Path
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $config = Join-Path $OutputDirectory 'ui-test.7b'
-@{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} |
-    ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $config -Encoding UTF8
+$initial = @{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} | ConvertTo-Json -Depth 10
+[IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($false)))
 
 $process = Start-Process -FilePath $Executable -ArgumentList ('--edit-config "' + $config + '"') -PassThru
 $root = [System.Windows.Automation.AutomationElement]::RootElement
@@ -76,6 +77,43 @@ function Select-Choice([string]$id,[string]$choice) {
     (Pattern $item ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
     if ($expand.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Collapse() }
 }
+function Wait-Result([string]$id,[scriptblock]$predicate,[int]$seconds=90) {
+    $until = [DateTime]::UtcNow.AddSeconds($seconds)
+    do {
+        try {
+            $result = Get-Text $id | ConvertFrom-Json
+            if ($null -ne $result -and (& $predicate $result)) { return $result }
+        } catch {}
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $until)
+    throw "Operation did not return the expected result: $id"
+}
+function Select-ByName([string]$id,[string]$prefix,[switch]$Optional) {
+    $e = Find-Control $id
+    Scroll $e
+    $p = Pattern $e ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+    $p.Expand()
+    $until = [DateTime]::UtcNow.AddSeconds(15)
+    $type = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::ListItem)
+    do {
+        foreach ($w in $root.FindAll($children,$pidCondition)) {
+            foreach ($item in $w.FindAll($desc,$type)) {
+                if ($item.Current.Name.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) {
+                    (Pattern $item ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
+                    if ($p.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $p.Collapse() }
+                    return $true
+                }
+            }
+        }
+        Start-Sleep -Milliseconds 200
+    } while ([DateTime]::UtcNow -lt $until)
+    if ($p.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $p.Collapse() }
+    if ($Optional) { return $false }
+    throw "ComboBox item unavailable: $id / $prefix"
+}
+function Confirm-Change {
+    Invoke-Control '6'
+}
 function Assert-Equal($actual,$expected,[string]$description) {
     if ($actual -ne $expected) { throw "$description : expected [$expected], got [$actual]" }
 }
@@ -115,9 +153,13 @@ try {
     Invoke-Control 'GenerateCom1'
     $pipe1 = Get-Text 'ComPort1TextBox'
     if ($pipe1 -notlike '\\.\pipe\NanaBox-*') { throw "Invalid pipe: $pipe1" }
+    Invoke-Control 'CheckCom1'
+    if (-not (Get-Text 'SerialPipeStatusTextBox')) { throw 'COM1 status was not reported' }
     Invoke-Control 'GenerateCom2'
     $pipe2 = Get-Text 'ComPort2TextBox'
     if ($pipe2 -notlike '\\.\pipe\NanaBox-*' -or $pipe1 -eq $pipe2) { throw 'COM2 pipe must be unique' }
+    Invoke-Control 'CheckCom2'
+    if (-not (Get-Text 'SerialPipeStatusTextBox')) { throw 'COM2 status was not reported' }
     Invoke-Control 'ClearCom2'
     Assert-Equal (Get-Text 'ComPort2TextBox') '' 'COM2 disconnected'
     Invoke-Control 'GenerateCom2'
@@ -151,15 +193,128 @@ try {
     $null = Find-Control 'HostNetworkLabel'
 
     Select-Tab 'TabStorage'
-    $null = Find-Control 'DiskCreate'
-    $null = Find-Control 'DiskResize'
-    $null = Find-Control 'DiskCompact'
+    $diskPath = Join-Path $OutputDirectory 'ui-disk.vhdx'
+    Set-Text 'DiskPathTextBox' $diskPath
+    Set-Text 'DiskSizeTextBox' '32'
+    Invoke-Control 'DiskCreate'
+    $disk = Wait-Result 'DiskResultTextBox' { param($v) $v.Success -and $v.Operation -eq 'Create' }
+    Assert-Equal $disk.VirtualSize (32MB) 'Created VHDX capacity'
+    if (-not (Test-Path $diskPath -PathType Leaf)) { throw 'Virtual disk file missing' }
+    Set-Text 'DiskSizeTextBox' '64'
+    Invoke-Control 'DiskResize'
+    $disk = Wait-Result 'DiskResultTextBox' { param($v) $v.Success -and $v.Operation -eq 'Resize' }
+    Assert-Equal $disk.VirtualSize (64MB) 'Expanded VHDX capacity'
+    Invoke-Control 'DiskCompact'
+    $disk = Wait-Result 'DiskResultTextBox' { param($v) $v.Success -and $v.Operation -eq 'Compact' }
+    Assert-Equal $disk.VirtualSize (64MB) 'Compacted VHDX capacity'
+    Invoke-Control 'DiskInspect'
+    $disk = Wait-Result 'DiskResultTextBox' { param($v) $v.Success -and $v.Operation -eq 'Inspect' }
+    Assert-Equal $disk.VirtualSize (64MB) 'Inspected VHDX capacity'
+    Remove-Item -LiteralPath $diskPath -Force
+    $null = Find-Control 'DiskBrowse'
     Invoke-Control 'AddScsiDeviceButton'
     Set-Text 'ScsiDevicePathLabel' 'test.vhdx'
     $null = Find-Control 'ScsiDeviceTypeLabel'
     $null = Find-Control 'ScsiBrowse'
     Set-Text 'GuestStateFileTextBox' 'test.vmgs'
     Set-Text 'RuntimeStateFileTextBox' 'test.vmrs'
+
+    Select-Tab 'TabHostManagement'
+    Set-Text 'ManagedSwitchNameTextBox' 'UI-test'
+    Select-Choice 'ManagedSwitchTypeComboBox' 'ManagedSwitchTypeComboBoxPrivate'
+    Set-Text 'FirewallCreatorNameTextBox' 'UI-test'
+    Select-Choice 'FirewallInboundComboBox' 'FirewallInboundComboBoxBlock'
+    Select-Choice 'FirewallOutboundComboBox' 'FirewallOutboundComboBoxAllow'
+    Set-Check 'FirewallLoopbackCheckBox' $true
+    Set-Check 'FirewallMergeCheckBox' $true
+    Set-Text 'FirewallRuleNameTextBox' 'UI-test-rule'
+    Select-Choice 'FirewallDirectionComboBox' 'FirewallDirectionComboBoxInbound'
+    Select-Choice 'FirewallActionComboBox' 'FirewallActionComboBoxAllow'
+    Select-Choice 'FirewallProtocolComboBox' 'FirewallProtocolComboBoxTCP'
+    Set-Text 'FirewallPortsTextBox' '18080'
+    foreach ($id in @('SwitchListButton','SwitchCreateButton','SwitchDeleteButton','AdapterListButton','CreatorListButton','CreatorRegisterButton','FirewallInspectButton','UseCreatorButton','FirewallConfigureButton','RuleCreateButton','RuleEnableButton','RuleDisableButton','RuleDeleteButton')) {
+        $null = Find-Control $id
+    }
+    if ($HostIntegration) {
+        $name = 'CI-' + [guid]::NewGuid().ToString('N')
+        $managed = 'NanaBox.Managed.' + $name
+        $creator = $null
+        $networkCreated = $false
+        try {
+            Set-Text 'ManagedSwitchNameTextBox' $name
+            Invoke-Control 'AdapterListButton'
+            Invoke-Control 'SwitchListButton'
+            Invoke-Control 'SwitchCreateButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Name -eq $managed}
+            $switch = Get-VMSwitch | Where-Object Name -eq $managed
+            if ($null -eq $switch -or [string]$switch.SwitchType -ne 'Private') { throw 'Switch was not created' }
+            $null = Select-ByName 'ManagedSwitchesComboBox' ($managed+' (')
+            Invoke-Control 'SwitchDeleteButton'
+            Confirm-Change
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and -not $v.Name}
+            if (Get-VMSwitch | Where-Object Name -eq $managed) { throw 'Switch was not removed' }
+
+            Invoke-Control 'CreatorListButton'
+            Set-Text 'FirewallCreatorNameTextBox' $name
+            Invoke-Control 'CreatorRegisterButton'
+            $registered = Wait-Result 'HostManagementResult' {param($v) $v.Name -eq $managed -and $v.Id}
+            $creator = [string]$registered.Id
+            $registeredCreator = Get-NetFirewallHyperVVMCreator | Where-Object { [guid]$_.VMCreatorId -eq [guid]$creator }
+            if ($null -eq $registeredCreator) { throw 'Firewall creator registration missing' }
+            $null = Select-ByName 'FirewallCreatorsComboBox' ($managed+' (')
+            Invoke-Control 'FirewallConfigureButton'
+            Confirm-Change
+            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Settings}
+            $setting = Get-NetFirewallHyperVVMSetting -Name $creator
+            Assert-Equal ([string]$setting.DefaultInboundAction) 'Block' 'Firewall inbound default'
+            Assert-Equal ([string]$setting.DefaultOutboundAction) 'Allow' 'Firewall outbound default'
+            Invoke-Control 'RuleCreateButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 1}
+            $rule = Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule'
+            if ($null -eq $rule -or $rule.LocalPorts -notcontains '18080') { throw 'Firewall rule missing or incorrect' }
+            $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
+            Invoke-Control 'RuleDisableButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object {$_.Name -eq 'UI-test-rule' -and $_.Enabled -eq 'False'}).Count -eq 1}
+            $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
+            Invoke-Control 'RuleEnableButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object {$_.Name -eq 'UI-test-rule' -and $_.Enabled -eq 'True'}).Count -eq 1}
+            $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
+            Invoke-Control 'RuleDeleteButton'
+            Confirm-Change
+            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Rules -and @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 0}
+            if (Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule') { throw 'Firewall rule was not deleted' }
+
+            Select-Tab 'TabNetwork'
+            Set-Text 'NetworkNameTextBox' $name
+            Set-Check 'NetworkFirewallCheckBox' $false
+            Invoke-Control 'CreateNetwork'
+            $networkCreated = $true
+            $null = Select-ByName 'HostNetworksComboBox' ($managed+' (')
+            Invoke-Control 'InspectNetwork'
+            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Name -eq $managed}
+            Invoke-Control 'DeleteNetwork'
+            Confirm-Change
+            Invoke-Control 'RefreshNetworks'
+            if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'HCN network was not deleted' }
+            $networkCreated = $false
+        } finally {
+            if ($networkCreated -and -not $process.HasExited) {
+                try {
+                    Select-Tab 'TabNetwork'
+                    Invoke-Control 'RefreshNetworks'
+                    if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) {
+                        Invoke-Control 'DeleteNetwork'
+                        Confirm-Change
+                    }
+                } catch { Write-Warning "HCN test network cleanup: $_" }
+            }
+            Get-VMSwitch | Where-Object Name -eq $managed | Remove-VMSwitch -Confirm:$false
+            if ($creator) {
+                Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object Name -like 'NanaBox.Managed.*' | Remove-NetFirewallHyperVRule -Confirm:$false
+                $null = Invoke-CimMethod -Namespace root/standardcimv2 -ClassName MSFT_NetFirewallHyperVVMCreator -MethodName UnregisterHyperVVMCreator -Arguments @{VMCreatorId=$creator}
+            }
+        }
+    }
 
     Select-Tab 'TabSession'
     Set-Check 'RedirectKeyCombinationsCheckBox' $false

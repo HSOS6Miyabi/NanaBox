@@ -11,3 +11,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tests/SettingsUI.ps1 -Ex
 The packaged executable must have `resources.pri` and its XAML resource file beside it. The editor can also be opened directly using `NanaBox.exe --edit-config path.7b`.
 
 The host-network mutation, GPU-PV, live VM power controls and guest integration tests require a compatible Hyper-V host and disposable test guests. Never run destructive VM/network tests against production VMs or networks.
+
+The settings test executes VHDX creation, expansion, compaction and inspection in the storage page and checks the returned disk sizes. With `-HostIntegration`, it also creates and deletes a uniquely named private Hyper-V switch, registers an isolated Hyper-V firewall creator, configures its policy, creates/disables/enables/deletes a rule, and creates/inspects/deletes an HCN NAT network. Use an elevated, interactive, dedicated Windows Hyper-V runner with NetSecurity's Hyper-V firewall cmdlets available. The manually dispatched hardware workflow enables this mode. External switch creation is not exercised on shared network adapters.

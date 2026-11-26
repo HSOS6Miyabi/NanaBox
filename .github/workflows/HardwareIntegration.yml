@@ -27,7 +27,7 @@ jobs:
       - name: Settings UI
         shell: powershell
         run: |
-          & .\Tests\SettingsUI.ps1 -Executable .\Output\Binaries\Root\Binaries\x64\NanaBox.exe -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
+          & .\Tests\SettingsUI.ps1 -Executable .\Output\Binaries\Root\Binaries\x64\NanaBox.exe -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI" -HostIntegration
       - name: Hyper-V integration
         shell: powershell
         env:
