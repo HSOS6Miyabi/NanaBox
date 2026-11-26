@@ -8,6 +8,7 @@ param(
     [Parameter(Mandatory=$true)][string]$LinuxGpuPattern
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ModalUI.ps1')
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $Executable = (Resolve-Path $Executable).Path
 $root = [System.Windows.Automation.AutomationElement]::RootElement
@@ -174,8 +175,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         Wait-VMState $cfg.Name Present
         $null = Wait-ExactState $cfg.Name 'Running'
         Invoke-UI $process 'PowerMenu'
-        Invoke-UI $process 'PowerOffAction'
-        Invoke-UI $process '6'
+        Invoke-ModalAction $process.Id 'PowerOffAction' { Invoke-UI $process '6' }
         Wait-Exit $process $cfg.Name 'forced power off'
         Write-Host "$guestType GPU, networking and complete power lifecycle passed"
     } finally {

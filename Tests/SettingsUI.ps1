@@ -4,6 +4,7 @@ param(
     [switch]$HostIntegration
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ModalUI.ps1')
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 Add-Type -AssemblyName System.Drawing, System.Windows.Forms
 $Executable = (Resolve-Path $Executable).Path
@@ -43,6 +44,7 @@ function Scroll($e) {
     if ($e.TryGetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern,[ref]$s)) { $s.ScrollIntoView() }
 }
 function Invoke-Control([string]$id) {
+    Write-Host "Invoke: $id"
     $e = Find-Control $id
     Scroll $e
     (Pattern $e ([System.Windows.Automation.InvokePattern]::Pattern)).Invoke()
@@ -111,8 +113,8 @@ function Select-ByName([string]$id,[string]$prefix,[switch]$Optional) {
     if ($Optional) { return $false }
     throw "ComboBox item unavailable: $id / $prefix"
 }
-function Confirm-Change {
-    Invoke-Control '6'
+function Confirm-Change([string]$id) {
+    Invoke-ModalAction $process.Id $id { Invoke-Control '6' }
 }
 function Assert-Equal($actual,$expected,[string]$description) {
     if ($actual -ne $expected) { throw "$description : expected [$expected], got [$actual]" }
@@ -252,8 +254,7 @@ try {
             $switch = Get-VMSwitch | Where-Object Name -eq $managed
             if ($null -eq $switch -or [string]$switch.SwitchType -ne 'Private') { throw 'Switch was not created' }
             $null = Select-ByName 'ManagedSwitchesComboBox' ($managed+' (')
-            Invoke-Control 'SwitchDeleteButton'
-            Confirm-Change
+            Confirm-Change 'SwitchDeleteButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and -not $v.Name}
             if (Get-VMSwitch | Where-Object Name -eq $managed) { throw 'Switch was not removed' }
 
@@ -266,8 +267,7 @@ try {
             $registeredCreator = Get-NetFirewallHyperVVMCreator | Where-Object { [guid]$_.VMCreatorId -eq [guid]$creator }
             if ($null -eq $registeredCreator) { throw 'Firewall creator registration missing' }
             $null = Select-ByName 'FirewallCreatorsComboBox' ($managed+' (')
-            Invoke-Control 'FirewallConfigureButton'
-            Confirm-Change
+            Confirm-Change 'FirewallConfigureButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Settings}
             $setting = Get-NetFirewallHyperVVMSetting -Name $creator
             Assert-Equal ([string]$setting.DefaultInboundAction) 'Block' 'Firewall inbound default'
@@ -283,8 +283,7 @@ try {
             Invoke-Control 'RuleEnableButton'
             $null = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object {$_.Name -eq 'UI-test-rule' -and $_.Enabled -eq 'True'}).Count -eq 1}
             $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
-            Invoke-Control 'RuleDeleteButton'
-            Confirm-Change
+            Confirm-Change 'RuleDeleteButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Rules -and @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 0}
             if (Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule') { throw 'Firewall rule was not deleted' }
 
@@ -297,8 +296,7 @@ try {
             $null = Select-ByName 'HostNetworksComboBox' ($managed+' (')
             Invoke-Control 'InspectNetwork'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Name -eq $managed}
-            Invoke-Control 'DeleteNetwork'
-            Confirm-Change
+            Confirm-Change 'DeleteNetwork'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
             Invoke-Control 'RefreshNetworks'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
@@ -311,8 +309,7 @@ try {
                     Invoke-Control 'RefreshNetworks'
                     $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
                     if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) {
-                        Invoke-Control 'DeleteNetwork'
-                        Confirm-Change
+                        Confirm-Change 'DeleteNetwork'
                         $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
                     }
                 } catch { Write-Warning "HCN test network cleanup: $_" }
@@ -405,8 +402,7 @@ try {
     $external.NanaBox.Name = 'External edit'
     [IO.File]::WriteAllText($config,($external | ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($true)))
     Set-Text 'NameTextBox' 'Stale edit'
-    Invoke-Control 'ApplyButton'
-    Invoke-Control 'MessageConfirmButton'
+    Invoke-ModalAction $process.Id 'ApplyButton' { Invoke-Control 'MessageConfirmButton' }
     Assert-Equal (Get-Content -LiteralPath $config -Raw | ConvertFrom-Json).NanaBox.Name 'External edit' 'Concurrent change preserved'
     Invoke-Control 'ReloadButton'
     Assert-Equal (Get-Text 'NameTextBox') 'External edit' 'External change reloaded'

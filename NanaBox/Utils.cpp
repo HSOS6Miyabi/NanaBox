@@ -603,7 +603,7 @@ void ShowMessageDialog(
     _In_ winrt::hstring const& InstructionText,
     _In_ winrt::hstring const& ContentText)
 {
-    winrt::handle Thread = winrt::handle(Mile::CreateThread([&]()
+    winrt::handle Thread = winrt::handle(Mile::CreateThread([ParentWindowHandle, InstructionText, ContentText]()
     {
         winrt::check_hresult(::MileXamlThreadInitialize());
 
@@ -634,7 +634,46 @@ void ShowMessageDialog(
             ::TerminateThread(::GetCurrentThread(), 0);
         }
     }));
-    ::WaitForSingleObject(Thread.get(), INFINITE);
+    // The dialog thread sends synchronous messages to its owner when
+    // disabling, re-enabling and activating the owner window.
+    if (!Thread)
+    {
+        return;
+    }
+    HANDLE ThreadHandle = Thread.get();
+    bool RepostQuit = false;
+    int QuitCode = 0;
+    for (;;)
+    {
+        DWORD Result = ::MsgWaitForMultipleObjectsEx(
+            1,
+            &ThreadHandle,
+            INFINITE,
+            QS_ALLINPUT,
+            MWMO_INPUTAVAILABLE);
+        if (Result != WAIT_OBJECT_0 + 1)
+        {
+            break;
+        }
+        MSG Message;
+        while (::PeekMessageW(&Message, nullptr, 0, 0, PM_REMOVE))
+        {
+            if (Message.message == WM_QUIT)
+            {
+                RepostQuit = true;
+                QuitCode = static_cast<int>(Message.wParam);
+            }
+            else
+            {
+                ::TranslateMessage(&Message);
+                ::DispatchMessageW(&Message);
+            }
+        }
+    }
+    if (RepostQuit)
+    {
+        ::PostQuitMessage(QuitCode);
+    }
 }
 
 void ShowErrorMessageDialog(
