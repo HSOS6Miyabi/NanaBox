@@ -17,6 +17,7 @@
 
 #include "Utils.h"
 #include "NetworkReconciliation.h"
+#include "PowerTransition.h"
 
 #include <map>
 #include <optional>
@@ -149,49 +150,66 @@ void NanaBox::MainWindow::OnCommand(
         break;
     }
     case NanaBox::MainWindowCommands::PauseVirtualMachine:
-    {
-        this->m_VirtualMachine->Pause();
-
-        break;
-    }
     case NanaBox::MainWindowCommands::ResumeVirtualMachine:
     {
-        this->m_VirtualMachine->Resume();
-
+        try
+        {
+            if (this->m_VirtualMachineRunning && !this->m_PowerTransitionPending)
+                this->SetVirtualMachinePaused(nID == NanaBox::MainWindowCommands::PauseVirtualMachine);
+        }
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
+        this->UpdatePowerControls();
         break;
     }
     case NanaBox::MainWindowCommands::RestartVirtualMachine:
-    {
-        this->m_MirroredNetworking.reset();
-        this->m_VirtualMachineRestarting = true;
-        this->m_VirtualMachine->Terminate();
-        this->m_VirtualMachine = nullptr;
-
-        this->InitializeVirtualMachine();
-
-        break;
-    }
     case NanaBox::MainWindowCommands::ShutdownVirtualMachine:
     case NanaBox::MainWindowCommands::PowerOffVirtualMachine:
     case NanaBox::MainWindowCommands::SaveVirtualMachine:
     {
-        if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine) break;
+        if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine ||
+            (this->m_PowerTransitionPending && nID != NanaBox::MainWindowCommands::PowerOffVirtualMachine)) break;
         try
         {
-            if (nID == NanaBox::MainWindowCommands::ShutdownVirtualMachine)
-                this->m_VirtualMachine->Shutdown();
+            if (nID == NanaBox::MainWindowCommands::RestartVirtualMachine ||
+                nID == NanaBox::MainWindowCommands::ShutdownVirtualMachine)
+            {
+                bool WasPaused = this->m_VirtualMachinePaused;
+                if (WasPaused) this->SetVirtualMachinePaused(false);
+                try
+                {
+                    this->m_VirtualMachineRestarting = nID == NanaBox::MainWindowCommands::RestartVirtualMachine;
+                    this->m_VirtualMachine->Shutdown();
+                    this->m_PowerTransitionPending = true;
+                }
+                catch (...)
+                {
+                    this->m_VirtualMachineRestarting = false;
+                    if (WasPaused) { try { this->SetVirtualMachinePaused(true); } catch (...) {} }
+                    throw;
+                }
+            }
             else if (nID == NanaBox::MainWindowCommands::SaveVirtualMachine)
                 this->SaveAndCloseVirtualMachine();
             else if (::MessageBoxW(this->m_hWnd,
                 Mile::WinRT::GetLocalizedString(L"MainWindow/ForcePowerOffConfirm").c_str(),
                 L"NanaBox", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES)
+            {
+                this->m_VirtualMachineRestarting = false;
                 this->m_VirtualMachine->Terminate();
+                this->m_PowerTransitionPending = true;
+            }
         }
-        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
+        catch (...)
+        {
+            this->m_PowerTransitionPending = false;
+            ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError());
+        }
+        this->UpdatePowerControls();
         break;
     }
     case NanaBox::MainWindowCommands::VirtualMachineSettings:
     {
+        if (!this->m_VirtualMachineRunning || this->m_PowerTransitionPending) break;
         ::ShowVirtualMachineSettingsWindow(
             this->m_hWnd,
             this->m_ConfigurationFilePath,
@@ -426,7 +444,8 @@ void NanaBox::MainWindow::OnTimer(
     {
         if (this->m_MirroredNetworking)
         {
-            std::wstring Title = this->m_WindowTitle + L" | Mirrored: " + this->m_MirroredNetworking->Status();
+            std::wstring Title = this->m_WindowTitle + L" | Mirrored: " +
+                (this->m_VirtualMachinePaused ? std::wstring(L"Paused") : this->m_MirroredNetworking->Status());
             this->SetWindowTextW(Title.c_str());
         }
         return;
@@ -613,14 +632,12 @@ void NanaBox::MainWindow::OnClose()
     {
         try
         {
-            this->m_VirtualMachine->Pause();
+            this->m_VirtualMachineRestarting = false;
+            this->m_VirtualMachine->Terminate();
+            this->m_PowerTransitionPending = true;
         }
-        catch (...)
-        {
-
-        }
-        this->m_VirtualMachine->Terminate();
-
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
+        this->UpdatePowerControls();
         break;
     }
     default:
@@ -628,79 +645,190 @@ void NanaBox::MainWindow::OnClose()
     }
 }
 
-void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
+void NanaBox::MainWindow::UpdatePowerControls()
 {
-    if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine) return;
-    if (this->m_MirroredNetworking)
-        throw winrt::hresult_error(E_NOTIMPL, L"Shut down the guest before changing or saving mirrored network state.");
-    // Temporarily disable the GPU-PV settings because virtual machine
-    // doen't support save the state when GPU-PV is enabled.
-    NanaBox::GpuConfiguration Gpu;
-    Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::Disabled;
-    NanaBox::ComputeSystemUpdateGpu(this->m_VirtualMachine, Gpu);
+    if (!this->m_MainWindowControl) return;
+    auto Control = winrt::get_self<winrt::NanaBox::implementation::MainWindowControl>(this->m_MainWindowControl);
+    bool Enabled = this->m_VirtualMachineRunning && !this->m_PowerTransitionPending;
+    Control->PauseVirtualMachineButton().IsChecked(this->m_VirtualMachinePaused);
+    Control->PauseVirtualMachineButton().IsEnabled(Enabled);
+    Control->RestartVirtualMachineButton().IsEnabled(Enabled);
+    // Keep the power menu available while a graceful shutdown is pending.
+    Control->PowerMenuButton().IsEnabled(this->m_VirtualMachineRunning);
+}
 
-    this->m_VirtualMachine->Pause();
-
-    if (this->m_Configuration.SaveStateFile.empty())
+void NanaBox::MainWindow::SetVirtualMachinePaused(bool Paused)
+{
+    if (!this->m_VirtualMachine || this->m_VirtualMachinePaused == Paused) return;
+    if (Paused)
     {
-        this->m_Configuration.SaveStateFile =
-            this->m_Configuration.Name + ".SaveState.vmrs";
-    }
-
-    std::wstring SaveStateFile = ::GetAbsolutePath(Mile::ToWideString(
-        CP_UTF8, this->m_Configuration.SaveStateFile));
-
-    ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
-
-    nlohmann::json Options;
-    Options["SaveType"] = "ToFile";
-    Options["SaveStateFilePath"] = winrt::to_string(SaveStateFile.c_str());
-
-    try
-    {
-        this->m_VirtualMachine->Save(winrt::to_hstring(Options.dump()));
-    }
-    catch (winrt::hresult_error const& ex)
-    {
-        ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
-
-        this->m_Configuration.SaveStateFile.clear();
-
-        ::ShowErrorMessageDialog(ex);
-    }
-
-    if (this->m_Configuration.SaveStateFile.empty())
-    {
-        this->m_VirtualMachine->Resume();
-
-        NanaBox::ComputeSystemUpdateGpu(
-            this->m_VirtualMachine,
-            this->m_Configuration.Gpu);
+        if (this->m_MirroredNetworking) this->m_MirroredNetworking->PauseSynchronization();
+        try { this->m_VirtualMachine->Pause(); }
+        catch (...)
+        {
+            if (this->m_MirroredNetworking) this->m_MirroredNetworking->ResumeSynchronization();
+            throw;
+        }
+        this->m_VirtualMachinePaused = true;
     }
     else
     {
-        this->m_VirtualMachine->Terminate();
-
-        std::string ConfigurationFileContent =
-            NanaBox::SerializeConfiguration(this->m_Configuration);
-        ::WriteAllTextToUtf8TextFile(
-            this->m_ConfigurationFilePath,
-            ConfigurationFileContent);
+        this->m_VirtualMachine->Resume();
+        this->m_VirtualMachinePaused = false;
+        if (this->m_MirroredNetworking) this->m_MirroredNetworking->ResumeSynchronization();
     }
+}
+
+void NanaBox::MainWindow::CleanupExitedVirtualMachine()
+{
+    this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
+    if (this->m_MirroredNetworking) this->m_MirroredNetworking->VmExited();
+    this->m_MirroredNetworking.reset();
+    this->m_VirtualMachine = nullptr;
+    if (this->m_OwnsVmResources)
+    {
+        for (auto const& Adapter : this->m_Configuration.NetworkAdapters)
+        {
+            try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); }
+            catch (...) { ::OutputDebugStringW(Mile::WinRT::ToHResultError().message().c_str()); }
+        }
+    }
+    this->m_OwnsVmResources = false;
+}
+
+LRESULT NanaBox::MainWindow::OnVirtualMachineExited(UINT, WPARAM Generation, LPARAM, BOOL&)
+{
+    if (Generation != this->m_VirtualMachineGeneration || !this->m_OwnsVmResources) return 0;
+    bool Restart = this->m_VirtualMachineRestarting;
+    this->m_VirtualMachineRunning = false;
+    this->m_VirtualMachinePaused = false;
+    this->m_PowerTransitionPending = false;
+    this->m_VirtualMachineRestarting = false;
+    this->CleanupExitedVirtualMachine();
+    this->UpdatePowerControls();
+    if (Restart)
+    {
+        try
+        {
+            if (this->m_RdpNamedPipe)
+            {
+                this->m_RdpNamedPipe->TerminateInstance();
+                this->m_RdpNamedPipe = nullptr;
+            }
+            if (this->m_RdpClient) this->RdpClientUninitialize();
+            this->InitializeVirtualMachine();
+            this->RdpClientInitialize();
+            this->UpdatePowerControls();
+            return 0;
+        }
+        catch (...)
+        {
+            auto Error = Mile::WinRT::ToHResultError();
+            if (this->m_VirtualMachineRunning && this->m_VirtualMachine)
+            {
+                try { this->m_VirtualMachine->Terminate(); }
+                catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Error); return 0; }
+                this->m_VirtualMachineRunning = false;
+                this->CleanupExitedVirtualMachine();
+            }
+            ::ShowErrorMessageDialog(this->m_hWnd, Error);
+        }
+    }
+    this->PostMessageW(WM_CLOSE);
+    return 0;
+}
+
+void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
+{
+    if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine || this->m_PowerTransitionPending) return;
+    auto Expected = ::ReadAllTextFromUtf8TextFile(this->m_ConfigurationFilePath);
+    if (Expected != this->m_PersistedConfigurationContent)
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH),
+            L"Reload pending configuration changes before saving the virtual machine state.");
+    auto Original = this->m_Configuration;
+    auto Saved = Original;
+    GUID Id{};
+    winrt::check_hresult(::CoCreateGuid(&Id));
+    Saved.SaveStateFile = "NanaBox.SaveState-" + winrt::to_string(::FromGuid(Id)) + ".vmrs";
+    auto Path = ::GetAbsolutePath(winrt::to_hstring(Saved.SaveStateFile).c_str());
+    if (::PathFileExistsW(Path.c_str())) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS));
+    nlohmann::json Options = {{"SaveType", "ToFile"}, {"SaveStateFilePath", winrt::to_string(Path)}};
+    auto SavedContent = NanaBox::SerializeConfiguration(Saved);
+    auto PublishedContent = std::string("\xEF\xBB\xBF") + SavedContent;
+    bool InitiallyPaused = this->m_VirtualMachinePaused;
+    std::wstring RecoveryErrors;
+    NanaBox::SaveStateOperations Operations;
+    Operations.ResumeVm = [&]() { this->m_VirtualMachine->Resume(); this->m_VirtualMachinePaused = false; };
+    Operations.PauseVm = [&]()
+    {
+        this->m_VirtualMachine->Pause();
+        this->m_VirtualMachinePaused = true;
+    };
+    Operations.DetachNetwork = [&]() { this->m_MirroredNetworking->DetachForSave(); };
+    Operations.RestoreNetwork = [&]() { this->m_MirroredNetworking->ResumeSynchronization(); };
+    Operations.DisableGpu = [&]()
+    {
+        NanaBox::GpuConfiguration Disabled;
+        NanaBox::ComputeSystemUpdateGpu(this->m_VirtualMachine, Disabled);
+    };
+    Operations.RestoreGpu = [&]() { NanaBox::ComputeSystemUpdateGpu(this->m_VirtualMachine, Original.Gpu); };
+    Operations.Save = [&]() { this->m_VirtualMachine->Save(winrt::to_hstring(Options.dump())); };
+    Operations.Publish = [&]()
+    {
+        ::WriteAllTextToUtf8TextFile(this->m_ConfigurationFilePath, SavedContent, &Expected);
+        this->m_Configuration = Saved;
+        this->m_PersistedConfigurationContent = PublishedContent;
+    };
+    Operations.Unpublish = [&]()
+    {
+        ::WriteAllTextToUtf8TextFile(this->m_ConfigurationFilePath, Expected.substr(3), &PublishedContent);
+        this->m_Configuration = Original;
+        this->m_PersistedConfigurationContent = Expected;
+    };
+    Operations.RemoveSave = [&]()
+    {
+        if (!::DeleteFileW(Path.c_str()) && ::GetLastError() != ERROR_FILE_NOT_FOUND)
+            winrt::throw_last_error();
+    };
+    Operations.Terminate = [&]() { this->m_VirtualMachine->Terminate(); };
+    Operations.RollbackError = [&](char const* Stage)
+    {
+        RecoveryErrors += L"\n" + std::wstring(winrt::to_hstring(Stage).c_str()) + L": " +
+            Mile::WinRT::ToHResultError().message().c_str();
+    };
+    try
+    {
+        NanaBox::SaveStateTransaction(InitiallyPaused,
+            Original.Gpu.AssignmentMode != NanaBox::GpuAssignmentMode::Disabled,
+            this->m_MirroredNetworking != nullptr, Operations);
+        this->m_PowerTransitionPending = true;
+    }
+    catch (...)
+    {
+        auto Error = Mile::WinRT::ToHResultError();
+        if (this->m_MirroredNetworking && this->m_VirtualMachinePaused)
+        {
+            try { this->m_MirroredNetworking->PauseSynchronization(); }
+            catch (...) { RecoveryErrors += L"\n" + std::wstring(Mile::WinRT::ToHResultError().message().c_str()); }
+        }
+        this->UpdatePowerControls();
+        throw winrt::hresult_error(Error.code(),
+            winrt::hstring(std::wstring(Error.message().c_str()) + RecoveryErrors));
+    }
+    this->UpdatePowerControls();
 }
 
 void NanaBox::MainWindow::OnDestroy()
 {
-    this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
-    this->m_MirroredNetworking.reset();
-    if (!this->m_VirtualMachineRunning)
+    ++this->m_VirtualMachineGeneration;
+    if (this->m_VirtualMachineRunning && this->m_VirtualMachine)
     {
-        this->m_VirtualMachine = nullptr;
-        for (auto const& Adapter : this->m_Configuration.NetworkAdapters)
-        {
-            try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); } catch (...) {}
-        }
+        try { this->m_VirtualMachine->Terminate(); this->m_VirtualMachineRunning = false; }
+        catch (...) {}
     }
+    if (!this->m_VirtualMachineRunning) this->CleanupExitedVirtualMachine();
+    else this->m_MirroredNetworking.reset();
+    if (this->m_VmMutex) { ::ReleaseMutex(this->m_VmMutex.get()); this->m_VmMutex.close(); }
     ::SetEvent(this->m_RecordingStop.get());
     ::SetEvent(this->m_ScreenshotStop.get());
     HANDLE Threads[2] = {};
@@ -743,6 +871,24 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         ConfigurationFileContent);
 
     winrt::hstring HcsVmId = winrt::to_hstring(this->m_Configuration.Name);
+    if (this->m_Configuration.Name.empty()) throw winrt::hresult_invalid_argument(L"Virtual machine name is required.");
+    if (!this->m_VmMutex)
+    {
+        std::wstring Name(HcsVmId.c_str());
+        ::CharUpperBuffW(Name.data(), static_cast<DWORD>(Name.size()));
+        std::uint64_t Hash = 14695981039346656037ull;
+        for (auto Ch : Name) { Hash ^= Ch; Hash *= 1099511628211ull; }
+        std::wstring MutexName = L"Global\\NanaBox.VM." + std::to_wstring(Hash);
+        winrt::handle Mutex(::CreateMutexW(nullptr, FALSE, MutexName.c_str()));
+        winrt::check_pointer(Mutex.get());
+        DWORD Wait = ::WaitForSingleObject(Mutex.get(), 0);
+        if (Wait == WAIT_TIMEOUT) throw winrt::hresult_error(HCS_E_SYSTEM_ALREADY_EXISTS);
+        if (Wait != WAIT_OBJECT_0 && Wait != WAIT_ABANDONED) winrt::throw_last_error();
+        this->m_VmMutex = std::move(Mutex);
+        this->m_LockedVmName = this->m_Configuration.Name;
+    }
+    else if (::_stricmp(this->m_LockedVmName.c_str(), this->m_Configuration.Name.c_str()) != 0)
+        throw winrt::hresult_invalid_argument(L"The virtual machine name changed while it was running.");
 
     {
         NanaBox::HcsSystem Existing;
@@ -817,13 +963,17 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     auto Rollback = Mile::ScopeExitTaskHandler([&]()
     {
         if (Initialized) return;
-        this->m_MirroredNetworking.reset();
+        ++this->m_VirtualMachineGeneration;
+        bool Stopped = !this->m_VirtualMachine;
         if (this->m_VirtualMachine)
         {
-            try { this->m_VirtualMachine->Terminate(); } catch (...) {}
-            this->m_VirtualMachine = nullptr;
+            try { this->m_VirtualMachine->Terminate(); Stopped = true; } catch (...) {}
         }
+        if (Stopped && this->m_MirroredNetworking) this->m_MirroredNetworking->VmExited();
+        this->m_MirroredNetworking.reset();
+        this->m_VirtualMachine = nullptr;
         this->m_VirtualMachineRunning = false;
+        if (!Stopped) return;
         for (auto const& Adapter : CreatedEndpoints)
         {
             try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); } catch (...) {}
@@ -844,27 +994,12 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         winrt::to_hstring(
             NanaBox::MakeHcsConfiguration(this->m_Configuration)));
 
-    this->m_VirtualMachine->SystemExited.add([this](
-        winrt::hstring const& EventData)
+    UINT_PTR Generation = ++this->m_VirtualMachineGeneration;
+    HWND WindowHandle = this->m_hWnd;
+    this->m_VirtualMachine->SystemExited.add([WindowHandle, Generation](winrt::hstring const&)
     {
-        UNREFERENCED_PARAMETER(EventData);
-
-        if (this->m_VirtualMachineRestarting)
-        {
-            this->m_VirtualMachineRestarting = false;
-            this->m_RdpClient->Disconnect();
-            return;
-        }
-
-        this->m_VirtualMachineRunning = false;
-        ::SleepEx(200, FALSE);
-        this->PostMessageW(WM_CLOSE);
+        ::PostMessageW(WindowHandle, WM_APP + 0x42, Generation, 0);
     });
-
-    /*this->m_VirtualMachine->SystemRdpEnhancedModeStateChanged.add([this]()
-    {
-        this->m_EnableEnhancedMode = !this->m_EnableEnhancedMode;
-    });*/
 
     this->m_VirtualMachine->Start();
 
@@ -873,22 +1008,6 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         this->m_Configuration.Gpu);
 
     this->m_VirtualMachineRunning = true;
-
-    if (!this->m_Configuration.SaveStateFile.empty())
-    {
-        std::wstring SaveStateFile = ::GetAbsolutePath(Mile::ToWideString(
-            CP_UTF8, this->m_Configuration.SaveStateFile));
-
-        ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
-
-        this->m_Configuration.SaveStateFile.clear();
-    }
-
-    ConfigurationFileContent =
-        NanaBox::SerializeConfiguration(this->m_Configuration);
-    ::WriteAllTextToUtf8TextFile(
-        this->m_ConfigurationFilePath,
-        ConfigurationFileContent);
 
     nlohmann::json Properties = nlohmann::json::parse(
         winrt::to_string(this->m_VirtualMachine->GetProperties()));
@@ -900,6 +1019,18 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         this->SetTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus, 1500);
     }
 
+    std::wstring RestoredPath;
+    if (!this->m_Configuration.SaveStateFile.empty())
+    {
+        RestoredPath = ::GetAbsolutePath(winrt::to_hstring(this->m_Configuration.SaveStateFile).c_str());
+        this->m_Configuration.SaveStateFile.clear();
+    }
+    auto UpdatedContent = NanaBox::SerializeConfiguration(this->m_Configuration);
+    ::WriteAllTextToUtf8TextFile(this->m_ConfigurationFilePath, UpdatedContent, &ConfigurationFileContent);
+    this->m_PersistedConfigurationContent = std::string("\xEF\xBB\xBF") + UpdatedContent;
+    this->m_OwnsVmResources = true;
+    this->m_VirtualMachinePaused = false;
+    this->m_PowerTransitionPending = false;
     this->m_WindowTitle = Mile::ToWideString(
         CP_UTF8,
         Mile::FormatString(
@@ -907,6 +1038,8 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
             this->m_Configuration.Name.c_str()));
     this->SetWindowTextW(this->m_WindowTitle.c_str());
     Initialized = true;
+    if (!RestoredPath.empty()) ::MileDeleteFileIgnoreReadonlyAttribute(RestoredPath.c_str());
+    this->UpdatePowerControls();
 }
 
 void NanaBox::MainWindow::TryReloadVirtualMachine()
@@ -1267,15 +1400,18 @@ void NanaBox::MainWindow::RdpClientOnDisconnected(
     this->m_MouseCaptureMode = false;
     ::ClipCursor(nullptr);
 
-    this->m_RdpNamedPipe->TerminateInstance();
-    this->m_RdpNamedPipe = nullptr;
+    if (this->m_RdpNamedPipe)
+    {
+        this->m_RdpNamedPipe->TerminateInstance();
+        this->m_RdpNamedPipe = nullptr;
+    }
 
     if (this->m_RdpClientMode == RdpClientMode::EnhancedVideoSyncedSession)
     {
         this->m_RdpClientMode = RdpClientMode::EnhancedSession;
     }
 
-    if (this->m_VirtualMachineRunning)
+    if (this->m_VirtualMachineRunning && !this->m_PowerTransitionPending)
     {
         // I have not found the actual meaning of DisconnectReason even in the
         // reverse engineering view of mstscax.dll. The only thing I know is that
@@ -1606,7 +1742,7 @@ void NanaBox::MainWindow::RdpClientUninitialize()
 {
     this->KillTimer(
         NanaBox::MainWindowTimerEvents::SyncDisplaySettings);
-    this->m_RdpClient->DisableEventsDispatcher();
+    if (this->m_RdpClient) this->m_RdpClient->DisableEventsDispatcher();
     this->m_RdpClientWindow.DestroyWindow();
     this->m_RdpClient = nullptr;
 }

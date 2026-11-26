@@ -63,6 +63,7 @@ namespace NanaBox
             MSG_WM_CLOSE(OnClose)
             MSG_WM_DESTROY(OnDestroy)
             MSG_WM_QUERYENDSESSION(OnQueryEndSession)
+            MESSAGE_HANDLER(WM_APP + 0x42, OnVirtualMachineExited)
         END_MSG_MAP()
 
         MainWindow(
@@ -124,6 +125,13 @@ namespace NanaBox
         std::unique_ptr<NanaBox::MirroredNetworking> m_MirroredNetworking;
         std::string m_VirtualMachineGuid;
         bool m_VirtualMachineRunning = false;
+        bool m_VirtualMachinePaused = false;
+        bool m_PowerTransitionPending = false;
+        bool m_OwnsVmResources = false;
+        UINT_PTR m_VirtualMachineGeneration = 0;
+        winrt::handle m_VmMutex;
+        std::string m_LockedVmName;
+        std::string m_PersistedConfigurationContent;
         bool m_VirtualMachineRestarting = false;
         RdpClientMode m_RdpClientMode = RdpClientMode::BasicSession;
         bool m_RedirectKeyboardNavigation = true;
@@ -148,6 +156,10 @@ namespace NanaBox
 
         void StartCapture(_In_ bool Recording);
 
+        LRESULT OnVirtualMachineExited(UINT, WPARAM, LPARAM, BOOL&);
+        void UpdatePowerControls();
+        void SetVirtualMachinePaused(bool Paused);
+        void CleanupExitedVirtualMachine();
         void SaveAndCloseVirtualMachine();
 
         void InitializeVirtualMachine();

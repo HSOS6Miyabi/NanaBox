@@ -392,11 +392,24 @@ struct NanaBox::MirroredNetworking::Impl
     {
     }
 
-    ~Impl()
+    void StopWorker()
     {
         Stop = true;
         Wake.notify_all();
         if (Worker.joinable()) Worker.join();
+    }
+
+    void StartWorker()
+    {
+        if (Worker.joinable()) return;
+        Stop = false;
+        Status(L"Synchronizing");
+        Worker = std::thread([this]() { Run(); });
+    }
+
+    ~Impl()
+    {
+        StopWorker();
         for (auto& Entry : Endpoints)
         {
             try { RemoveEndpoint(Entry.second); } catch (...) {}
@@ -509,7 +522,56 @@ struct NanaBox::MirroredNetworking::Impl
                 Reservations.push_back(Reservation);
             }
         }
-        Worker = std::thread([this]() { Run(); });
+        StartWorker();
+    }
+
+    void PauseSynchronization()
+    {
+        StopWorker();
+        try
+        {
+            SetState("Paused");
+            Status(L"Paused");
+        }
+        catch (...)
+        {
+            StartWorker();
+            throw;
+        }
+    }
+
+    void ResumeSynchronization()
+    {
+        if (Worker.joinable()) return;
+        try { SetState("Desynchronized"); } catch (...) {}
+        StartWorker();
+    }
+
+    void DetachForSave()
+    {
+        StopWorker();
+        try
+        {
+            SetState("Paused");
+            for (auto It = Endpoints.begin(); It != Endpoints.end();)
+            {
+                RemoveEndpoint(It->second);
+                It = Endpoints.erase(It);
+            }
+            Status(L"Paused");
+        }
+        catch (...)
+        {
+            ResumeSynchronization();
+            throw;
+        }
+    }
+
+    void VmExited() noexcept
+    {
+        StopWorker();
+        // HCS has already detached all devices, so only host endpoints remain.
+        for (auto& Entry : Endpoints) Entry.second.Attached = false;
     }
 
     Endpoint Attach(winrt::guid const& Network)
@@ -651,4 +713,24 @@ NanaBox::MirroredNetworking::~MirroredNetworking() = default;
 std::wstring NanaBox::MirroredNetworking::Status() const
 {
     return m_Impl->Status();
+}
+
+void NanaBox::MirroredNetworking::PauseSynchronization()
+{
+    m_Impl->PauseSynchronization();
+}
+
+void NanaBox::MirroredNetworking::ResumeSynchronization()
+{
+    m_Impl->ResumeSynchronization();
+}
+
+void NanaBox::MirroredNetworking::DetachForSave()
+{
+    m_Impl->DetachForSave();
+}
+
+void NanaBox::MirroredNetworking::VmExited() noexcept
+{
+    m_Impl->VmExited();
 }

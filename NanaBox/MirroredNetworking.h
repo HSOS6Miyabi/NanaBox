@@ -16,6 +16,10 @@ namespace NanaBox
         MirroredNetworking(MirroredNetworking const&) = delete;
         MirroredNetworking& operator=(MirroredNetworking const&) = delete;
         std::wstring Status() const;
+        void PauseSynchronization();
+        void ResumeSynchronization();
+        void DetachForSave();
+        void VmExited() noexcept;
 
     private:
         struct Impl;

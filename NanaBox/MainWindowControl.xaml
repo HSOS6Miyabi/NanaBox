@@ -46,6 +46,7 @@
         ToolTipService.ToolTip="[Full Screen]" AutomationProperties.AutomationId="FullScreenButton" />
       <AppBarSeparator />
       <AppBarToggleButton
+        x:Name="PauseVirtualMachineButton"
         x:Uid="/MainWindow/PauseVirtualMachineButton"
         Width="48"
         AutomationProperties.Name="[Pause Virtual Machine]"
@@ -54,6 +55,7 @@
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Pause Virtual Machine]" AutomationProperties.AutomationId="PauseVirtualMachineButton" />
       <AppBarButton
+        x:Name="RestartVirtualMachineButton"
         x:Uid="/MainWindow/RestartVirtualMachineButton"
         Width="48"
         AutomationProperties.Name="[Restart Virtual Machine]"
@@ -61,7 +63,7 @@
         Icon="Refresh"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Restart Virtual Machine]" AutomationProperties.AutomationId="RestartVirtualMachineButton" />
-      <AppBarButton Icon="Stop" Width="48" LabelPosition="Collapsed"
+      <AppBarButton x:Name="PowerMenuButton" Icon="Stop" Width="48" LabelPosition="Collapsed"
         x:Uid="/MainWindow/PowerMenu" AutomationProperties.Name="Power options" ToolTipService.ToolTip="Power options" AutomationProperties.AutomationId="PowerMenu">
         <AppBarButton.Flyout>
           <MenuFlyout>

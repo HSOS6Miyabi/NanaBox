@@ -17,6 +17,7 @@
 #include "App.h"
 #include "MainWindow.h"
 #include "NetworkReconciliation.h"
+#include "PowerTransition.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include <shellapi.h>
@@ -187,6 +188,36 @@ int WINAPI wWinMain(
             try { NanaBox::NormalizeNetworkAdapterIds(Duplicate); }
             catch (winrt::hresult_error const&) { RejectedDuplicate = true; }
             if (!RejectedDuplicate) return 25;
+            // Fault injection covers every forward operation in the save transaction.
+            for (auto InitiallyPaused : {false, true})
+            for (int Fail = 0; Fail <= 7; ++Fail)
+            {
+                bool Paused = InitiallyPaused, Gpu = true, Network = true;
+                bool Saved = false, Published = false, Terminated = false;
+                int Step = 0, RecoveryFailures = 0;
+                auto Inject = [&]() { if (++Step == Fail) throw std::runtime_error("Injected power failure"); };
+                NanaBox::SaveStateOperations Ops;
+                Ops.ResumeVm = [&]() { Inject(); Paused = false; };
+                Ops.PauseVm = [&]() { Inject(); Paused = true; };
+                Ops.DetachNetwork = [&]() { Inject(); Network = false; };
+                Ops.RestoreNetwork = [&]() { Network = true; };
+                Ops.DisableGpu = [&]() { Inject(); Gpu = false; };
+                Ops.RestoreGpu = [&]() { Gpu = true; };
+                Ops.Save = [&]() { Inject(); Saved = true; };
+                Ops.Publish = [&]() { Inject(); Published = true; };
+                Ops.Unpublish = [&]() { Published = false; };
+                Ops.RemoveSave = [&]() { Saved = false; };
+                Ops.Terminate = [&]() { Inject(); Terminated = true; };
+                Ops.RollbackError = [&](char const*) { ++RecoveryFailures; };
+                try { NanaBox::SaveStateTransaction(InitiallyPaused, true, true, Ops); }
+                catch (std::runtime_error const&)
+                {
+                    if (Paused != InitiallyPaused || !Gpu || !Network || Saved || Published ||
+                        Terminated || RecoveryFailures) return 26;
+                    continue;
+                }
+                if (!Paused || Gpu || Network || !Saved || !Published || !Terminated) return 27;
+            }
             return 0;
         }
         catch (...) { return 4; }
