@@ -171,6 +171,7 @@ namespace NanaBox
         GpuConfiguration Gpu;
         std::vector<NetworkAdapterConfiguration> NetworkAdapters;
         bool MirroredNetworking = false;
+        bool MirroredAutoReservePorts = true;
         std::string MirroredFirewallCreatorId;
         std::vector<std::string> MirroredTcpPorts;
         std::vector<std::string> MirroredUdpPorts;

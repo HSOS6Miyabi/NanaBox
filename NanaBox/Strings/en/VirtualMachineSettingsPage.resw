@@ -1670,4 +1670,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="SerialPipeUnavailable" xml:space="preserve">
     <value>Pipe is unavailable.</value>
   </data>
+  <data name="MirroredAutoReserve.Content" xml:space="preserve">
+    <value>Automatically reserve guest listening ports</value>
+  </data>
 </root>

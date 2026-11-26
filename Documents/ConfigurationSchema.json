@@ -157,6 +157,7 @@
             }
           },
           "MirroredNetworking": { "type": "boolean" },
+          "MirroredAutoReservePorts": { "type": "boolean", "default": true },
           "MirroredFirewallCreatorId": { "type": "string" },
           "MirroredTcpPorts": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{1,5}$" } },
           "MirroredUdpPorts": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{1,5}$" } },

@@ -85,7 +85,11 @@ def normalize(request):
             raise ValueError('Disconnected adapter must have an empty network configuration')
         if len({address_key(a) for a in addresses}) != len(addresses) or len({route_key(r) for r in routes}) != len(routes):
             raise ValueError('Duplicate snapshot entries')
+        discover = settings.get('DiscoverPorts', False)
+        if type(discover) is not bool:
+            raise ValueError('DiscoverPorts must be Boolean')
         return target, resource, action, {
+            'DiscoverPorts': discover,
             'Interface': interface,
             'Addresses': addresses,
             'Routes': sorted(routes, key=route_order),
@@ -119,6 +123,10 @@ def normalize(request):
         result = {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 1280, 65535)}
         if mirrored:
             result['Mirrored'] = True
+        for family in (4, 6):
+            key = f'IPv{family}Metric'
+            if key in settings:
+                result[key] = number(settings[key], 0, 0xffffffff)
         return target, resource, action, result
     if resource == 'PortRange' and action == 'Update':
         start = number(settings['Start'], 1024, 65535)
@@ -152,6 +160,43 @@ def route_order(entry):
     return (not ipaddress.ip_address(entry['NextHop']).is_unspecified,
             entry['Family'], -ipaddress.ip_network(entry['Destination']).prefixlen,
             entry['Metric'], entry['Destination'], entry['NextHop'])
+
+
+def decode_proc_address(value, family):
+    raw = bytes.fromhex(value)
+    if len(raw) != (4 if family == 4 else 16):
+        raise ValueError('Invalid proc socket address')
+    # Linux /proc/net uses native byte order for each 32-bit word.
+    if sys.byteorder == 'little':
+        raw = b''.join(raw[i:i+4][::-1] for i in range(0, len(raw), 4))
+    address = ipaddress.ip_address(raw)
+    return address.ipv4_mapped if family == 6 and address.ipv4_mapped else address
+
+
+def linux_listening_ports(proc, addresses):
+    accepted = {ipaddress.ip_address(a['Address']) for a in addresses}
+    ports = set()
+    for protocol in ('TCP', 'UDP'):
+        for family in (4, 6):
+            path = pathlib.Path(proc, protocol.lower() + ('6' if family == 6 else ''))
+            try:
+                lines = path.read_text().splitlines()[1:]
+            except FileNotFoundError:
+                continue
+            for line in lines:
+                fields = line.split()
+                if len(fields) < 4:
+                    continue
+                if protocol == 'TCP' and fields[3] != '0A':
+                    continue
+                if protocol == 'UDP' and int(fields[2].rsplit(':', 1)[1], 16) != 0:
+                    continue
+                raw, port = fields[1].rsplit(':', 1)
+                address = decode_proc_address(raw, family)
+                port = int(port, 16)
+                if port and not address.is_loopback and (address.is_unspecified or address in accepted):
+                    ports.add((protocol, port))
+    return [{'Protocol': protocol, 'Port': port} for protocol, port in sorted(ports)]
 
 
 def run(args):
@@ -247,7 +292,15 @@ class LinuxBackend:
         dev = self.adapter(target)
         interface = snapshot['Interface']
         addresses = {address_key(a): a for a in snapshot['Addresses']}
-        routes = {route_key(r): r for r in snapshot['Routes']}
+        routes = {}
+        for entry in snapshot['Routes']:
+            route = dict(entry)
+            # Linux combines the host's interface and route metrics in one field.
+            route['Metric'] = min(0xffffffff, route['Metric'] + interface.get(f"IPv{route['Family']}Metric", 0))
+            # IPv6 metric zero is interpreted by Linux as 1024, not highest priority.
+            if route['Family'] == 6 and route['Metric'] == 0:
+                route['Metric'] = 1
+            routes[route_key(route)] = route
         dns = snapshot['DNS']['Servers']
         port_range = snapshot['PortRange']
         link = self._link(dev)
@@ -298,6 +351,8 @@ class LinuxBackend:
             raise RuntimeError('Guest link state did not converge')
         if self._dns(dev) != dns or self.execute(['sysctl', '-n', 'net.ipv4.ip_local_port_range']).split() != expected_range:
             raise RuntimeError('Guest DNS or dynamic port range did not converge')
+        return {'ListeningPorts': linux_listening_ports('/proc/net', snapshot['Addresses'])
+                if snapshot['DiscoverPorts'] and interface['Connected'] else []}
 
     def apply(self, target, resource, action, s):
         dev = self.adapter(target)
@@ -405,6 +460,7 @@ $ports = @(foreach ($af in @('ipv4','ipv6')) { foreach ($p in @('tcp','udp')) { 
 
 WINDOWS_RECONCILE = r'''
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $r = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $s = $r.Settings
 $m = @(Get-NetAdapter -IncludeHidden | Where-Object {
@@ -422,6 +478,11 @@ foreach ($iface in @(Get-NetIPInterface -InterfaceIndex $i -PolicyStore ActiveSt
     if ($iface.DadTransmits -ne 0) { $params.DadTransmits = 0 }
     if ([string]$iface.AddressFamily -eq 'IPv4' -and [string]$iface.Dhcp -ne 'Disabled') { $params.Dhcp = 'Disabled' }
     if ([string]$iface.RouterDiscovery -ne 'Disabled') { $params.RouterDiscovery = 'Disabled' }
+    $metric = if ([string]$iface.AddressFamily -eq 'IPv4') { $s.Interface.IPv4Metric } else { $s.Interface.IPv6Metric }
+    if ($null -ne $metric -and ($iface.InterfaceMetric -ne $metric -or [string]$iface.AutomaticMetric -ne 'Disabled')) {
+        $params.InterfaceMetric = [uint32]$metric
+        $params.AutomaticMetric = 'Disabled'
+    }
     if ($params.Count -gt 3) { Set-NetIPInterface @params }
 }
 function AddressKey($address,$prefix) { return ([ipaddress]$address).ToString() + '/' + $prefix }
@@ -506,6 +567,27 @@ foreach ($route in $s.Routes) {
 }
 $dns = @((Get-DnsClientServerAddress -InterfaceIndex $i).ServerAddresses | Where-Object { $_ })
 if ((@($dns | Sort-Object) -join ',') -ne (@($wantedDns | Sort-Object) -join ',')) { throw 'Guest DNS did not converge' }
+$actualAdapter = Get-NetAdapter -InterfaceIndex $i -IncludeHidden
+if (([string]$actualAdapter.Status -ne 'Disabled') -ne [bool]$s.Interface.Connected) { throw 'Guest interface state did not converge' }
+foreach ($iface in @(Get-NetIPInterface -InterfaceIndex $i -PolicyStore ActiveStore)) {
+    if ($iface.NlMtu -ne $s.Interface.Mtu -and $iface.NlMtuBytes -ne $s.Interface.Mtu) { throw 'Guest MTU did not converge' }
+}
+$ports = @()
+if ($s.DiscoverPorts -and $s.Interface.Connected) {
+    $addresses = @($s.Addresses | ForEach-Object { ([ipaddress]$_.Address).ToString() })
+    $sockets = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | ForEach-Object {
+        [pscustomobject]@{Protocol='TCP';Port=[int]$_.LocalPort;Address=$_.LocalAddress}
+    }) + @(Get-NetUDPEndpoint -ErrorAction SilentlyContinue | ForEach-Object {
+        [pscustomobject]@{Protocol='UDP';Port=[int]$_.LocalPort;Address=$_.LocalAddress}
+    })
+    $ports = @($sockets | Where-Object {
+        $ip = [ipaddress]$_.Address
+        if ($ip.IsIPv4MappedToIPv6) { $ip = $ip.MapToIPv4() }
+        $_.Port -gt 0 -and -not [ipaddress]::IsLoopback($ip) -and
+        ($ip.ToString() -in @('0.0.0.0','::') -or $ip.ToString() -in $addresses)
+    } | Select-Object Protocol,Port -Unique)
+}
+[Console]::WriteLine((ConvertTo-Json -InputObject @{ListeningPorts=$ports} -Depth 4 -Compress))
 '''
 
 
@@ -519,9 +601,10 @@ class WindowsBackend:
         return json.loads(result.stdout)
 
     def reconcile(self, target, snapshot):
-        self.execute(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_RECONCILE],
-                     input=json.dumps({'Target': target, 'Settings': snapshot}), text=True,
-                     capture_output=True, check=True, timeout=60)
+        result = self.execute(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_RECONCILE],
+                              input=json.dumps({'Target': target, 'Settings': snapshot}), encoding='utf-8',
+                              capture_output=True, check=True, timeout=60)
+        return json.loads(result.stdout)
 
     def apply(self, target, resource, action, settings):
         self.execute(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_SCRIPT],
@@ -540,7 +623,7 @@ def handle(sock, backend):
             with socket.create_connection((settings['Address'], settings['Port']), timeout=5) as connection:
                 response['Data'] = {'LocalAddress': connection.getsockname()[0], 'RemoteAddress': settings['Address'], 'Port': settings['Port']}
         elif resource == 'Reconcile':
-            backend.reconcile(target, settings)
+            response['Data'] = backend.reconcile(target, settings)
         else:
             backend.apply(target, resource, action, settings)
     except Exception as exc:

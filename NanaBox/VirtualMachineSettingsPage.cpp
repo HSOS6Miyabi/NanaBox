@@ -489,6 +489,7 @@ namespace winrt::NanaBox::implementation
             this->MirroredNetworkingPanel().Visibility(this->m_MainWindow
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
+            this->MirroredAutoReservePortsCheckBox().IsChecked(this->m_Configuration.MirroredAutoReservePorts);
             this->MirroredFirewallCreatorTextBox().Text(winrt::to_hstring(this->m_Configuration.MirroredFirewallCreatorId));
             this->MirroredTcpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredTcpPorts));
             this->MirroredUdpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredUdpPorts));
@@ -776,6 +777,7 @@ namespace winrt::NanaBox::implementation
             if (!this->m_MainWindow)
             {
                 Result.MirroredNetworking = this->MirroredNetworkingCheckBox().IsChecked().Value();
+                Result.MirroredAutoReservePorts = this->MirroredAutoReservePortsCheckBox().IsChecked().Value();
                 Result.MirroredFirewallCreatorId = winrt::to_string(this->MirroredFirewallCreatorTextBox().Text());
                 if (!Result.MirroredFirewallCreatorId.empty())
                     (void)winrt::guid(Result.MirroredFirewallCreatorId);

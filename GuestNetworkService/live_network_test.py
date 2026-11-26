@@ -32,11 +32,14 @@ def main():
             request = {
                 'Version': 1, 'AdapterMac': '00-15-5D-12-34-56', 'RequestType': 'Update', 'ResourceType': 'Reconcile',
                 'Settings': {
-                    'Interface': {'Connected': True, 'NlMtu': 1500, 'Mirrored': True},
-                    'Addresses': [{'Address': '192.0.2.10', 'OnLinkPrefixLength': 24, 'Mirrored': True}],
+                    'Interface': {'Connected': True, 'NlMtu': 1500, 'Mirrored': True, 'IPv4Metric': 0, 'IPv6Metric': 0},
+                    'Addresses': [{'Address': '192.0.2.10', 'OnLinkPrefixLength': 24, 'Mirrored': True},
+                                  {'Address': '2001:db8::10', 'OnLinkPrefixLength': 64, 'Mirrored': True}],
                     'Routes': [
                         {'DestinationPrefix': '0.0.0.0/0', 'NextHop': '192.0.2.1', 'Metric': 10},
                         {'DestinationPrefix': '192.0.2.0/24', 'NextHop': '0.0.0.0', 'Metric': 10},
+                        {'DestinationPrefix': '::/0', 'NextHop': '2001:db8::1', 'Metric': 0},
+                        {'DestinationPrefix': '2001:db8::/64', 'NextHop': '::', 'Metric': 0},
                     ],
                     'DNS': {'ServerList': ['192.0.2.53']},
                     'PortRange': {'Start': 49152, 'End': 53247},
@@ -46,6 +49,12 @@ def main():
             backend.reconcile(mac, snapshot)
             routes = json.loads(gns.run(['ip', '-4', '-j', 'route', 'show', 'dev', 'nb-test0', 'proto', '242']))
             assert {r['dst'] for r in routes} == {'default', '192.0.2.0/24'}, routes
+            routes6 = json.loads(gns.run(['ip', '-6', '-j', 'route', 'show', 'dev', 'nb-test0', 'proto', '242']))
+            assert {r['dst'] for r in routes6} == {'default', '2001:db8::/64'}, routes6
+            assert all(r['metric'] == 1 for r in routes6), routes6
+            # A second interface's routes must survive reconciliation and cleanup.
+            gns.run(['ip', '-4', 'address', 'add', '198.18.0.10/24', 'dev', 'nb-test1', 'noprefixroute'])
+            gns.run(['ip', '-4', 'route', 'add', '198.18.0.0/24', 'dev', 'nb-test1', 'proto', '242'])
             # Simulate drift and a restarted service; no in-memory state is reused.
             gns.run(['ip', '-4', 'route', 'del', 'default', 'via', '192.0.2.1', 'dev', 'nb-test0', 'metric', '10', 'proto', '242'])
             gns.run(['ip', '-4', 'address', 'del', '192.0.2.10/24', 'dev', 'nb-test0'])
@@ -64,6 +73,7 @@ def main():
             assert not backend._addresses('nb-test0')
             assert not backend._routes('nb-test0', managed_only=True)
             assert 'UP' not in backend._link('nb-test0')['flags']
+            assert '198.18.0.0/24' in gns.run(['ip', '-4', 'route', 'show', 'dev', 'nb-test1', 'proto', '242'])
             print('Linux mirrored network reconciliation: passed')
     finally:
         gns.run(['ip', 'link', 'del', 'nb-test0'])

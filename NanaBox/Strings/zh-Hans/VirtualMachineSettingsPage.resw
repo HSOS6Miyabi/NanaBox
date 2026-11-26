@@ -1670,4 +1670,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="SerialPipeUnavailable" xml:space="preserve">
     <value>管道不可用。</value>
   </data>
+  <data name="MirroredAutoReserve.Content" xml:space="preserve">
+    <value>自动预留客户机监听端口</value>
+  </data>
 </root>

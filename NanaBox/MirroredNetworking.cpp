@@ -135,7 +135,7 @@ namespace
         }
     }
 
-    void GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop)
+    Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop)
     {
         auto Body = Request.dump();
         if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
@@ -171,6 +171,7 @@ namespace
         auto Reply = Json::parse(Response);
         if (Reply.value("Version", 0) != 1 || !Reply.value("Success", false))
             throw winrt::hresult_error(E_FAIL, winrt::to_hstring(Reply.value("Error", std::string("Guest network request failed"))));
+        return Reply.value("Data", Json::object());
     }
 
     std::string AddressString(SOCKADDR_INET const& Address)
@@ -230,6 +231,15 @@ namespace
         winrt::check_win32(::GetIfEntry2(&If));
         Snapshot Result;
         Result.Interface = {{"Connected", If.OperStatus == IfOperStatusUp}, {"NlMtu", If.Mtu}, {"Mirrored", true}};
+        for (auto Family : {AF_INET, AF_INET6})
+        {
+            MIB_IPINTERFACE_ROW IpInterface{};
+            ::InitializeIpInterfaceEntry(&IpInterface);
+            IpInterface.Family = static_cast<ADDRESS_FAMILY>(Family);
+            IpInterface.InterfaceLuid = Luid;
+            if (::GetIpInterfaceEntry(&IpInterface) == NO_ERROR)
+                Result.Interface[Family == AF_INET ? "IPv4Metric" : "IPv6Metric"] = IpInterface.Metric;
+        }
         if (If.OperStatus != IfOperStatusUp) return Result;
         PMIB_UNICASTIPADDRESS_TABLE Addresses = nullptr;
         winrt::check_win32(::GetUnicastIpAddressTable(AF_UNSPEC, &Addresses));
@@ -374,6 +384,10 @@ struct NanaBox::MirroredNetworking::Impl
     bool WsaStarted = false;
     HCN_PORT_RANGE_RESERVATION Range{};
     std::vector<HANDLE> Reservations;
+    using PortKey = std::pair<HCN_PORT_PROTOCOL, USHORT>;
+    std::set<PortKey> ExplicitPorts;
+    std::map<PortKey, HANDLE> AutomaticPorts;
+    ReservePort AllocatePort = nullptr;
     ReleasePort Release = nullptr;
     CreateService CreateGns = nullptr;
     DeleteService DeleteGns = nullptr;
@@ -414,7 +428,11 @@ struct NanaBox::MirroredNetworking::Impl
         {
             try { RemoveEndpoint(Entry.second); } catch (...) {}
         }
-        if (Release) for (auto Handle : Reservations) Release(Handle);
+        if (Release)
+        {
+            for (auto const& Entry : AutomaticPorts) Release(Entry.second);
+            for (auto Handle : Reservations) Release(Handle);
+        }
         if (Service)
         {
             HcnText Error;
@@ -491,7 +509,7 @@ struct NanaBox::MirroredNetworking::Impl
         RegisterGuestSocket();
         SetState("Bootstrapping");
         auto AllocateRange = Import<ReserveRange>(NetworkModule, "HcnReserveGuestNetworkServicePortRange");
-        auto AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
+        AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
         Release = Import<ReleasePort>(NetworkModule, "HcnReleaseGuestNetworkServicePortReservationHandle");
         HRESULT RangeResult = E_FAIL;
         for (USHORT Count = 4095; Count >= 511; Count /= 2)
@@ -518,8 +536,10 @@ struct NanaBox::MirroredNetworking::Impl
                 if (!Unique.insert(Port).second) throw winrt::hresult_invalid_argument(L"Duplicate mirrored port");
                 if (Port >= Range.startingPort && Port <= Range.endingPort) continue;
                 HANDLE Reservation = nullptr;
-                winrt::check_hresult(AllocatePort(Service, List.first, HCN_PORT_ACCESS_EXCLUSIVE, static_cast<USHORT>(Port), &Reservation));
+                auto Hr = AllocatePort(Service, List.first, HCN_PORT_ACCESS_EXCLUSIVE, static_cast<USHORT>(Port), &Reservation);
+                if (FAILED(Hr)) { if (Reservation) Release(Reservation); winrt::check_hresult(Hr); }
                 Reservations.push_back(Reservation);
+                ExplicitPorts.emplace(List.first, static_cast<USHORT>(Port));
             }
         }
         StartWorker();
@@ -624,7 +644,7 @@ struct NanaBox::MirroredNetworking::Impl
         NanaBox::HcnDeleteOwnedEndpoint(Entry.Id, Configuration.Name);
     }
 
-    void Synchronize(Endpoint& Entry)
+    std::set<PortKey> Synchronize(Endpoint& Entry)
     {
         auto Desired = ReadHostSnapshot(Entry.HostInterface);
         Json Addresses = Json::array(), Routes = Json::array();
@@ -638,11 +658,56 @@ struct NanaBox::MirroredNetworking::Impl
         }
         // The agent reads and reconciles its actual state on every request.
         // No host-side cache is used to infer whether a configuration survived.
-        GuestRequest(RuntimeId, Json{{"Version", 1}, {"AdapterMac", Entry.Mac},
+        auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"AdapterMac", Entry.Mac},
             {"ResourceType", "Reconcile"}, {"RequestType", "Update"},
             {"Settings", {{"Interface", Desired.Interface}, {"Addresses", Addresses},
                 {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}}},
+                {"DiscoverPorts", Configuration.MirroredAutoReservePorts},
                 {"PortRange", {{"Start", Range.startingPort}, {"End", Range.endingPort}}}}}}, Stop);
+        std::set<PortKey> Ports;
+        if (Configuration.MirroredAutoReservePorts)
+        {
+            for (auto const& Item : Reply.at("ListeningPorts"))
+            {
+                auto Protocol = Item.at("Protocol").get<std::string>();
+                unsigned Port = Item.at("Port").get<unsigned>();
+                if ((Protocol != "TCP" && Protocol != "UDP") || !Port || Port > 65535)
+                    throw winrt::hresult_invalid_argument(L"Invalid guest listening port");
+                if (Port >= Range.startingPort && Port <= Range.endingPort) continue;
+                Ports.emplace(Protocol == "TCP" ? HCN_PORT_PROTOCOL_TCP : HCN_PORT_PROTOCOL_UDP, static_cast<USHORT>(Port));
+            }
+        }
+        return Ports;
+    }
+
+    std::wstring ReconcileAutomaticPorts(std::set<PortKey> const& Desired)
+    {
+        std::wstring Conflicts;
+        for (auto It = AutomaticPorts.begin(); It != AutomaticPorts.end();)
+        {
+            if (!Desired.count(It->first))
+            {
+                winrt::check_hresult(Release(It->second));
+                It = AutomaticPorts.erase(It);
+            }
+            else ++It;
+        }
+        for (auto const& Port : Desired)
+        {
+            if (Stop) break;
+            if (ExplicitPorts.count(Port) || AutomaticPorts.count(Port)) continue;
+            HANDLE Reservation = nullptr;
+            auto Hr = AllocatePort(Service, Port.first, HCN_PORT_ACCESS_EXCLUSIVE, Port.second, &Reservation);
+            if (SUCCEEDED(Hr)) AutomaticPorts.emplace(Port, Reservation);
+            else
+            {
+                if (Reservation) Release(Reservation);
+                if (Conflicts.size() < 256)
+                    Conflicts += (Conflicts.empty() ? L"" : L", ") +
+                        std::wstring(Port.first == HCN_PORT_PROTOCOL_TCP ? L"TCP " : L"UDP ") + std::to_wstring(Port.second);
+            }
+        }
+        return Conflicts;
     }
 
     void Run() noexcept
@@ -676,10 +741,24 @@ struct NanaBox::MirroredNetworking::Impl
                 if (!Stop)
                 {
                     if (Endpoints.empty()) throw winrt::hresult_error(E_PENDING, L"Waiting for HCN mirrored networks");
-                    for (auto& Entry : Endpoints) Synchronize(Entry.second);
+                    std::set<PortKey> Ports;
+                    std::wstring Errors;
+                    for (auto& Entry : Endpoints)
+                    {
+                        if (Stop) break;
+                        try
+                        {
+                            auto List = Synchronize(Entry.second);
+                            Ports.insert(List.begin(), List.end());
+                        }
+                        catch (...) { Errors += std::wstring(Mile::WinRT::ToHResultError().message().c_str()) + L"; "; }
+                    }
+                    if (Stop) break;
+                    if (!Errors.empty()) throw winrt::hresult_error(E_FAIL, winrt::hstring(Errors));
+                    auto Conflicts = ReconcileAutomaticPorts(Ports);
                     if (!Synchronized) SetState("Synchronized");
                     Synchronized = true;
-                    Status(L"Synchronized");
+                    Status(Conflicts.empty() ? L"Synchronized" : L"Synchronized; port conflicts: " + Conflicts);
                 }
             }
             catch (...)

@@ -27,8 +27,10 @@ class ProtocolTests(unittest.TestCase):
         target, resource, action, normalized = gns.normalize(request('Reconcile', 'Update', **settings))
         self.assertEqual(normalized['Routes'][0]['Destination'], '192.0.2.0/24')
         self.assertEqual(normalized['Routes'][1]['Destination'], '0.0.0.0/0')
-        backend = gns.WindowsBackend(Mock())
-        backend.reconcile(target, normalized)
+        execute = Mock()
+        execute.return_value.stdout = '{"ListeningPorts":[]}'
+        backend = gns.WindowsBackend(execute)
+        self.assertEqual(backend.reconcile(target, normalized), {'ListeningPorts': []})
         args, kwargs = backend.execute.call_args
         self.assertIn('ReadAddresses', args[0][-1])
         self.assertEqual(json.loads(kwargs['input'])['Settings'], normalized)
@@ -39,6 +41,29 @@ class ProtocolTests(unittest.TestCase):
         settings['Interface']['Connected'] = False
         with self.assertRaises(ValueError):
             gns.normalize(request('Reconcile', 'Update', **settings))
+
+    def test_listening_ports(self):
+        def line(local, remote, state):
+            return f'0: {local} {remote} {state} 00000000:00000000\n'
+        def proc4(address, port):
+            import ipaddress
+            raw = ipaddress.ip_address(address).packed
+            if gns.sys.byteorder == 'little':
+                raw = raw[::-1]
+            return raw.hex() + f':{port:04x}'
+        with tempfile.TemporaryDirectory() as temp:
+            p = pathlib.Path(temp)
+            p.joinpath('tcp').write_text('header\n' +
+                line(proc4('0.0.0.0', 8080), proc4('0.0.0.0', 0), '0A') +
+                line(proc4('127.0.0.1', 8081), proc4('0.0.0.0', 0), '0A') +
+                line(proc4('192.0.2.10', 8082), proc4('0.0.0.0', 0), '0A') +
+                line(proc4('192.0.2.20', 8083), proc4('0.0.0.0', 0), '0A'))
+            p.joinpath('udp').write_text('header\n' +
+                line(proc4('0.0.0.0', 5353), proc4('0.0.0.0', 0), '07') +
+                line(proc4('0.0.0.0', 1234), proc4('192.0.2.20', 53), '01'))
+            self.assertEqual(gns.linux_listening_ports(p, [{'Address': '192.0.2.10'}]), [
+                {'Protocol': 'TCP', 'Port': 8080}, {'Protocol': 'TCP', 'Port': 8082},
+                {'Protocol': 'UDP', 'Port': 5353}])
 
     def test_validation(self):
         value = gns.normalize(request(Address='2001:db8::123', OnLinkPrefixLength=64))
