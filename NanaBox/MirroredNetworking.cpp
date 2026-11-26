@@ -290,6 +290,31 @@ namespace
         return Result;
     }
 
+    void RegisterGuestSocket()
+    {
+        constexpr wchar_t Path[] = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
+        constexpr wchar_t Name[] = L"NanaBox Guest Network Service";
+        HKEY Key = nullptr;
+        DWORD Disposition = 0;
+        winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, Path, 0, nullptr, 0,
+            KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WOW64_64KEY, nullptr, &Key, &Disposition));
+        auto Close = Mile::ScopeExitTaskHandler([&]() { ::RegCloseKey(Key); });
+        if (Disposition == REG_CREATED_NEW_KEY)
+        {
+            winrt::check_win32(::RegSetValueExW(Key, L"ElementName", 0, REG_SZ,
+                reinterpret_cast<BYTE const*>(Name), sizeof(Name)));
+        }
+        else
+        {
+            wchar_t Existing[256]{};
+            DWORD Bytes = sizeof(Existing);
+            winrt::check_win32(::RegGetValueW(Key, nullptr, L"ElementName", RRF_RT_REG_SZ,
+                nullptr, Existing, &Bytes));
+            if (::wcscmp(Existing, Name) != 0)
+                throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS), L"The NanaBox guest socket ID is registered to another service.");
+        }
+    }
+
     std::wstring WslDependencyPath()
     {
         PWSTR Folder = nullptr;
@@ -449,6 +474,7 @@ struct NanaBox::MirroredNetworking::Impl
         ModifyGns = Import<ModifyService>(NetworkModule, "HcnModifyGuestNetworkService");
         auto Hr = CreateGns(RuntimeId, Text.c_str(), &Service, &ServiceError.Value);
         CheckHcn(Hr, ServiceError);
+        RegisterGuestSocket();
         SetState("Bootstrapping");
         auto AllocateRange = Import<ReserveRange>(NetworkModule, "HcnReserveGuestNetworkServicePortRange");
         auto AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");

@@ -22,6 +22,38 @@ class ProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError): gns.normalize(request('Route', DestinationPrefix='::/0', NextHop='192.0.2.1'))
         with self.assertRaises(ValueError): gns.normalize(request('Command', Command='echo hi'))
 
+    def test_diagnostics_request(self):
+        backend = Mock()
+        backend.diagnostics.return_value = {'OperatingSystem': 'Linux', 'Addresses': ['192.0.2.1']}
+        server, client = socket.socketpair()
+        with server, client:
+            worker = threading.Thread(target=gns.handle, args=(server, backend))
+            worker.start()
+            gns.send(client, {'Version': 1, 'ResourceType': 'Diagnostics', 'RequestType': 'Query', 'Settings': {}})
+            reply = gns.receive(client)
+            worker.join(2)
+            self.assertTrue(reply['Success'])
+            self.assertEqual(reply['Data'], backend.diagnostics.return_value)
+            backend.apply.assert_not_called()
+
+    def test_connectivity_request(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen(1)
+            server, client = socket.socketpair()
+            with server, client:
+                worker = threading.Thread(target=gns.handle, args=(server, Mock()))
+                worker.start()
+                gns.send(client, {'Version': 1, 'ResourceType': 'Connectivity', 'RequestType': 'Query',
+                                  'Settings': {'Address': '127.0.0.1', 'Port': listener.getsockname()[1]}})
+                reply = gns.receive(client)
+                worker.join(2)
+                self.assertTrue(reply['Success'])
+                self.assertEqual(reply['Data']['LocalAddress'], '127.0.0.1')
+        with self.assertRaises(ValueError):
+            gns.normalize({'Version': 1, 'ResourceType': 'Connectivity', 'RequestType': 'Query',
+                           'Settings': {'Address': 'example.com', 'Port': 80}})
+
     def test_framed_success_and_failure(self):
         for payload, success in [(request(Address='192.0.2.1', OnLinkPrefixLength=24), True), ({}, False)]:
             server, client = socket.socketpair()

@@ -178,6 +178,18 @@ int WINAPI wWinMain(
     if (Arguments)
     {
         auto FreeArguments = Mile::ScopeExitTaskHandler([&]() { ::LocalFree(Arguments); });
+        if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--query-vm"))
+        {
+            if (ArgumentCount != 4) return ERROR_INVALID_PARAMETER;
+            try
+            {
+                auto Vm = winrt::make_self<NanaBox::ComputeSystem>(winrt::hstring(Arguments[2]));
+                auto Properties = nlohmann::json::parse(winrt::to_string(Vm->GetProperties()));
+                ::WriteAllTextToUtf8TextFile(::GetAbsolutePath(Arguments[3]), Properties.dump(2));
+                return 0;
+            }
+            catch (...) { return 18; }
+        }
         if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--edit-config"))
         {
             if (ArgumentCount != 3) return ERROR_INVALID_PARAMETER;

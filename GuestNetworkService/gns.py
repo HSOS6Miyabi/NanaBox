@@ -54,6 +54,16 @@ def number(value, low, high):
 def normalize(request):
     if not isinstance(request, dict) or type(request.get('Version')) is not int or request['Version'] != 1:
         raise ValueError('Unsupported protocol version')
+    if request.get('ResourceType') == 'Diagnostics' and request.get('RequestType') == 'Query' and request.get('Settings') == {}:
+        return '', 'Diagnostics', 'Query', {}
+    if request.get('ResourceType') == 'Connectivity' and request.get('RequestType') == 'Query':
+        s = request['Settings']
+        if not isinstance(s, dict):
+            raise ValueError('Invalid connectivity request')
+        address = ipaddress.ip_address(s['Address'])
+        if address.is_unspecified or address.is_multicast:
+            raise ValueError('Invalid connectivity target')
+        return '', 'Connectivity', 'Query', {'Address': str(address), 'Port': number(s['Port'], 1, 65535)}
     target = mac(request['AdapterMac'])
     action, resource, settings = request['RequestType'], request['ResourceType'], request['Settings']
     if action not in ('Add', 'Update', 'Remove') or not isinstance(settings, dict):
@@ -125,6 +135,21 @@ class LinuxBackend:
         if len(matches) != 1:
             raise ValueError('Expected exactly one matching hardware network adapter')
         return matches[0]
+
+    def diagnostics(self):
+        addresses = json.loads(self.execute(['ip', '-j', 'address', 'show']))
+        gpu = []
+        for device in pathlib.Path('/sys/class/drm').glob('card*'):
+            if not re.fullmatch(r'card\d+', device.name):
+                continue
+            try:
+                gpu.append({'Name': device.name, 'Vendor': (device / 'device/vendor').read_text().strip(),
+                            'Device': (device / 'device/device').read_text().strip()})
+            except OSError:
+                continue
+        return {'OperatingSystem': 'Linux', 'Addresses': [a['local'] for row in addresses for a in row.get('addr_info', [])],
+                'Adapters': addresses, 'Gpu': gpu, 'Dxg': pathlib.Path('/dev/dxg').exists(),
+                'DynamicPortRange': pathlib.Path('/proc/sys/net/ipv4/ip_local_port_range').read_text().split()}
 
     def apply(self, target, resource, action, s):
         dev = self.adapter(target)
@@ -219,9 +244,25 @@ switch ($r.Resource) {
 '''
 
 
+WINDOWS_DIAGNOSTICS = r'''
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$adapters = @(Get-NetAdapter -IncludeHidden | Select-Object Name, MacAddress, ifIndex, Status, InterfaceDescription)
+$addresses = @(Get-NetIPAddress | Select-Object -ExpandProperty IPAddress)
+$gpu = @(Get-CimInstance Win32_VideoController | Select-Object Name, PNPDeviceID, DriverVersion, Status)
+$ports = @(foreach ($af in @('ipv4','ipv6')) { foreach ($p in @('tcp','udp')) { (& netsh.exe int $af show dynamicport $p) -join "`n" } })
+[Console]::WriteLine((ConvertTo-Json -InputObject @{OperatingSystem='Windows'; Addresses=$addresses; Adapters=$adapters; Gpu=$gpu; Dxg=$false; DynamicPortRange=$ports} -Depth 6 -Compress))
+'''
+
+
 class WindowsBackend:
     def __init__(self, execute=subprocess.run):
         self.execute = execute
+
+    def diagnostics(self):
+        result = self.execute(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_DIAGNOSTICS],
+                              encoding='utf-8', capture_output=True, check=True, timeout=30)
+        return json.loads(result.stdout)
 
     def apply(self, target, resource, action, settings):
         self.execute(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_SCRIPT],
@@ -232,8 +273,15 @@ class WindowsBackend:
 def handle(sock, backend):
     try:
         request = receive(sock)
-        backend.apply(*normalize(request))
+        target, resource, action, settings = normalize(request)
         response = {'Version': 1, 'Success': True}
+        if resource == 'Diagnostics':
+            response['Data'] = backend.diagnostics()
+        elif resource == 'Connectivity':
+            with socket.create_connection((settings['Address'], settings['Port']), timeout=5) as connection:
+                response['Data'] = {'LocalAddress': connection.getsockname()[0], 'RemoteAddress': settings['Address'], 'Port': settings['Port']}
+        else:
+            backend.apply(target, resource, action, settings)
     except Exception as exc:
         detail = getattr(exc, 'stderr', '') or str(exc)
         response = {'Version': 1, 'Success': False, 'Error': detail[:4000]}
