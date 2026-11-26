@@ -91,7 +91,9 @@ function Wait-Mirrored($process) {
 function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
     $path = (Resolve-Path -LiteralPath $path).Path
     $cfg = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).NanaBox
-    if ($cfg.Name -notmatch '^NanaBox-CI-[A-Za-z0-9_.-]+
+    if ($cfg.Name -notmatch '^NanaBox-CI-[A-Za-z0-9_.-]+$') { throw 'Test VM name must start with NanaBox-CI- and use safe identifier characters' }
+    if (-not $cfg.MirroredNetworking) { throw 'Hardware test guest must have mirrored networking enabled' }
+    if (-not $cfg.Gpu -or $cfg.Gpu.AssignmentMode -eq 'Disabled') { throw 'Hardware test guest must have GPU-PV enabled' }
     if ($cfg.GuestType -ne $guestType) { throw "Expected $guestType guest" }
     if ((& hcsdiag.exe list | Out-String) -match [regex]::Escape($cfg.Name)) { throw "VM already running: $($cfg.Name)" }
     $process = Start-Process -FilePath $Executable -ArgumentList ('"' + $path + '"') -PassThru
@@ -137,39 +139,3 @@ $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run the interactive runner elevated' }
 Test-Guest $WindowsConfig Windows $WindowsGpuPattern
 Test-Guest $LinuxConfig Linux $LinuxGpuPattern
-) { throw 'Test VM name must start with NanaBox-CI- and use safe identifier characters' }
-    if (-not $cfg.MirroredNetworking) { throw 'Hardware test guest must have mirrored networking enabled' }
-    if (-not $cfg.Gpu -or $cfg.Gpu.AssignmentMode -eq 'Disabled') { throw 'Hardware test guest must have GPU-PV enabled' }
-    if ($cfg.GuestType -ne $guestType) { throw "Expected $guestType guest" }
-    if ((& hcsdiag.exe list | Out-String) -match [regex]::Escape($cfg.Name)) { throw "VM already running: $($cfg.Name)" }
-    $process = Start-Process -FilePath $Executable -ArgumentList ('"' + $path + '"') -PassThru
-    try {
-        Wait-VMState $cfg.Name Present
-        Toggle-UI $process 'PauseVirtualMachineButton'
-        Start-Sleep -Seconds 2
-        Toggle-UI $process 'PauseVirtualMachineButton'
-        Invoke-UI $process 'VirtualMachineSettingsButton'
-        $null = Find-Element $process 'ApplyButton'
-        # Close only the settings window, without applying any changes.
-        $p = Find-Element $process 'ApplyButton'
-        $walk = [System.Windows.Automation.TreeWalker]::RawViewWalker
-        while ($p -and $p.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { $p = $walk.GetParent($p) }
-        if (-not $p) { throw 'Settings window not found' }
-        $p.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
-        Invoke-UI $process 'PowerMenu'
-        Invoke-UI $process 'ShutdownAction'
-        Wait-VMState $cfg.Name Absent 180
-        if (-not $process.WaitForExit(30000)) { throw 'App did not exit after shutdown' }
-        Write-Host "$guestType power and running settings UI passed"
-    } finally {
-        if (-not $process.HasExited) {
-            # Only this test process owns the disposable HCS compute system.
-            Stop-Process -Id $process.Id -Force
-        }
-    }
-}
-if (-not (Get-Command hcsdiag.exe -ErrorAction SilentlyContinue)) { throw 'HCS tools are required' }
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run the interactive runner elevated' }
-Test-Guest $WindowsConfig Windows
-Test-Guest $LinuxConfig Linux

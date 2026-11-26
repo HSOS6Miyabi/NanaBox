@@ -367,8 +367,9 @@ namespace winrt::NanaBox::implementation
 
     void VirtualMachineSettingsPage::ReloadConfiguration()
     {
-        auto Configuration = NanaBox::DeserializeConfiguration(
-            ::ReadAllTextFromUtf8TextFile(this->m_ConfigurationFilePath));
+        auto Content = ::ReadAllTextFromUtf8TextFile(this->m_ConfigurationFilePath);
+        auto Configuration = NanaBox::DeserializeConfiguration(Content);
+        this->m_LoadedConfigurationContent = std::move(Content);
         this->m_Configuration = Configuration;
         this->PopulateControls();
     }
@@ -1202,7 +1203,9 @@ namespace winrt::NanaBox::implementation
 
                 std::string Content =
                     NanaBox::SerializeConfiguration(Configuration);
-                ::WriteAllTextToUtf8TextFile(FilePath, Content);
+                ::WriteAllTextToUtf8TextFile(FilePath, Content,
+                    this->m_ConfigurationFilePath.empty() ? nullptr : &this->m_LoadedConfigurationContent);
+                this->m_LoadedConfigurationContent = "\xEF\xBB\xBF" + Content;
                 this->m_ConfigurationFilePath = FilePath;
             }
             this->m_Configuration = Configuration;

@@ -165,7 +165,7 @@ std::string ReadAllTextFromUtf8TextFile(
     FileHandle.attach(::MileCreateFile(
         Path.c_str(),
         GENERIC_READ,
-        FILE_SHARE_READ,
+        FILE_SHARE_READ | FILE_SHARE_DELETE,
         nullptr,
         OPEN_EXISTING,
         FILE_FLAG_SEQUENTIAL_SCAN,
@@ -180,6 +180,7 @@ std::string ReadAllTextFromUtf8TextFile(
         FileHandle.get(),
         &FileSize));
 
+    if (FileSize > MAXDWORD) throw winrt::hresult_invalid_argument(L"Configuration file is too large.");
     std::string Content(FileSize, '\0');
 
     DWORD NumberOfBytesRead = 0;
@@ -189,6 +190,7 @@ std::string ReadAllTextFromUtf8TextFile(
         const_cast<char*>(Content.c_str()),
         static_cast<DWORD>(FileSize),
         &NumberOfBytesRead));
+    if (NumberOfBytesRead != FileSize) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_HANDLE_EOF));
 
     if (!(FileSize > 3 &&
         Content[0] == '\xEF' &&
@@ -204,38 +206,57 @@ std::string ReadAllTextFromUtf8TextFile(
 
 void WriteAllTextToUtf8TextFile(
     std::wstring const& Path,
-    std::string& Content)
+    std::string const& Content,
+    std::string const* ExpectedContent)
 {
-    winrt::file_handle FileHandle;
+    // Serialize configuration replacement across NanaBox instances in this session.
+    winrt::handle Mutex(::CreateMutexW(nullptr, FALSE, L"Local\\NanaBox.ConfigurationWrite"));
+    winrt::check_pointer(Mutex.get());
+    DWORD Wait = ::WaitForSingleObject(Mutex.get(), 30000);
+    if (Wait != WAIT_OBJECT_0 && Wait != WAIT_ABANDONED)
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(Wait == WAIT_TIMEOUT ? ERROR_TIMEOUT : ::GetLastError()));
+    auto Unlock = Mile::ScopeExitTaskHandler([&]() { ::ReleaseMutex(Mutex.get()); });
 
-    FileHandle.attach(::MileCreateFile(
-        Path.c_str(),
-        GENERIC_WRITE,
-        FILE_SHARE_WRITE,
-        nullptr,
-        CREATE_ALWAYS,
-        FILE_FLAG_SEQUENTIAL_SCAN,
-        nullptr));
-    if (!FileHandle)
+    auto Target = ::GetAbsolutePath(Path);
+    if (ExpectedContent && ::ReadAllTextFromUtf8TextFile(Target) != *ExpectedContent)
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH),
+            L"The configuration file was changed by another editor. Reload it before saving.");
+    if (Content.size() > MAXDWORD - 3)
+        throw winrt::hresult_invalid_argument(L"Configuration file is too large.");
+
+    GUID Id{};
+    winrt::check_hresult(::CoCreateGuid(&Id));
+    std::wstring Temporary = Target + L"." + ::FromGuid(Id) + L".tmp";
+    auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(Temporary.c_str()); });
+    winrt::file_handle File(::CreateFileW(Temporary.c_str(), GENERIC_WRITE, 0,
+        nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
+    if (!File) winrt::throw_last_error();
+
+    auto Write = [&](char const* Buffer, DWORD Length)
     {
-        winrt::throw_last_error();
+        DWORD Written = 0;
+        winrt::check_bool(::WriteFile(File.get(), Buffer, Length, &Written, nullptr));
+        if (Written != Length) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_WRITE_FAULT));
+    };
+    Write("\xEF\xBB\xBF", 3);
+    Write(Content.data(), static_cast<DWORD>(Content.size()));
+    winrt::check_bool(::FlushFileBuffers(File.get()));
+    File.close();
+
+    // ReplaceFile preserves the existing file's security descriptor. The temporary
+    // file lives beside the destination, so replacement never crosses volumes.
+    DWORD Attributes = ::GetFileAttributesW(Target.c_str());
+    if (Attributes != INVALID_FILE_ATTRIBUTES)
+    {
+        winrt::check_bool(::ReplaceFileW(Target.c_str(), Temporary.c_str(),
+            nullptr, 0, nullptr, nullptr));
     }
-
-    DWORD NumberOfBytesWritten = 0;
-
-    const std::string BOM = "\xEF\xBB\xBF";
-
-    winrt::check_bool(::MileWriteFile(
-        FileHandle.get(),
-        BOM.c_str(),
-        static_cast<DWORD>(BOM.size()),
-        &NumberOfBytesWritten));
-
-    winrt::check_bool(::MileWriteFile(
-        FileHandle.get(),
-        Content.c_str(),
-        static_cast<DWORD>(Content.size()),
-        &NumberOfBytesWritten));
+    else
+    {
+        DWORD Error = ::GetLastError();
+        if (Error != ERROR_FILE_NOT_FOUND) winrt::throw_hresult(HRESULT_FROM_WIN32(Error));
+        winrt::check_bool(::MoveFileExW(Temporary.c_str(), Target.c_str(), MOVEFILE_WRITE_THROUGH));
+    }
 }
 
 std::wstring GetAbsolutePath(

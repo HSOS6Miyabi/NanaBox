@@ -118,6 +118,35 @@ int WINAPI wWinMain(
                 Request["Settings"]["AssignmentRequest"]["test-device"] != 65535) return 2;
             Loaded.Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::Mirror;
             if (NanaBox::MakeHcsGpuModification(Loaded.Gpu)["Settings"]["AssignmentMode"] != "Mirror") return 3;
+            wchar_t Temp[MAX_PATH + 1]{};
+            DWORD Length = ::GetTempPathW(ARRAYSIZE(Temp), Temp);
+            if (!Length || Length >= ARRAYSIZE(Temp)) return 5;
+            GUID Id{};
+            winrt::check_hresult(::CoCreateGuid(&Id));
+            std::wstring File = std::wstring(Temp) + ::FromGuid(Id) + L".7b";
+            auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(File.c_str()); });
+            std::string Original = NanaBox::SerializeConfiguration(Config);
+            ::WriteAllTextToUtf8TextFile(File, Original);
+            auto Expected = ::ReadAllTextFromUtf8TextFile(File);
+            Config.Name = "Updated";
+            auto Updated = NanaBox::SerializeConfiguration(Config);
+            ::WriteAllTextToUtf8TextFile(File, Updated, &Expected);
+            bool Conflict = false;
+            try { ::WriteAllTextToUtf8TextFile(File, Original, &Expected); }
+            catch (winrt::hresult_error const& Error)
+            {
+                Conflict = Error.code() == HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
+            }
+            if (!Conflict || NanaBox::DeserializeConfiguration(::ReadAllTextFromUtf8TextFile(File)).Name != "Updated") return 6;
+            // A reader that disallows deletion must leave the previous file intact.
+            winrt::file_handle Reader(::CreateFileW(File.c_str(), GENERIC_READ, FILE_SHARE_READ,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+            if (!Reader) return 7;
+            bool Rejected = false;
+            try { ::WriteAllTextToUtf8TextFile(File, Original); }
+            catch (winrt::hresult_error const&) { Rejected = true; }
+            Reader.close();
+            if (!Rejected || NanaBox::DeserializeConfiguration(::ReadAllTextFromUtf8TextFile(File)).Name != "Updated") return 8;
             return 0;
         }
         catch (...) { return 4; }

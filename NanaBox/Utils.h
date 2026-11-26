@@ -29,7 +29,8 @@ std::string ReadAllTextFromUtf8TextFile(
 
 void WriteAllTextToUtf8TextFile(
     std::wstring const& Path,
-    std::string& Content);
+    std::string const& Content,
+    std::string const* ExpectedContent = nullptr);
 
 std::wstring GetAbsolutePath(
     std::wstring const& FileName);

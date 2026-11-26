@@ -147,6 +147,7 @@ namespace winrt::NanaBox::implementation
         bool m_DiskOperationRunning = false;
         HWND m_WindowHandle = nullptr;
         std::wstring m_ConfigurationFilePath;
+        std::string m_LoadedConfigurationContent;
         NanaBox::VirtualMachineConfiguration m_Configuration;
         NanaBox::MainWindow* m_MainWindow = nullptr;
         winrt::weak_ref<NanaBox::RdpClient> m_ApplyClient;
