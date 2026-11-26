@@ -16,6 +16,7 @@
 
 #include "App.h"
 #include "MainWindow.h"
+#include "NetworkReconciliation.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include <shellapi.h>
@@ -123,7 +124,7 @@ int WINAPI wWinMain(
             if (!Length || Length >= ARRAYSIZE(Temp)) return 5;
             GUID Id{};
             winrt::check_hresult(::CoCreateGuid(&Id));
-            std::wstring File = std::wstring(Temp) + ::FromGuid(Id) + L".7b";
+            std::wstring File = std::wstring(Temp) + ::FromGuid(Id).c_str() + L".7b";
             auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(File.c_str()); });
             std::string Original = NanaBox::SerializeConfiguration(Config);
             ::WriteAllTextToUtf8TextFile(File, Original);
@@ -147,6 +148,45 @@ int WINAPI wWinMain(
             catch (winrt::hresult_error const&) { Rejected = true; }
             Reader.close();
             if (!Rejected || NanaBox::DeserializeConfiguration(::ReadAllTextFromUtf8TextFile(File)).Name != "Updated") return 8;
+            // Exercise the production reconciliation algorithm without modifying the host.
+            auto Before = Adapter;
+            Before.EndpointId = "a";
+            auto After = Before;
+            After.MacAddress = "00-15-5D-12-34-56";
+            unsigned Adds = 0, Errors = 0;
+            auto Report = [&](auto const&, char const*) { ++Errors; };
+            auto Add = [&](auto& Value) { ++Adds; Value.Connected = true; };
+            auto FailedRemoval = [&](auto&) { throw std::runtime_error("HCS removal failed"); };
+            auto Result = NanaBox::ReconcileNetworkAdapters(
+                std::vector{Before}, std::vector{After}, FailedRemoval, Add, Report);
+            if (Adds || Errors != 1 || Result.size() != 1 ||
+                !Result[0].Connected || Result[0].MacAddress != Before.MacAddress) return 19;
+            auto FailedCleanup = [&](auto& Value) { Value.Connected = false; throw std::runtime_error("HCN deletion failed"); };
+            Result = NanaBox::ReconcileNetworkAdapters(
+                std::vector{Before}, std::vector{After}, FailedCleanup, Add, Report);
+            if (Adds || Errors != 2 || Result.size() != 1 || Result[0].Connected) return 20;
+            auto Remove = [](auto& Value) { Value.Connected = false; };
+            Result = NanaBox::ReconcileNetworkAdapters(
+                std::vector{Before}, std::vector{After}, Remove, Add, Report);
+            if (Adds != 1 || Errors != 2 || Result.size() != 1 ||
+                !Result[0].Connected || Result[0].MacAddress != After.MacAddress) return 21;
+            auto FailedAdd = [](auto&) { throw std::runtime_error("HCS attachment failed"); };
+            Result = NanaBox::ReconcileNetworkAdapters(
+                std::vector{Before}, std::vector{After}, Remove, FailedAdd, Report);
+            if (Errors != 3 || Result.size() != 1 || Result[0].Connected) return 22;
+            auto DifferentNetwork = Before;
+            DifferentNetwork.NetworkId = "different";
+            if (NanaBox::SameNetworkAdapter(Before, DifferentNetwork)) return 23;
+            if (!NanaBox::IsEndpointOwnedBy(LR"({"Owner":"SelfTest"})", "SelfTest") ||
+                NanaBox::IsEndpointOwnedBy(LR"({"Owner":"Another"})", "SelfTest") ||
+                NanaBox::IsEndpointOwnedBy(LR"({})", "SelfTest")) return 24;
+            std::vector Duplicate{Before, Before};
+            bool RejectedDuplicate = false;
+            auto EndpointKey = winrt::to_string(::FromGuid(winrt::guid("85c8668e-36fe-447f-aae0-ba159a0142a7")));
+            for (auto& Value : Duplicate) Value.EndpointId = EndpointKey;
+            try { NanaBox::NormalizeNetworkAdapterIds(Duplicate); }
+            catch (winrt::hresult_error const&) { RejectedDuplicate = true; }
+            if (!RejectedDuplicate) return 25;
             return 0;
         }
         catch (...) { return 4; }

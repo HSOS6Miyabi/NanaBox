@@ -41,7 +41,10 @@ namespace NanaBox
         NetworkAdapterConfiguration& Configuration);
 
     void ComputeNetworkDeleteEndpoint(
-        NetworkAdapterConfiguration& Configuration);
+        std::string const& Owner,
+        NetworkAdapterConfiguration const& Configuration);
+
+    void NormalizeNetworkAdapterIds(std::vector<NetworkAdapterConfiguration>& Adapters);
 
     void ComputeSystemUpdateMemorySize(
         winrt::com_ptr<ComputeSystem> const& Instance,

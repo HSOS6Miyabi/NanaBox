@@ -17,6 +17,7 @@
 #include <NanaBox.Configuration.Parser.h>
 
 #include <Shlwapi.h>
+#include <set>
 
 namespace NanaBox
 {
@@ -712,25 +713,44 @@ void NanaBox::ComputeNetworkCreateEndpoint(
         EndpointId,
         winrt::to_hstring(Settings.dump()));
 
-    nlohmann::json Properties = nlohmann::json::parse(winrt::to_string(
-        NanaBox::HcnQueryEndpointProperties(EndpointHandle)));
-    Configuration.MacAddress = Properties["MacAddress"];
-}
-
-void NanaBox::ComputeNetworkDeleteEndpoint(
-    NanaBox::NetworkAdapterConfiguration& Configuration)
-{
     try
     {
-        if (!Configuration.EndpointId.empty())
-        {
-            GUID EndpointId = winrt::guid(Configuration.EndpointId);
-            NanaBox::HcnDeleteEndpoint(EndpointId);
-        }
+        nlohmann::json Properties = nlohmann::json::parse(winrt::to_string(
+            NanaBox::HcnQueryEndpointProperties(EndpointHandle)));
+        Configuration.MacAddress = Properties.at("MacAddress").get<std::string>();
     }
     catch (...)
     {
+        // This invocation created the endpoint and therefore owns its lifetime.
+        EndpointHandle.close();
+        try { NanaBox::HcnDeleteEndpoint(EndpointId); } catch (...) {}
+        throw;
+    }
+}
 
+void NanaBox::ComputeNetworkDeleteEndpoint(
+    std::string const& Owner,
+    NanaBox::NetworkAdapterConfiguration const& Configuration)
+{
+    if (!Configuration.EndpointId.empty())
+        NanaBox::HcnDeleteOwnedEndpoint(winrt::guid(Configuration.EndpointId), Owner);
+}
+
+void NanaBox::NormalizeNetworkAdapterIds(std::vector<NetworkAdapterConfiguration>& Adapters)
+{
+    std::set<std::string> Ids;
+    for (auto& Adapter : Adapters)
+    {
+        GUID Id{};
+        if (Adapter.EndpointId.empty())
+            winrt::check_hresult(::CoCreateGuid(&Id));
+        else
+            Id = winrt::guid(Adapter.EndpointId);
+        if (::IsEqualGUID(Id, GUID_NULL))
+            throw winrt::hresult_invalid_argument(L"Network endpoint ID must not be zero.");
+        Adapter.EndpointId = winrt::to_string(::FromGuid(Id));
+        if (!Ids.insert(Adapter.EndpointId).second)
+            throw winrt::hresult_invalid_argument(L"Duplicate network endpoint ID.");
     }
 }
 

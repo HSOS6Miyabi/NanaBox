@@ -224,6 +224,11 @@ namespace NanaBox
     void HcnDeleteEndpoint(
         winrt::guid const& EndpointId);
 
+    // Return an empty handle if the endpoint does not exist; reject foreign ownership.
+    HcnEndpoint HcnOpenOwnedEndpoint(winrt::guid const& EndpointId, std::string const& Owner);
+    void HcnDeleteOwnedEndpoint(winrt::guid const& EndpointId, std::string const& Owner);
+    bool IsEndpointOwnedBy(winrt::hstring const& Properties, std::string const& Owner);
+
     winrt::hstring HcnQueryEndpointProperties(
         HcnEndpoint const& EndpointHandle,
         winrt::hstring const& Query = winrt::hstring());

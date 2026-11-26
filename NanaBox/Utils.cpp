@@ -226,7 +226,7 @@ void WriteAllTextToUtf8TextFile(
 
     GUID Id{};
     winrt::check_hresult(::CoCreateGuid(&Id));
-    std::wstring Temporary = Target + L"." + ::FromGuid(Id) + L".tmp";
+    std::wstring Temporary = Target + L"." + ::FromGuid(Id).c_str() + L".tmp";
     auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(Temporary.c_str()); });
     winrt::file_handle File(::CreateFileW(Temporary.c_str(), GENERIC_WRITE, 0,
         nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));

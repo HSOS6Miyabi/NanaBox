@@ -396,6 +396,39 @@ void NanaBox::HcnDeleteEndpoint(
         RawErrorRecord);
 }
 
+bool NanaBox::IsEndpointOwnedBy(winrt::hstring const& Properties, std::string const& Owner)
+{
+    auto Data = nlohmann::json::parse(winrt::to_string(Properties));
+    auto Field = Data.find("Owner");
+    return !Owner.empty() && Field != Data.end() && Field->is_string() &&
+        Field->get<std::string>() == Owner;
+}
+
+NanaBox::HcnEndpoint NanaBox::HcnOpenOwnedEndpoint(
+    winrt::guid const& EndpointId, std::string const& Owner)
+{
+    HcnEndpoint Endpoint;
+    winrt::cotaskmem_string Error;
+    HRESULT Status = ::HcnOpenEndpoint(EndpointId, Endpoint.put(), Error.put());
+    if (Status == HCN_E_ENDPOINT_NOT_FOUND) return {};
+    ::CheckHcnCall(Status, Error);
+    if (!NanaBox::IsEndpointOwnedBy(NanaBox::HcnQueryEndpointProperties(Endpoint), Owner))
+        throw winrt::hresult_error(E_ACCESSDENIED, L"The network endpoint belongs to another owner.");
+    return Endpoint;
+}
+
+void NanaBox::HcnDeleteOwnedEndpoint(winrt::guid const& EndpointId, std::string const& Owner)
+{
+    auto Endpoint = NanaBox::HcnOpenOwnedEndpoint(EndpointId, Owner);
+    if (!Endpoint) return;
+    Endpoint.close();
+    try { NanaBox::HcnDeleteEndpoint(EndpointId); }
+    catch (winrt::hresult_error const& Error)
+    {
+        if (Error.code() != HCN_E_ENDPOINT_NOT_FOUND) throw;
+    }
+}
+
 winrt::hstring NanaBox::HcnQueryEndpointProperties(
     NanaBox::HcnEndpoint const& EndpointHandle,
     winrt::hstring const& Query)

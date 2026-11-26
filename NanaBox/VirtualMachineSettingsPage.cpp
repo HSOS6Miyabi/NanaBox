@@ -826,7 +826,7 @@ namespace winrt::NanaBox::implementation
                     winrt::to_string(Row.SuggestedSwitchName.Text());
                 Configuration.SuggestedSwitchSubnet =
                     winrt::to_string(Row.SuggestedSwitchSubnet.Text());
-                if (this->m_MainWindow && Configuration.EndpointId.empty())
+                if (Configuration.EndpointId.empty())
                 {
                     GUID EndpointId;
                     winrt::check_hresult(::CoCreateGuid(&EndpointId));
@@ -837,6 +837,7 @@ namespace winrt::NanaBox::implementation
                 {
                     winrt::guid EndpointId(Configuration.EndpointId);
                     std::string Key = winrt::to_string(::FromGuid(EndpointId));
+                    Configuration.EndpointId = Key;
                     if (!EndpointIds.insert(Key).second)
                     {
                         ::InvalidSetting(::GetSettingsString(

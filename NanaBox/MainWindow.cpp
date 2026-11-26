@@ -16,6 +16,7 @@
 #include <windows.ui.xaml.hosting.desktopwindowxamlsource.h>
 
 #include "Utils.h"
+#include "NetworkReconciliation.h"
 
 #include <map>
 #include <optional>
@@ -692,6 +693,14 @@ void NanaBox::MainWindow::OnDestroy()
 {
     this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
     this->m_MirroredNetworking.reset();
+    if (!this->m_VirtualMachineRunning)
+    {
+        this->m_VirtualMachine = nullptr;
+        for (auto const& Adapter : this->m_Configuration.NetworkAdapters)
+        {
+            try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); } catch (...) {}
+        }
+    }
     ::SetEvent(this->m_RecordingStop.get());
     ::SetEvent(this->m_ScreenshotStop.get());
     HANDLE Threads[2] = {};
@@ -736,21 +745,12 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     winrt::hstring HcsVmId = winrt::to_hstring(this->m_Configuration.Name);
 
     {
-        bool VirtualMachineExisted = true;
-        try
-        {
-            winrt::make_self<NanaBox::ComputeSystem>(HcsVmId);
-        }
-        catch (...)
-        {
-            VirtualMachineExisted = false;
-        }
-
-        if (VirtualMachineExisted)
-        {
-            winrt::throw_hresult(HCS_E_SYSTEM_ALREADY_EXISTS);
-        }
+        NanaBox::HcsSystem Existing;
+        HRESULT Status = ::HcsOpenComputeSystem(HcsVmId.c_str(), GENERIC_READ, Existing.put());
+        if (SUCCEEDED(Status)) winrt::throw_hresult(HCS_E_SYSTEM_ALREADY_EXISTS);
+        if (Status != HCS_E_SYSTEM_NOT_FOUND) winrt::check_hresult(Status);
     }
+    NanaBox::NormalizeNetworkAdapterIds(this->m_Configuration.NetworkAdapters);
 
     for (NanaBox::ScsiDeviceConfiguration& ScsiDevice
         : this->m_Configuration.ScsiDevices)
@@ -808,27 +808,34 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         }
     }
 
-    if (!this->m_Configuration.NetworkAdapters.empty())
+    // Validate every existing endpoint before modifying any host resource.
+    for (auto const& Adapter : this->m_Configuration.NetworkAdapters)
+        (void)NanaBox::HcnOpenOwnedEndpoint(winrt::guid(Adapter.EndpointId), this->m_Configuration.Name);
+
+    std::vector<NanaBox::NetworkAdapterConfiguration> CreatedEndpoints;
+    bool Initialized = false;
+    auto Rollback = Mile::ScopeExitTaskHandler([&]()
     {
-        for (NanaBox::NetworkAdapterConfiguration& NetworkAdapter
-            : this->m_Configuration.NetworkAdapters)
+        if (Initialized) return;
+        this->m_MirroredNetworking.reset();
+        if (this->m_VirtualMachine)
         {
-            NanaBox::ComputeNetworkDeleteEndpoint(NetworkAdapter);
-            if (NetworkAdapter.Connected)
-            {
-                try
-                {
-                    NanaBox::ComputeNetworkCreateEndpoint(
-                        this->m_Configuration.Name,
-                        NetworkAdapter);
-                }
-                catch (...)
-                {
-                    for (auto& Adapter : this->m_Configuration.NetworkAdapters)
-                        NanaBox::ComputeNetworkDeleteEndpoint(Adapter);
-                    throw;
-                }
-            }
+            try { this->m_VirtualMachine->Terminate(); } catch (...) {}
+            this->m_VirtualMachine = nullptr;
+        }
+        this->m_VirtualMachineRunning = false;
+        for (auto const& Adapter : CreatedEndpoints)
+        {
+            try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); } catch (...) {}
+        }
+    });
+    for (auto& Adapter : this->m_Configuration.NetworkAdapters)
+    {
+        NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter);
+        if (Adapter.Connected)
+        {
+            NanaBox::ComputeNetworkCreateEndpoint(this->m_Configuration.Name, Adapter);
+            CreatedEndpoints.push_back(Adapter);
         }
     }
 
@@ -899,6 +906,7 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
             "%s - NanaBox",
             this->m_Configuration.Name.c_str()));
     this->SetWindowTextW(this->m_WindowTitle.c_str());
+    Initialized = true;
 }
 
 void NanaBox::MainWindow::TryReloadVirtualMachine()
@@ -909,6 +917,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
     NanaBox::VirtualMachineConfiguration Configuration =
         NanaBox::DeserializeConfiguration(ConfigurationFileContent);
 
+    NanaBox::NormalizeNetworkAdapterIds(Configuration.NetworkAdapters);
     if (this->m_Configuration.MemorySize != Configuration.MemorySize)
     {
         try
@@ -1012,117 +1021,41 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
     }
 
     {
-        using NetworkAdapterMapType =
-            std::map<std::string, NanaBox::NetworkAdapterConfiguration>;
-
-        NetworkAdapterMapType PreviousList;
-        NetworkAdapterMapType CurrentList;
-        std::vector<NanaBox::NetworkAdapterConfiguration> KeepList;
-        std::vector<NanaBox::NetworkAdapterConfiguration> AddList;
-        std::vector<NanaBox::NetworkAdapterConfiguration> RemoveList;
-        std::vector<NanaBox::NetworkAdapterConfiguration> FinalList;
-
-        for (NanaBox::NetworkAdapterConfiguration& Previous
-            : this->m_Configuration.NetworkAdapters)
+        auto Report = [&](NanaBox::NetworkAdapterConfiguration const& Adapter, char const* Operation)
         {
-            PreviousList.insert(std::pair(Previous.EndpointId, Previous));
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Current
-            : Configuration.NetworkAdapters)
-        {
-            CurrentList.insert(std::pair(Current.EndpointId, Current));
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Previous
-            : this->m_Configuration.NetworkAdapters)
-        {
-            NetworkAdapterMapType::iterator Current =
-                CurrentList.find(Previous.EndpointId);
-
-            if (CurrentList.end() == Current)
+            auto Error = Mile::WinRT::ToHResultError();
+            auto Message = winrt::to_hstring(std::string(Operation) + " network adapter " + Adapter.EndpointId + ": ");
+            ::ShowErrorMessageDialog(this->m_hWnd, winrt::hresult_error(Error.code(),
+                winrt::hstring(std::wstring(Message.c_str()) + Error.message().c_str())));
+        };
+        this->m_Configuration.NetworkAdapters = NanaBox::ReconcileNetworkAdapters(
+            this->m_Configuration.NetworkAdapters, Configuration.NetworkAdapters,
+            [&](NanaBox::NetworkAdapterConfiguration& Adapter)
             {
-                RemoveList.push_back(Previous);
-            }
-            else
-            {
-                if (Previous.Connected != Current->second.Connected ||
-                    0 != ::_stricmp(
-                        Previous.MacAddress.c_str(),
-                        Current->second.MacAddress.c_str()))
+                if (Adapter.Connected)
                 {
-                    if (Previous.Connected)
-                    {
-                        RemoveList.push_back(Previous);
-                    }
-                    AddList.push_back(Current->second);
+                    NanaBox::ComputeSystemRemoveNetworkAdapter(this->m_VirtualMachine, Adapter);
+                    Adapter.Connected = false;
                 }
-                else
+                NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter);
+            },
+            [&](NanaBox::NetworkAdapterConfiguration& Adapter)
+            {
+                NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter);
+                NanaBox::ComputeNetworkCreateEndpoint(this->m_Configuration.Name, Adapter);
+                try
                 {
-                    KeepList.push_back(Previous);
+                    Adapter.Connected = true;
+                    NanaBox::ComputeSystemAddNetworkAdapter(this->m_VirtualMachine, Adapter);
                 }
-            }
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Current
-            : Configuration.NetworkAdapters)
-        {
-            if (PreviousList.end() == PreviousList.find(Current.EndpointId))
-            {
-                AddList.push_back(Current);
-            }
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Current : KeepList)
-        {
-            FinalList.push_back(Current);
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Current : RemoveList)
-        {
-            try
-            {
-                if (Current.Connected)
+                catch (...)
                 {
-                    NanaBox::ComputeSystemRemoveNetworkAdapter(
-                        this->m_VirtualMachine,
-                        Current);
-                    NanaBox::ComputeNetworkDeleteEndpoint(Current);
+                    Adapter.Connected = false;
+                    try { NanaBox::ComputeNetworkDeleteEndpoint(this->m_Configuration.Name, Adapter); } catch (...) {}
+                    throw;
                 }
-            }
-            catch (...)
-            {
-                FinalList.push_back(Current);
-            }
-        }
-
-        for (NanaBox::NetworkAdapterConfiguration& Current : AddList)
-        {
-            try
-            {
-                NanaBox::ComputeNetworkDeleteEndpoint(Current);
-                if (Current.Connected)
-                {
-                    NanaBox::ComputeNetworkCreateEndpoint(
-                        this->m_Configuration.Name,
-                        Current);
-                    NanaBox::ComputeSystemAddNetworkAdapter(
-                        this->m_VirtualMachine,
-                        Current);
-                }
-                FinalList.push_back(Current);
-            }
-            catch (...)
-            {
-                auto Error = Mile::WinRT::ToHResultError();
-                NanaBox::ComputeNetworkDeleteEndpoint(Current);
-                Current.Connected = false;
-                FinalList.push_back(Current);
-                ::ShowErrorMessageDialog(this->m_hWnd, Error);
-            }
-        }
-
-        this->m_Configuration.NetworkAdapters = FinalList;
+            },
+            Report);
     }
 
     {
