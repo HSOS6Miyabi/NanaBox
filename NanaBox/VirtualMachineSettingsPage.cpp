@@ -1537,8 +1537,8 @@ namespace winrt::NanaBox::implementation
             return ::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"HostManagementConfirm").c_str(),
                 L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES;
         };
-        auto Run = [&](winrt::hstring const& Name, Json const& Data = Json::object()) {
-            return Json::parse(winrt::to_string(::NanaBox::RunHostManagement(Name, winrt::to_hstring(Data.dump()))));
+        auto Run = [](winrt::hstring const& Command, nlohmann::json const& Arguments) -> nlohmann::json {
+            return nlohmann::json::parse(winrt::to_string(::NanaBox::RunHostManagement(Command, winrt::to_hstring(Arguments.dump()))));
         };
         auto Inspect = [&]() {
             auto Result = Run(L"FirewallInspect", {{"Id", Selected(this->FirewallCreatorsComboBox())}});
@@ -1549,13 +1549,13 @@ namespace winrt::NanaBox::implementation
         {
             if (Action == L"SwitchList")
             {
-                auto Result = Run(Action);
+                auto Result = Run(Action, Json::object());
                 Fill(this->ManagedSwitchesComboBox(), Result, "Id");
                 this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
             }
             else if (Action == L"AdapterList")
             {
-                auto Result = Run(Action);
+                auto Result = Run(Action, Json::object());
                 Fill(this->PhysicalAdaptersComboBox(), Result, "Name");
                 this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
             }
@@ -1565,7 +1565,7 @@ namespace winrt::NanaBox::implementation
                 if (Type == "External" && !Confirm()) return;
                 auto Result = Run(Action, {{"Name", winrt::to_string(this->ManagedSwitchNameTextBox().Text())},
                     {"Type", Type}, {"Adapter", Type == "External" ? Selected(this->PhysicalAdaptersComboBox()) : ""}});
-                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList"), "Id");
+                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList", Json::object()), "Id");
                 this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
             }
             else if (Action == L"SwitchDelete")
@@ -1573,7 +1573,7 @@ namespace winrt::NanaBox::implementation
                 auto Id = Selected(this->ManagedSwitchesComboBox());
                 if (!Confirm()) return;
                 auto Result = Run(Action, {{"Id", Id}});
-                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList"), "Id");
+                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList", Json::object()), "Id");
                 this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
             }
             else if (Action == L"CreatorList" || Action == L"CreatorRegister")
@@ -1581,7 +1581,7 @@ namespace winrt::NanaBox::implementation
                 Json Registered;
                 if (Action == L"CreatorRegister")
                     Registered = Run(Action, {{"Name", winrt::to_string(this->FirewallCreatorNameTextBox().Text())}});
-                auto Result = Run(L"CreatorList");
+                auto Result = Run(L"CreatorList", Json::object());
                 Fill(this->FirewallCreatorsComboBox(), Result, "Id");
                 if (!Registered.is_null())
                 {
