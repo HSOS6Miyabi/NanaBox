@@ -145,6 +145,8 @@ namespace NanaBox
 
         void StartCapture(_In_ bool Recording);
 
+        void SaveAndCloseVirtualMachine();
+
         void InitializeVirtualMachine();
 
         void TryReloadVirtualMachine();

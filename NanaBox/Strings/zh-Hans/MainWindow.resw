@@ -229,4 +229,22 @@
     <value>虚拟机设置</value>
     <comment>Virtual Machine Settings</comment>
   </data>
+  <data name="PowerMenu.AutomationProperties.Name" xml:space="preserve">
+    <value>电源选项</value>
+  </data>
+  <data name="PowerMenu.ToolTipService.ToolTip" xml:space="preserve">
+    <value>电源选项</value>
+  </data>
+  <data name="ShutdownAction.Text" xml:space="preserve">
+    <value>正常关机</value>
+  </data>
+  <data name="SaveAction.Text" xml:space="preserve">
+    <value>保存状态并关闭</value>
+  </data>
+  <data name="PowerOffAction.Text" xml:space="preserve">
+    <value>强制关闭电源</value>
+  </data>
+  <data name="ForcePowerOffConfirm" xml:space="preserve">
+    <value>是否强制关闭虚拟机电源？客户机未保存的数据可能丢失。</value>
+  </data>
 </root>

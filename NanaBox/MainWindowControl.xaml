@@ -10,8 +10,8 @@
   mc:Ignorable="d">
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="auto" />
       <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="0" />
       <ColumnDefinition Width="auto" />
     </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
@@ -20,12 +20,12 @@
     </Grid.RowDefinitions>
     <CommandBar
       Grid.Column="0"
-      HorizontalAlignment="Left"
+      HorizontalAlignment="Stretch"
       HorizontalContentAlignment="Stretch"
       VerticalContentAlignment="Center"
       Background="Transparent"
       DefaultLabelPosition="Collapsed"
-      IsDynamicOverflowEnabled="False"
+      IsDynamicOverflowEnabled="True"
       IsOpen="False">
       <AppBarToggleButton
         x:Name="EnhancedSessionButton"
@@ -61,6 +61,16 @@
         Icon="Refresh"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Restart Virtual Machine]" />
+      <AppBarButton Icon="Stop" Width="48" LabelPosition="Collapsed"
+        x:Uid="/MainWindow/PowerMenu" AutomationProperties.Name="Power options" ToolTipService.ToolTip="Power options">
+        <AppBarButton.Flyout>
+          <MenuFlyout>
+            <MenuFlyoutItem x:Uid="/MainWindow/ShutdownAction" Text="Shut down guest" Tag="Shutdown" Click="PowerActionClick" />
+            <MenuFlyoutItem x:Uid="/MainWindow/SaveAction" Text="Save state and close" Tag="Save" Click="PowerActionClick" />
+            <MenuFlyoutItem x:Uid="/MainWindow/PowerOffAction" Text="Force power off" Tag="PowerOff" Click="PowerActionClick" />
+          </MenuFlyout>
+        </AppBarButton.Flyout>
+      </AppBarButton>
       <AppBarSeparator />
       <AppBarButton
         x:Uid="/MainWindow/VirtualMachineSettingsButton"

@@ -169,6 +169,25 @@ void NanaBox::MainWindow::OnCommand(
 
         break;
     }
+    case NanaBox::MainWindowCommands::ShutdownVirtualMachine:
+    case NanaBox::MainWindowCommands::PowerOffVirtualMachine:
+    case NanaBox::MainWindowCommands::SaveVirtualMachine:
+    {
+        if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine) break;
+        try
+        {
+            if (nID == NanaBox::MainWindowCommands::ShutdownVirtualMachine)
+                this->m_VirtualMachine->Shutdown();
+            else if (nID == NanaBox::MainWindowCommands::SaveVirtualMachine)
+                this->SaveAndCloseVirtualMachine();
+            else if (::MessageBoxW(this->m_hWnd,
+                Mile::WinRT::GetLocalizedString(L"MainWindow/ForcePowerOffConfirm").c_str(),
+                L"NanaBox", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES)
+                this->m_VirtualMachine->Terminate();
+        }
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
+        break;
+    }
     case NanaBox::MainWindowCommands::VirtualMachineSettings:
     {
         ::ShowVirtualMachineSettingsWindow(
@@ -575,61 +594,8 @@ void NanaBox::MainWindow::OnClose()
     {
     case winrt::NanaBox::ExitConfirmationStatus::Suspend:
     {
-        // Temporarily disable the GPU-PV settings because virtual machine
-        // doen't support save the state when GPU-PV is enabled.
-        NanaBox::GpuConfiguration Gpu;
-        Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::Disabled;
-        NanaBox::ComputeSystemUpdateGpu(this->m_VirtualMachine, Gpu);
-
-        this->m_VirtualMachine->Pause();
-
-        if (this->m_Configuration.SaveStateFile.empty())
-        {
-            this->m_Configuration.SaveStateFile =
-                this->m_Configuration.Name + ".SaveState.vmrs";
-        }
-
-        std::wstring SaveStateFile = ::GetAbsolutePath(Mile::ToWideString(
-            CP_UTF8, this->m_Configuration.SaveStateFile));
-
-        ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
-
-        nlohmann::json Options;
-        Options["SaveType"] = "ToFile";
-        Options["SaveStateFilePath"] = winrt::to_string(SaveStateFile.c_str());
-
-        try
-        {
-            this->m_VirtualMachine->Save(winrt::to_hstring(Options.dump()));
-        }
-        catch (winrt::hresult_error const& ex)
-        {
-            ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
-
-            this->m_Configuration.SaveStateFile.clear();
-
-            ::ShowErrorMessageDialog(ex);
-        }
-
-        if (this->m_Configuration.SaveStateFile.empty())
-        {
-            this->m_VirtualMachine->Resume();
-
-            NanaBox::ComputeSystemUpdateGpu(
-                this->m_VirtualMachine,
-                this->m_Configuration.Gpu);
-        }
-        else
-        {
-            this->m_VirtualMachine->Terminate();
-
-            std::string ConfigurationFileContent =
-                NanaBox::SerializeConfiguration(this->m_Configuration);
-            ::WriteAllTextToUtf8TextFile(
-                this->m_ConfigurationFilePath,
-                ConfigurationFileContent);
-        }
-
+        try { this->SaveAndCloseVirtualMachine(); }
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
         break;
     }
     case winrt::NanaBox::ExitConfirmationStatus::PowerOff:
@@ -648,6 +614,65 @@ void NanaBox::MainWindow::OnClose()
     }
     default:
         break;
+    }
+}
+
+void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
+{
+    if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine) return;
+    // Temporarily disable the GPU-PV settings because virtual machine
+    // doen't support save the state when GPU-PV is enabled.
+    NanaBox::GpuConfiguration Gpu;
+    Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::Disabled;
+    NanaBox::ComputeSystemUpdateGpu(this->m_VirtualMachine, Gpu);
+
+    this->m_VirtualMachine->Pause();
+
+    if (this->m_Configuration.SaveStateFile.empty())
+    {
+        this->m_Configuration.SaveStateFile =
+            this->m_Configuration.Name + ".SaveState.vmrs";
+    }
+
+    std::wstring SaveStateFile = ::GetAbsolutePath(Mile::ToWideString(
+        CP_UTF8, this->m_Configuration.SaveStateFile));
+
+    ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
+
+    nlohmann::json Options;
+    Options["SaveType"] = "ToFile";
+    Options["SaveStateFilePath"] = winrt::to_string(SaveStateFile.c_str());
+
+    try
+    {
+        this->m_VirtualMachine->Save(winrt::to_hstring(Options.dump()));
+    }
+    catch (winrt::hresult_error const& ex)
+    {
+        ::MileDeleteFileIgnoreReadonlyAttribute(SaveStateFile.c_str());
+
+        this->m_Configuration.SaveStateFile.clear();
+
+        ::ShowErrorMessageDialog(ex);
+    }
+
+    if (this->m_Configuration.SaveStateFile.empty())
+    {
+        this->m_VirtualMachine->Resume();
+
+        NanaBox::ComputeSystemUpdateGpu(
+            this->m_VirtualMachine,
+            this->m_Configuration.Gpu);
+    }
+    else
+    {
+        this->m_VirtualMachine->Terminate();
+
+        std::string ConfigurationFileContent =
+            NanaBox::SerializeConfiguration(this->m_Configuration);
+        ::WriteAllTextToUtf8TextFile(
+            this->m_ConfigurationFilePath,
+            ConfigurationFileContent);
     }
 }
 

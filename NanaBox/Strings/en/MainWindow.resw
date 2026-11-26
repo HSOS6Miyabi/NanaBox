@@ -229,4 +229,22 @@
     <value>Virtual Machine Settings</value>
     <comment>Virtual Machine Settings</comment>
   </data>
+  <data name="PowerMenu.AutomationProperties.Name" xml:space="preserve">
+    <value>Power options</value>
+  </data>
+  <data name="PowerMenu.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Power options</value>
+  </data>
+  <data name="ShutdownAction.Text" xml:space="preserve">
+    <value>Shut down guest</value>
+  </data>
+  <data name="SaveAction.Text" xml:space="preserve">
+    <value>Save state and close</value>
+  </data>
+  <data name="PowerOffAction.Text" xml:space="preserve">
+    <value>Force power off</value>
+  </data>
+  <data name="ForcePowerOffConfirm" xml:space="preserve">
+    <value>Force power off the virtual machine? Unsaved guest data may be lost.</value>
+  </data>
 </root>

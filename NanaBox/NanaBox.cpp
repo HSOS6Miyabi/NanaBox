@@ -87,6 +87,38 @@ int WINAPI wWinMain(
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+
+    if (0 == ::_wcsicmp(lpCmdLine, L"--self-test"))
+    {
+        try
+        {
+            NanaBox::VirtualMachineConfiguration Config;
+            Config.Name = "SelfTest";
+            Config.GuestType = NanaBox::GuestType::Windows;
+            Config.ProcessorCount = 2;
+            Config.MemorySize = 2048;
+            NanaBox::NetworkAdapterConfiguration Adapter;
+            Adapter.Connected = true;
+            Adapter.NetworkId = "85c8668e-36fe-447f-aae0-ba159a0142a7";
+            Adapter.FirewallCreatorId = "06b34f94-82ae-4ad9-9f35-3a2a7da8508c";
+            Config.NetworkAdapters.push_back(Adapter);
+            Config.Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::List;
+            Config.Gpu.SelectedDevices["test-device"] = 65535;
+            auto Loaded = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Config));
+            if (Loaded.NetworkAdapters.size() != 1 ||
+                Loaded.NetworkAdapters[0].NetworkId != Adapter.NetworkId ||
+                Loaded.NetworkAdapters[0].FirewallCreatorId != Adapter.FirewallCreatorId ||
+                Loaded.Gpu.SelectedDevices.at("test-device") != 65535) return 1;
+            auto Request = NanaBox::MakeHcsGpuModification(Loaded.Gpu);
+            if (Request["Settings"]["AssignmentMode"] != "List" ||
+                Request["Settings"]["AssignmentRequest"]["test-device"] != 65535) return 2;
+            Loaded.Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::Mirror;
+            if (NanaBox::MakeHcsGpuModification(Loaded.Gpu)["Settings"]["AssignmentMode"] != "Mirror") return 3;
+            return 0;
+        }
+        catch (...) { return 4; }
+    }
+
     ::SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
 
     winrt::init_apartment(winrt::apartment_type::single_threaded);

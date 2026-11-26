@@ -39,6 +39,9 @@ namespace NanaBox
             ResizeVirtualHardDisk = 0x100E,
             CompactVirtualHardDisk = 0x100F,
             About = 0x1010,
+            ShutdownVirtualMachine = 0x1011,
+            PowerOffVirtualMachine = 0x1012,
+            SaveVirtualMachine = 0x1013,
         };
     }
 }
@@ -74,6 +77,8 @@ namespace winrt::NanaBox::implementation
         void PauseVirtualMachineButtonClick(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
+
+        void PowerActionClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
 
         void RestartVirtualMachineButtonClick(
             winrt::IInspectable const& sender,

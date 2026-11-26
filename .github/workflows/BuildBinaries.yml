@@ -24,6 +24,12 @@ jobs:
       run: dotnet nuget locals all --clear
     - name: Build
       run: msbuild BuildAllTargets.proj
+    - name: Test configuration and HCS GPU requests
+      shell: pwsh
+      run: |
+        $exe = Resolve-Path 'Output\Binaries\Release\x64\NanaBox.exe'
+        $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
+        if ($process.ExitCode -ne 0) { throw "NanaBox self-test failed: $($process.ExitCode)" }
     - name: Prepare artifacts
       run: rm Output\Binaries\* -vb -Recurse -Force -Include *.exp, *.idb, *.ilk, *.iobj, *.ipdb, *.lastbuildstate, *.lib, *.obj, *.res, *.tlog
     - uses: actions/upload-artifact@v7

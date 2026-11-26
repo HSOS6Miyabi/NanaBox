@@ -125,6 +125,16 @@ namespace winrt::NanaBox::implementation
             0);
     }
 
+    void MainWindowControl::PowerActionClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        auto Action = winrt::unbox_value<winrt::hstring>(
+            Sender.as<winrt::Windows::UI::Xaml::Controls::MenuFlyoutItem>().Tag());
+        unsigned Command = NanaBox::MainWindowCommands::ShutdownVirtualMachine;
+        if (Action == L"PowerOff") Command = NanaBox::MainWindowCommands::PowerOffVirtualMachine;
+        else if (Action == L"Save") Command = NanaBox::MainWindowCommands::SaveVirtualMachine;
+        ::PostMessageW(this->m_WindowHandle, WM_COMMAND, MAKEWPARAM(Command, BN_CLICKED), 0);
+    }
+
     void MainWindowControl::RestartVirtualMachineButtonClick(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
