@@ -231,7 +231,10 @@ namespace
         If.InterfaceLuid = Luid;
         winrt::check_win32(::GetIfEntry2(&If));
         Snapshot Result;
-        Result.Interface = {{"Connected", If.OperStatus == IfOperStatusUp}, {"NlMtu", If.Mtu}, {"Mirrored", true}};
+        bool Connected = false, HasIpInterface = false;
+        bool DisableV4Default = false, DisableV6Default = false;
+        ULONG Mtu = If.Mtu;
+        Result.Interface = {{"Connected", false}, {"NlMtu", Mtu}, {"Mirrored", true}};
         for (auto Family : {AF_INET, AF_INET6})
         {
             MIB_IPINTERFACE_ROW IpInterface{};
@@ -239,9 +242,19 @@ namespace
             IpInterface.Family = static_cast<ADDRESS_FAMILY>(Family);
             IpInterface.InterfaceLuid = Luid;
             if (::GetIpInterfaceEntry(&IpInterface) == NO_ERROR)
+            {
+                HasIpInterface = true;
+                Connected = Connected || IpInterface.Connected != FALSE;
                 Result.Interface[Family == AF_INET ? "IPv4Metric" : "IPv6Metric"] = IpInterface.Metric;
+                if (IpInterface.Connected && IpInterface.NlMtu && IpInterface.NlMtu < Mtu) Mtu = IpInterface.NlMtu;
+                if (Family == AF_INET) DisableV4Default = IpInterface.DisableDefaultRoutes != FALSE;
+                else DisableV6Default = IpInterface.DisableDefaultRoutes != FALSE;
+            }
         }
-        if (If.OperStatus != IfOperStatusUp) return Result;
+        if (!HasIpInterface) Connected = If.OperStatus == IfOperStatusUp;
+        Result.Interface["Connected"] = Connected;
+        Result.Interface["NlMtu"] = Mtu;
+        if (!Connected) return Result;
         PMIB_UNICASTIPADDRESS_TABLE Addresses = nullptr;
         winrt::check_win32(::GetUnicastIpAddressTable(AF_UNSPEC, &Addresses));
         auto FreeAddresses = Mile::ScopeExitTaskHandler([&]() { ::FreeMibTable(Addresses); });
@@ -263,6 +276,9 @@ namespace
             auto const& Row = Routes->Table[i];
             if (Row.InterfaceLuid.Value != Luid.Value || Row.Loopback) continue;
             auto const& Prefix = Row.DestinationPrefix.Prefix;
+            if (Row.DestinationPrefix.PrefixLength == 0 &&
+                ((Prefix.si_family == AF_INET && DisableV4Default) ||
+                 (Prefix.si_family == AF_INET6 && DisableV6Default))) continue;
             auto Destination = AddressString(Prefix);
             auto Hop = AddressString(Row.NextHop);
             if (Destination.empty()) continue;
@@ -379,6 +395,7 @@ struct NanaBox::MirroredNetworking::Impl
     VirtualMachineConfiguration Configuration;
     HcsSystem Vm;
     HCN_GUESTNETWORKSERVICE Service = nullptr;
+    bool OwnsService = false;
     HMODULE Dependencies = nullptr;
     HMODULE NetworkModule = nullptr;
     GUID RpcId{};
@@ -419,7 +436,10 @@ struct NanaBox::MirroredNetworking::Impl
 
     void RequestRefresh() noexcept
     {
-        NetworkChanged.store(true);
+        {
+            std::lock_guard Lock(Mutex);
+            NetworkChanged.store(true);
+        }
         Wake.notify_all();
     }
 
@@ -483,7 +503,10 @@ struct NanaBox::MirroredNetworking::Impl
 
     void StopWorker()
     {
-        Stop = true;
+        {
+            std::lock_guard Lock(Mutex);
+            Stop = true;
+        }
         Wake.notify_all();
         if (Worker.joinable()) Worker.join();
     }
@@ -605,13 +628,13 @@ struct NanaBox::MirroredNetworking::Impl
         Reservations.clear();
         ExplicitPorts.clear();
         Range = {};
-        if (Service)
+        if (OwnsService && DeleteGns)
         {
             HcnText Error;
-            if (DeleteGns) DeleteGns(RuntimeId, &Error.Value);
-            if (CloseGns) CloseGns(Service);
-            Service = nullptr;
+            if (SUCCEEDED(DeleteGns(RuntimeId, &Error.Value))) OwnsService = false;
         }
+        if (Service && CloseGns) CloseGns(Service);
+        Service = nullptr;
     }
 
     void CreateGuestService()
@@ -628,6 +651,7 @@ struct NanaBox::MirroredNetworking::Impl
         auto Text = winrt::to_hstring(Request.dump());
         auto Hr = CreateGns(RuntimeId, Text.c_str(), &Service, &ServiceError.Value);
         CheckHcn(Hr, ServiceError);
+        OwnsService = true;
         SetState("Bootstrapping");
         auto AllocateRange = Import<ReserveRange>(NetworkModule, "HcnReserveGuestNetworkServicePortRange");
         HRESULT RangeResult = E_FAIL;
@@ -667,10 +691,22 @@ struct NanaBox::MirroredNetworking::Impl
     {
         Status(L"Reconnecting to HCN");
         UnsubscribeHcn();
-        ReleaseGuestService();
         try
         {
             SubscribeHcn();
+            // HNS may have preserved the GNS object and reservations during
+            // its restart. Reuse that session when the context is still valid.
+            if (Service)
+            {
+                try
+                {
+                    SetState("Desynchronized");
+                    ++ReconnectCount;
+                    return;
+                }
+                catch (...) {}
+            }
+            ReleaseGuestService();
             CreateGuestService();
             ++ReconnectCount;
         }
@@ -964,8 +1000,10 @@ struct NanaBox::MirroredNetworking::Impl
             std::unique_lock Lock(Mutex);
             // Event notifications accelerate reconciliation; the periodic check
             // still detects guest-only configuration drift and listening sockets.
-            Wake.wait_for(Lock, std::chrono::seconds(5),
+            bool Changed = Wake.wait_for(Lock, std::chrono::seconds(5),
                 [this]() { return Stop.load() || NetworkChanged.load(); });
+            if (Changed && !Stop)
+                Wake.wait_for(Lock, std::chrono::milliseconds(350), [this]() { return Stop.load(); });
         }
     }
 };

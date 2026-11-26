@@ -81,6 +81,8 @@ def normalize(request):
             raise ValueError('Invalid snapshot size')
         addresses = [validated('IPAddress', entry) for entry in addresses]
         routes = [validated('Route', entry) for entry in routes]
+        if interface['Mtu'] < 1280 and (any(a['Family'] == 6 for a in addresses) or any(r['Family'] == 6 for r in routes)):
+            raise ValueError('IPv6 requires an MTU of at least 1280')
         if not interface['Connected'] and (addresses or routes or settings['DNS'].get('ServerList')):
             raise ValueError('Disconnected adapter must have an empty network configuration')
         if len({address_key(a) for a in addresses}) != len(addresses) or len({route_key(r) for r in routes}) != len(routes):
@@ -120,7 +122,7 @@ def normalize(request):
         mirrored = settings.get('Mirrored', False)
         if type(mirrored) is not bool:
             raise ValueError('Mirrored must be Boolean')
-        result = {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 1280, 65535)}
+        result = {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 576, 65535)}
         if mirrored:
             result['Mirrored'] = True
         for family in (4, 6):
@@ -272,14 +274,19 @@ class LinuxBackend:
                 dest = item.get('dst', 'default')
                 if dest == 'default':
                     dest = zero + '/0'
-                entry = {'Family': family, 'Destination': str(ipaddress.ip_network(dest, strict=False)),
-                         'NextHop': str(ipaddress.ip_address(item.get('gateway', zero))),
-                         'Metric': item.get('metric', 0)}
-                result[route_key(entry)] = entry
+                for hop in item.get('nexthops') or [item]:
+                    if hop.get('dev', item.get('dev', dev)) != dev:
+                        continue
+                    entry = {'Family': family, 'Destination': str(ipaddress.ip_network(dest, strict=False)),
+                             'NextHop': str(ipaddress.ip_address(hop.get('gateway', zero))),
+                             'Metric': item.get('metric', 0)}
+                    result[route_key(entry)] = entry
         return result
 
     def _route_change(self, dev, verb, entry):
-        cmd = ['ip', f"-{entry['Family']}", 'route', verb, entry['Destination']]
+        # Append instead of replace: equal-cost routes on another interface
+        # must remain intact.
+        cmd = ['ip', f"-{entry['Family']}", 'route', 'append' if verb == 'add' else verb, entry['Destination']]
         if not ipaddress.ip_address(entry['NextHop']).is_unspecified:
             cmd += ['via', entry['NextHop']]
         cmd += ['dev', dev, 'metric', str(entry['Metric']), 'proto', '242']

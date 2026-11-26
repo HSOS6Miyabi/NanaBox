@@ -42,6 +42,13 @@ class ProtocolTests(unittest.TestCase):
         args, kwargs = backend.execute.call_args
         self.assertIn('ReadAddresses', args[0][-1])
         self.assertEqual(json.loads(kwargs['input'])['Settings'], normalized)
+        settings['Interface']['NlMtu'] = 1000
+        self.assertEqual(gns.normalize(request('Reconcile', 'Update', **settings))[3]['Interface']['Mtu'], 1000)
+        settings['Addresses'].append({'Address': '2001:db8::10', 'OnLinkPrefixLength': 64})
+        with self.assertRaises(ValueError):
+            gns.normalize(request('Reconcile', 'Update', **settings))
+        settings['Addresses'].pop()
+        settings['Interface']['NlMtu'] = 1500
         settings['Routes'].append(settings['Routes'][0])
         with self.assertRaises(ValueError):
             gns.normalize(request('Reconcile', 'Update', **settings))

@@ -56,6 +56,7 @@ def main():
             # A second interface's routes must survive reconciliation and cleanup.
             gns.run(['ip', '-4', 'address', 'add', '198.18.0.10/24', 'dev', 'nb-test1', 'noprefixroute'])
             gns.run(['ip', '-4', 'route', 'add', '198.18.0.0/24', 'dev', 'nb-test1', 'proto', '242'])
+            gns.run(['ip', '-4', 'route', 'add', 'default', 'via', '198.18.0.1', 'dev', 'nb-test1', 'metric', '10', 'proto', '242'])
             # Simulate drift and a restarted service; no in-memory state is reused.
             gns.run(['ip', '-4', 'route', 'del', 'default', 'via', '192.0.2.1', 'dev', 'nb-test0', 'metric', '10', 'proto', '242'])
             gns.run(['ip', '-4', 'address', 'del', '192.0.2.10/24', 'dev', 'nb-test0'])
@@ -78,7 +79,9 @@ def main():
             assert not backend._addresses('nb-test0')
             assert not backend._routes('nb-test0', managed_only=True)
             assert 'UP' not in backend._link('nb-test0')['flags']
-            assert '198.18.0.0/24' in gns.run(['ip', '-4', 'route', 'show', 'dev', 'nb-test1', 'proto', '242'])
+            other_routes = gns.run(['ip', '-4', 'route', 'show', 'dev', 'nb-test1', 'proto', '242'])
+            assert '198.18.0.0/24' in other_routes
+            assert 'default via 198.18.0.1' in other_routes
             print('Linux mirrored network reconciliation: passed')
     finally:
         gns.run(['ip', 'link', 'del', 'nb-test0'])
