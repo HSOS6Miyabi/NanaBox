@@ -1,0 +1,44 @@
+name: Hyper-V hardware integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      windows_config:
+        description: Absolute path to a disposable Windows guest .7b on the runner
+        required: true
+        type: string
+      linux_config:
+        description: Absolute path to a disposable Linux guest .7b on the runner
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  hardware:
+    runs-on: [self-hosted, Windows, X64, nanabox-hyperv]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: microsoft/setup-msbuild@v3
+      - name: Build
+        run: msbuild BuildAllTargets.proj
+      - name: Settings UI
+        shell: powershell
+        run: |
+          & .\Tests\SettingsUI.ps1 -Executable .\Output\Binaries\Root\Binaries\x64\NanaBox.exe -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
+      - name: Hyper-V integration
+        shell: powershell
+        env:
+          NANABOX_WINDOWS_CONFIG: ${{ inputs.windows_config }}
+          NANABOX_LINUX_CONFIG: ${{ inputs.linux_config }}
+        run: |
+          & .\Tests\HyperVIntegration.ps1 -Executable .\Output\Binaries\Root\Binaries\x64\NanaBox.exe -WindowsConfig $env:NANABOX_WINDOWS_CONFIG -LinuxConfig $env:NANABOX_LINUX_CONFIG
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: NanaBox-Hardware-Diagnostics
+          path: ${{ runner.temp }}/NanaBox-UI
+          if-no-files-found: ignore
