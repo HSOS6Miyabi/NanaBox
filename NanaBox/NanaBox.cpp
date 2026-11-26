@@ -185,7 +185,8 @@ int WINAPI wWinMain(
             {
                 auto Vm = winrt::make_self<NanaBox::ComputeSystem>(winrt::hstring(Arguments[2]));
                 auto Properties = nlohmann::json::parse(winrt::to_string(Vm->GetProperties()));
-                ::WriteAllTextToUtf8TextFile(::GetAbsolutePath(Arguments[3]), Properties.dump(2));
+                std::string Content = Properties.dump(2);
+                ::WriteAllTextToUtf8TextFile(::GetAbsolutePath(Arguments[3]), Content);
                 return 0;
             }
             catch (...) { return 18; }
