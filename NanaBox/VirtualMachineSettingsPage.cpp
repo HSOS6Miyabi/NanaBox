@@ -499,6 +499,7 @@ namespace winrt::NanaBox::implementation
             this->MirroredFirewallCreatorTextBox().Text(winrt::to_hstring(this->m_Configuration.MirroredFirewallCreatorId));
             this->MirroredTcpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredTcpPorts));
             this->MirroredUdpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredUdpPorts));
+            this->MirroredIgnoredPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredIgnoredPorts));
             this->NetworkAdapterPanel().Children().Clear();
             this->m_NetworkAdapterSettings.clear();
             this->AddNetworkAdapterButton().IsEnabled(true);
@@ -793,7 +794,8 @@ namespace winrt::NanaBox::implementation
                     (void)winrt::guid(Result.MirroredFirewallCreatorId);
                 Result.MirroredTcpPorts = ::ReadSettingLines(this->MirroredTcpPortsTextBox());
                 Result.MirroredUdpPorts = ::ReadSettingLines(this->MirroredUdpPortsTextBox());
-                for (auto const& Ports : {Result.MirroredTcpPorts, Result.MirroredUdpPorts})
+                Result.MirroredIgnoredPorts = ::ReadSettingLines(this->MirroredIgnoredPortsTextBox());
+                for (auto const& Ports : {Result.MirroredTcpPorts, Result.MirroredUdpPorts, Result.MirroredIgnoredPorts})
                 {
                     std::set<unsigned> Unique;
                     for (auto const& Port : Ports)
@@ -805,6 +807,11 @@ namespace winrt::NanaBox::implementation
                             ::InvalidSetting(::GetSettingsString(L"MirroredPortsLabel"));
                     }
                 }
+                for (auto const& Port : Result.MirroredIgnoredPorts)
+                    for (auto const& Ports : {Result.MirroredTcpPorts, Result.MirroredUdpPorts})
+                        for (auto const& Explicit : Ports)
+                            if (std::stoul(Port) == std::stoul(Explicit))
+                                ::InvalidSetting(::GetSettingsString(L"MirroredPortsLabel"));
             }
             Result.NetworkAdapters.clear();
             std::set<std::string> EndpointIds;

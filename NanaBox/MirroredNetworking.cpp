@@ -218,6 +218,7 @@ namespace
     {
         std::map<std::string, Json> Items;
         Json Dns = Json::array();
+        std::string DnsSuffix;
         Json Interface = Json::object();
     };
 
@@ -291,6 +292,7 @@ namespace
         for (auto Adapter = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(Buffer.data()); Adapter; Adapter = Adapter->Next)
         {
             if (Adapter->Luid.Value != Luid.Value) continue;
+            if (Adapter->DnsSuffix) Result.DnsSuffix = winrt::to_string(winrt::hstring(Adapter->DnsSuffix));
             for (auto Dns = Adapter->FirstDnsServerAddress; Dns; Dns = Dns->Next)
             {
                 auto Value = AddressString(Dns->Address.lpSockaddr);
@@ -386,6 +388,7 @@ struct NanaBox::MirroredNetworking::Impl
     std::vector<HANDLE> Reservations;
     using PortKey = std::pair<HCN_PORT_PROTOCOL, USHORT>;
     std::set<PortKey> ExplicitPorts;
+    std::set<unsigned> IgnoredPorts;
     std::map<PortKey, HANDLE> AutomaticPorts;
     ReservePort AllocatePort = nullptr;
     ReleasePort Release = nullptr;
@@ -556,6 +559,13 @@ struct NanaBox::MirroredNetworking::Impl
         ModifyGns = Import<ModifyService>(NetworkModule, "HcnModifyGuestNetworkService");
         AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
         Release = Import<ReleasePort>(NetworkModule, "HcnReleaseGuestNetworkServicePortReservationHandle");
+        for (auto const& Value : Configuration.MirroredIgnoredPorts)
+            if (!IgnoredPorts.insert(ParsePort(Value)).second)
+                throw winrt::hresult_invalid_argument(L"Duplicate ignored mirrored port");
+        for (auto const& List : {Configuration.MirroredTcpPorts, Configuration.MirroredUdpPorts})
+            for (auto const& Value : List)
+                if (IgnoredPorts.count(ParsePort(Value)))
+                    throw winrt::hresult_invalid_argument(L"An ignored mirrored port cannot be explicitly reserved");
         RegisterGuestSocket();
         SubscribeHost();
         CreateGuestService();
@@ -774,7 +784,7 @@ struct NanaBox::MirroredNetworking::Impl
         auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"AdapterMac", Entry.Mac},
             {"ResourceType", "Reconcile"}, {"RequestType", "Update"},
             {"Settings", {{"Interface", Desired.Interface}, {"Addresses", Addresses},
-                {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}}},
+                {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}, {"Suffix", Desired.DnsSuffix}}},
                 {"DiscoverPorts", Configuration.MirroredAutoReservePorts},
                 {"PortRange", {{"Start", Range.startingPort}, {"End", Range.endingPort}}}}}}, Stop);
         std::set<PortKey> Ports;
@@ -786,7 +796,7 @@ struct NanaBox::MirroredNetworking::Impl
                 unsigned Port = Item.at("Port").get<unsigned>();
                 if ((Protocol != "TCP" && Protocol != "UDP") || !Port || Port > 65535)
                     throw winrt::hresult_invalid_argument(L"Invalid guest listening port");
-                if (Port >= Range.startingPort && Port <= Range.endingPort) continue;
+                if (IgnoredPorts.count(Port) || (Port >= Range.startingPort && Port <= Range.endingPort)) continue;
                 Ports.emplace(Protocol == "TCP" ? HCN_PORT_PROTOCOL_TCP : HCN_PORT_PROTOCOL_UDP, static_cast<USHORT>(Port));
             }
         }

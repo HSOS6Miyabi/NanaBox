@@ -113,7 +113,7 @@ def normalize(request):
         hop = ipaddress.ip_address(settings.get('NextHop') or ('0.0.0.0' if dest.version == 4 else '::'))
         if hop.version != dest.version or hop.is_multicast or hop.is_loopback:
             raise ValueError('Invalid next hop')
-        return target, resource, action, {'Destination': str(dest), 'NextHop': str(hop), 'Family': dest.version, 'Metric': number(settings.get('Metric', 0), 0, 65535)}
+        return target, resource, action, {'Destination': str(dest), 'NextHop': str(hop), 'Family': dest.version, 'Metric': number(settings.get('Metric', 0), 0, 0xffffffff)}
     if resource == 'Interface' and action != 'Remove':
         if type(settings.get('Connected')) is not bool:
             raise ValueError('Connected must be Boolean')
@@ -143,7 +143,18 @@ def normalize(request):
         servers = [str(ipaddress.ip_address(value)) for value in servers]
         if action != 'Remove' and not servers:
             raise ValueError('DNS server list must not be empty')
-        return target, resource, action, {'Servers': servers}
+        result = {'Servers': servers}
+        if 'Suffix' in settings:
+            suffix = settings['Suffix']
+            if not isinstance(suffix, str):
+                raise ValueError('Invalid DNS suffix')
+            suffix = suffix.rstrip('.').lower()
+            if suffix:
+                suffix = suffix.encode('idna').decode('ascii')
+                if len(suffix) > 253 or any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label) for label in suffix.split('.')):
+                    raise ValueError('Invalid DNS suffix')
+            result['Suffix'] = suffix
+        return target, resource, action, result
     raise ValueError('Unsupported resource or operation')
 
 
@@ -288,6 +299,13 @@ class LinuxBackend:
             raise ValueError('Unable to read resolver configuration')
         return [str(ipaddress.ip_address(v.split('%', 1)[0])) for v in servers.split()]
 
+    def _domain(self, dev):
+        value = self.execute(['resolvectl', 'domain', dev])
+        _, separator, domains = value.partition(':')
+        if not separator:
+            raise ValueError('Unable to read resolver search domains')
+        return domains.split()
+
     def reconcile(self, target, snapshot):
         dev = self.adapter(target)
         interface = snapshot['Interface']
@@ -304,10 +322,15 @@ class LinuxBackend:
         dns = snapshot['DNS']['Servers']
         port_range = snapshot['PortRange']
         link = self._link(dev)
-        for name in ('accept_ra', 'autoconf', 'dad_transmits'):
-            key = f'net/ipv6/conf/{dev}/{name}'
-            if self.execute(['sysctl', '-n', key]).strip() != '0':
-                self.execute(['sysctl', '-w', f'{key}=0'])
+        # Match WSL's per-interface behavior without changing global forwarding
+        # or permitting loopback traffic on external interfaces.
+        for family, name, wanted in (
+                (4, 'accept_local', '1'), (4, 'rp_filter', '0'), (4, 'arp_filter', '1'),
+                (6, 'accept_ra', '0'), (6, 'autoconf', '0'), (6, 'dad_transmits', '0'),
+                (6, 'use_tempaddr', '0')):
+            key = f'net/ipv{family}/conf/{dev}/{name}'
+            if self.execute(['sysctl', '-n', key]).strip() != wanted:
+                self.execute(['sysctl', '-w', f'{key}={wanted}'])
         if link['mtu'] != interface['Mtu']:
             self.execute(['ip', 'link', 'set', 'dev', dev, 'mtu', str(interface['Mtu'])])
         if interface['Connected'] and 'UP' not in link['flags']:
@@ -332,6 +355,10 @@ class LinuxBackend:
                 self._route_change(dev, 'add', entry)
         if self._dns(dev) != dns:
             self.execute(['resolvectl', 'dns', dev, *(dns or [''])])
+        suffix = snapshot['DNS'].get('Suffix')
+        domains = [suffix] if suffix else []
+        if suffix is not None and self._domain(dev) != domains:
+            self.execute(['resolvectl', 'domain', dev, *(domains or [''])])
         current_range = self.execute(['sysctl', '-n', 'net.ipv4.ip_local_port_range']).split()
         expected_range = [str(port_range['Start']), str(port_range['End'])]
         if current_range != expected_range:
@@ -351,6 +378,8 @@ class LinuxBackend:
             raise RuntimeError('Guest link state did not converge')
         if self._dns(dev) != dns or self.execute(['sysctl', '-n', 'net.ipv4.ip_local_port_range']).split() != expected_range:
             raise RuntimeError('Guest DNS or dynamic port range did not converge')
+        if suffix is not None and self._domain(dev) != domains:
+            raise RuntimeError('Guest DNS search suffix did not converge')
         return {'ListeningPorts': linux_listening_ports('/proc/net', snapshot['Addresses'])
                 if snapshot['DiscoverPorts'] and interface['Connected'] else []}
 
@@ -541,6 +570,15 @@ $wantedDns = @($s.DNS.Servers | Where-Object { $_ })
 if ((@($dns | Sort-Object) -join ',') -ne (@($wantedDns | Sort-Object) -join ',')) {
     if ($wantedDns.Count) { Set-DnsClientServerAddress -InterfaceIndex $i -ServerAddresses $wantedDns }
     else { Set-DnsClientServerAddress -InterfaceIndex $i -ResetServerAddresses }
+}
+if ($null -ne $s.DNS.PSObject.Properties['Suffix']) {
+    $client = Get-DnsClient -InterfaceIndex $i
+    if ([string]$client.ConnectionSpecificSuffix -ne [string]$s.DNS.Suffix) {
+        Set-DnsClient -InterfaceIndex $i -ConnectionSpecificSuffix ([string]$s.DNS.Suffix)
+    }
+    if ([string](Get-DnsClient -InterfaceIndex $i).ConnectionSpecificSuffix -ne [string]$s.DNS.Suffix) {
+        throw 'Guest DNS search suffix did not converge'
+    }
 }
 $count = [int]$s.PortRange.End - [int]$s.PortRange.Start + 1
 foreach ($af in @('ipv4','ipv6')) {

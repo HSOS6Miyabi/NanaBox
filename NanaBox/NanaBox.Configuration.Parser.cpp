@@ -974,6 +974,7 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     {
         Result["MirroredUdpPorts"] = Value.MirroredUdpPorts;
     }
+    if (!Value.MirroredIgnoredPorts.empty()) Result["MirroredIgnoredPorts"] = Value.MirroredIgnoredPorts;
 
     if (!Value.NetworkAdapters.empty())
     {
@@ -1156,6 +1157,8 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
         Result.MirroredTcpPorts.push_back(Mile::Json::ToString(Port));
     for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredUdpPorts")))
         Result.MirroredUdpPorts.push_back(Mile::Json::ToString(Port));
+    for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredIgnoredPorts")))
+        Result.MirroredIgnoredPorts.push_back(Mile::Json::ToString(Port));
 
     for (nlohmann::json const& NetworkAdapter : Mile::Json::ToArray(
         Mile::Json::GetSubKey(Value, "NetworkAdapters")))

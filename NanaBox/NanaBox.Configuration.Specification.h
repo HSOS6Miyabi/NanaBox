@@ -183,6 +183,7 @@ namespace NanaBox
         std::string MirroredFirewallCreatorId;
         std::vector<std::string> MirroredTcpPorts;
         std::vector<std::string> MirroredUdpPorts;
+        std::vector<std::string> MirroredIgnoredPorts;
         std::vector<ScsiDeviceConfiguration> ScsiDevices;
         bool SecureBoot = false;
         bool Tpm = false;

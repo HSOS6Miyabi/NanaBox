@@ -1700,4 +1700,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="ConfigurationSaved" xml:space="preserve">
     <value>配置已保存。</value>
   </data>
+  <data name="MirroredIgnoredPorts.Header" xml:space="preserve">
+    <value>不自动预留的端口（每行一个）</value>
+  </data>
 </root>

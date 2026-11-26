@@ -14,6 +14,14 @@ def request(resource='IPAddress', action='Add', **settings):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_dns_suffix(self):
+        normalized = gns.normalize(request('DNS', 'Update', ServerList=['192.0.2.53'], Suffix='Corp.Example.'))[3]
+        self.assertEqual(normalized, {'Servers': ['192.0.2.53'], 'Suffix': 'corp.example'})
+        self.assertEqual(gns.normalize(request('DNS', 'Remove', ServerList=[], Suffix=''))[3]['Suffix'], '')
+        for suffix in ['~.', 'bad name', '-invalid.example', 'a..b', 1]:
+            with self.assertRaises((ValueError, UnicodeError)):
+                gns.normalize(request('DNS', 'Update', ServerList=['192.0.2.53'], Suffix=suffix))
+
     def test_snapshot_validation_and_route_order(self):
         settings = {
             'Interface': {'Connected': True, 'NlMtu': 1500, 'Mirrored': True},

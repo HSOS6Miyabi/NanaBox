@@ -12,13 +12,14 @@ def main():
     gns.run(['ip', 'link', 'add', 'nb-test0', 'type', 'veth', 'peer', 'name', 'nb-test1'])
     gns.run(['ip', 'link', 'set', 'nb-test1', 'up'])
     gns.run(['ip', 'link', 'set', 'nb-test0', 'address', '00:15:5d:12:34:56'])
-    dns = []
+    dns, domains = [], []
 
     def execute(args):
         if args[0] == 'resolvectl':
+            values = dns if args[1] == 'dns' else domains
             if len(args) == 3:
-                return 'Link 1 (nb-test0): ' + ' '.join(dns)
-            dns[:] = [v for v in args[3:] if v]
+                return 'Link 1 (nb-test0): ' + ' '.join(values)
+            values[:] = [v for v in args[3:] if v]
             return ''
         return gns.run(args)
 
@@ -41,7 +42,7 @@ def main():
                         {'DestinationPrefix': '::/0', 'NextHop': '2001:db8::1', 'Metric': 0},
                         {'DestinationPrefix': '2001:db8::/64', 'NextHop': '::', 'Metric': 0},
                     ],
-                    'DNS': {'ServerList': ['192.0.2.53']},
+                    'DNS': {'ServerList': ['192.0.2.53'], 'Suffix': 'Example.Test.'},
                     'PortRange': {'Start': 49152, 'End': 53247},
                 }
             }
@@ -63,13 +64,17 @@ def main():
             backend.reconcile(mac, snapshot)
             backend.reconcile(mac, snapshot)
             assert dns == ['192.0.2.53']
+            assert domains == ['example.test']
+            assert gns.run(['sysctl', '-n', 'net/ipv4/conf/nb-test0/rp_filter']).strip() == '0'
+            assert gns.run(['sysctl', '-n', 'net/ipv4/conf/nb-test0/arp_filter']).strip() == '1'
             # Disconnect and verify cleanup, then reconnect from a fresh instance.
             request['Settings']['Interface']['Connected'] = False
             request['Settings']['Addresses'] = []
             request['Settings']['Routes'] = []
-            request['Settings']['DNS'] = {'ServerList': []}
+            request['Settings']['DNS'] = {'ServerList': [], 'Suffix': ''}
             mac, _, _, snapshot = gns.normalize(request)
             backend.reconcile(mac, snapshot)
+            assert not dns and not domains
             assert not backend._addresses('nb-test0')
             assert not backend._routes('nb-test0', managed_only=True)
             assert 'UP' not in backend._link('nb-test0')['flags']

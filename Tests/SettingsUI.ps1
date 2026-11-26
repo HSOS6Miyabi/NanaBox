@@ -184,6 +184,7 @@ try {
     Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'
     Set-Text 'MirroredTcpPortsTextBox' '8080'
     Set-Text 'MirroredUdpPortsTextBox' '5353'
+    Set-Text 'MirroredIgnoredPortsTextBox' '53'
     Set-Text 'NetworkNameTextBox' 'UI-test'
     Set-Check 'NetworkFirewallCheckBox' $true
     Invoke-Control 'AddNetworkAdapterButton'
@@ -365,6 +366,7 @@ try {
     Assert-Equal $saved.MirroredAutoReservePorts $false 'Automatic mirrored port reservations'
     Assert-Equal $saved.MirroredTcpPorts[0] '8080' 'Mirrored TCP port'
     Assert-Equal $saved.MirroredUdpPorts[0] '5353' 'Mirrored UDP port'
+    Assert-Equal $saved.MirroredIgnoredPorts[0] '53' 'Excluded automatic port'
     Assert-Equal $saved.NetworkAdapters[0].NetworkId '85c8668e-36fe-447f-aae0-ba159a0142a7' 'Network'
     Assert-Equal $saved.NetworkAdapters[0].FirewallCreatorId '06b34f94-82ae-4ad9-9f35-3a2a7da8508c' 'Firewall'
     Assert-Equal $saved.ScsiDevices[0].Path 'test.vhdx' 'Disk'
