@@ -402,11 +402,21 @@ try {
     $external.NanaBox.Name = 'External edit'
     [IO.File]::WriteAllText($config,($external | ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($true)))
     Set-Text 'NameTextBox' 'Stale edit'
-    Invoke-ModalAction $process.Id 'ApplyButton' { Invoke-Control 'MessageConfirmButton' }
+    Invoke-Control 'ApplyButton'
+    $deadline = [DateTime]::UtcNow.AddSeconds(20)
+    do {
+        $status = Get-Text 'ConfigurationStatusTextBox'
+        if ($status -like '*changed by another editor*') { break }
+        Start-Sleep -Milliseconds 200
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if ($status -notlike '*changed by another editor*') { throw "Conflict was not reported: $status" }
     Assert-Equal (Get-Content -LiteralPath $config -Raw | ConvertFrom-Json).NanaBox.Name 'External edit' 'Concurrent change preserved'
     Invoke-Control 'ReloadButton'
     Assert-Equal (Get-Text 'NameTextBox') 'External edit' 'External change reloaded'
     Set-Text 'NameTextBox' 'Recovered edit'
+    Invoke-Control 'ValidateConfigurationButton'
+    if ((Get-Text 'ConfigurationStatusTextBox') -notlike '*No changes have been saved*') { throw 'Validation result missing' }
+    Assert-Equal (Get-Content -LiteralPath $config -Raw | ConvertFrom-Json).NanaBox.Name 'External edit' 'Validation does not change file'
     $saved = Save-Config
     Assert-Equal $saved.Name 'Recovered edit' 'Save after conflict recovery'
     Write-Host 'Settings UI round trip passed'

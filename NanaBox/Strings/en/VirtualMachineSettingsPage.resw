@@ -1688,4 +1688,16 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="ConnectionBar.Content" xml:space="preserve">
     <value>Show connection bar in full screen</value>
   </data>
+  <data name="ValidateConfiguration.Content" xml:space="preserve">
+    <value>Validate</value>
+  </data>
+  <data name="ConfigurationLoaded" xml:space="preserve">
+    <value>Configuration loaded.</value>
+  </data>
+  <data name="ConfigurationValid" xml:space="preserve">
+    <value>Configuration is valid. No changes have been saved.</value>
+  </data>
+  <data name="ConfigurationSaved" xml:space="preserve">
+    <value>Configuration saved.</value>
+  </data>
 </root>

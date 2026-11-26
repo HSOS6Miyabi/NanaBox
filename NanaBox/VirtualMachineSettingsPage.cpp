@@ -365,6 +365,12 @@ namespace winrt::NanaBox::implementation
         this->m_LoadedConfigurationContent = std::move(Content);
         this->m_Configuration = Configuration;
         this->PopulateControls();
+        this->ConfigurationStatusTextBox().Text(::GetSettingsString(L"ConfigurationLoaded"));
+    }
+
+    void VirtualMachineSettingsPage::ShowConfigurationError()
+    {
+        this->ConfigurationStatusTextBox().Text(Mile::WinRT::ToHResultError().message());
     }
 
     void VirtualMachineSettingsPage::UpdateWindowTitle()
@@ -402,7 +408,7 @@ namespace winrt::NanaBox::implementation
             catch (...)
             {
                 this->PopulateControls();
-                ::ShowSettingsError(this->m_WindowHandle);
+                this->ShowConfigurationError();
             }
         }
         this->RunNetworkManagementOperation(L"Refresh");
@@ -1107,7 +1113,7 @@ namespace winrt::NanaBox::implementation
         }
         catch (...)
         {
-            ::ShowSettingsError(this->m_WindowHandle);
+            this->ShowConfigurationError();
         }
     }
 
@@ -1147,6 +1153,19 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(Arguments);
 
         ::LaunchDocumentation();
+    }
+
+    void VirtualMachineSettingsPage::ValidateConfigurationButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        if (this->m_ApplyPending) return;
+        try
+        {
+            auto Configuration = this->ReadConfiguration();
+            auto Text = NanaBox::SerializeConfiguration(Configuration);
+            (void)NanaBox::DeserializeConfiguration(Text);
+            this->ConfigurationStatusTextBox().Text(::GetSettingsString(L"ConfigurationValid"));
+        }
+        catch (...) { this->ShowConfigurationError(); }
     }
 
     void VirtualMachineSettingsPage::ApplyButtonClick(
@@ -1218,25 +1237,33 @@ namespace winrt::NanaBox::implementation
             }
             this->m_Configuration = Configuration;
             this->PopulateControls();
+            this->ConfigurationStatusTextBox().Text(::GetSettingsString(L"ConfigurationSaved"));
             if (this->m_MainWindow)
             {
                 this->m_ApplyPending = true;
                 this->ApplyButton().IsEnabled(false);
                 this->ReloadButton().IsEnabled(false);
+                this->ValidateConfigurationButton().IsEnabled(false);
+                this->ConfigurationStatusTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
                 auto Dispatcher = this->Dispatcher();
                 auto Weak = this->get_weak();
                 auto Generation = ++this->m_ApplyGeneration;
-                this->m_MainWindow->ReloadVirtualMachineSettings([Dispatcher, Weak, Generation]()
+                this->m_MainWindow->ReloadVirtualMachineSettings([Dispatcher, Weak, Generation](winrt::hstring Error)
                 {
-                    Dispatcher.RunAsync(winrt::CoreDispatcherPriority::Normal, [Weak, Generation]()
+                    Dispatcher.RunAsync(winrt::CoreDispatcherPriority::Normal, [Weak, Generation, Error]()
                     {
                         auto Instance = Weak.get();
                         if (!Instance || Instance->m_ApplyGeneration != Generation) return;
                         Instance->m_ApplyPending = false;
                         Instance->ApplyButton().IsEnabled(true);
                         Instance->ReloadButton().IsEnabled(true);
-                        try { Instance->ReloadConfiguration(); }
-                        catch (...) { ::ShowSettingsError(Instance->m_WindowHandle); }
+                        Instance->ValidateConfigurationButton().IsEnabled(true);
+                        try
+                        {
+                            Instance->ReloadConfiguration();
+                            Instance->ConfigurationStatusTextBox().Text(Error.empty() ? ::GetSettingsString(L"ConfigurationSaved") : Error);
+                        }
+                        catch (...) { Instance->ShowConfigurationError(); }
                     });
                 });
             }
@@ -1246,7 +1273,8 @@ namespace winrt::NanaBox::implementation
             this->m_ApplyPending = false;
             this->ApplyButton().IsEnabled(true);
             this->ReloadButton().IsEnabled(!this->m_ConfigurationFilePath.empty());
-            ::ShowSettingsError(this->m_WindowHandle);
+            this->ValidateConfigurationButton().IsEnabled(true);
+            this->ShowConfigurationError();
         }
     }
 

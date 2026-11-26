@@ -106,7 +106,7 @@ namespace NanaBox
         winrt::com_ptr<NanaBox::RdpClient> m_RdpClient;
         ATL::CWindow m_RdpClientWindow;
 
-        void ReloadVirtualMachineSettings(std::function<void()> Completion);
+        void ReloadVirtualMachineSettings(std::function<void(winrt::hstring)> Completion);
 
         void RdpClientOnDisconnected(
             _In_ LONG DisconnectReason);

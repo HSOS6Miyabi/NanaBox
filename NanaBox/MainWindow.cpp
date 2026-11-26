@@ -420,15 +420,16 @@ void NanaBox::MainWindow::StartCapture(_In_ bool Recording)
     }
 }
 
-void NanaBox::MainWindow::ReloadVirtualMachineSettings(std::function<void()> Completion)
+void NanaBox::MainWindow::ReloadVirtualMachineSettings(std::function<void(winrt::hstring)> Completion)
 {
     this->m_MainWindowControl.Dispatcher().RunAsync(
         winrt::CoreDispatcherPriority::Normal,
         [this, Completion = std::move(Completion)]()
     {
-        auto Complete = Mile::ScopeExitTaskHandler([&]() { if (Completion) Completion(); });
+        winrt::hstring Error;
         try { this->TryReloadVirtualMachine(); }
-        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
+        catch (...) { Error = Mile::WinRT::ToHResultError().message(); }
+        if (Completion) Completion(Error);
     });
 }
 

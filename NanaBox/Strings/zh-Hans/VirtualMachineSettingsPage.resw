@@ -1688,4 +1688,16 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="ConnectionBar.Content" xml:space="preserve">
     <value>在全屏模式下显示连接栏</value>
   </data>
+  <data name="ValidateConfiguration.Content" xml:space="preserve">
+    <value>验证配置</value>
+  </data>
+  <data name="ConfigurationLoaded" xml:space="preserve">
+    <value>已加载配置。</value>
+  </data>
+  <data name="ConfigurationValid" xml:space="preserve">
+    <value>配置验证通过，尚未保存修改。</value>
+  </data>
+  <data name="ConfigurationSaved" xml:space="preserve">
+    <value>配置已保存。</value>
+  </data>
 </root>

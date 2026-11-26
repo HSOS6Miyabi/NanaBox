@@ -11,6 +11,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
     <Grid Padding="16,8">
       <Grid.Background>
@@ -1506,5 +1507,13 @@
         </ScrollViewer>
       </PivotItem>
     </Pivot>
+    <Grid Grid.Row="2" Padding="12,6,12,8" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBox x:Name="ConfigurationStatusTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="112" AutomationProperties.AutomationId="ConfigurationStatusTextBox" />
+      <Button Grid.Column="1" x:Name="ValidateConfigurationButton" x:Uid="/VirtualMachineSettingsPage/ValidateConfiguration" Content="Validate" VerticalAlignment="Top" Click="ValidateConfigurationButtonClick" AutomationProperties.AutomationId="ValidateConfigurationButton" />
+    </Grid>
   </Grid>
 </Page>

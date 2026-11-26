@@ -58,6 +58,8 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
 
+        void ValidateConfigurationButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+
         void ApplyButtonClick(
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
@@ -168,6 +170,7 @@ namespace winrt::NanaBox::implementation
         std::vector<VirtualSmbShareSettings> m_VirtualSmbShareSettings;
 
         void ReloadConfiguration();
+        void ShowConfigurationError();
 
         void UpdateWindowTitle();
 
