@@ -36,6 +36,7 @@
       </Grid.ColumnDefinitions>
       <Button
         x:Uid="/MessagePage/ConfirmButton"
+        AutomationProperties.AutomationId="MessageConfirmButton"
         HorizontalAlignment="Stretch"
         Click="ConfirmButtonClick"
         Content="[Confirm]"

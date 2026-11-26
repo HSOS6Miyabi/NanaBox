@@ -244,7 +244,9 @@ try {
         try {
             Set-Text 'ManagedSwitchNameTextBox' $name
             Invoke-Control 'AdapterListButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
             Invoke-Control 'SwitchListButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
             Invoke-Control 'SwitchCreateButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Name -eq $managed}
             $switch = Get-VMSwitch | Where-Object Name -eq $managed
@@ -256,6 +258,7 @@ try {
             if (Get-VMSwitch | Where-Object Name -eq $managed) { throw 'Switch was not removed' }
 
             Invoke-Control 'CreatorListButton'
+            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
             Set-Text 'FirewallCreatorNameTextBox' $name
             Invoke-Control 'CreatorRegisterButton'
             $registered = Wait-Result 'HostManagementResult' {param($v) $v.Name -eq $managed -and $v.Id}
@@ -288,14 +291,17 @@ try {
             Select-Tab 'TabNetwork'
             Set-Text 'NetworkNameTextBox' $name
             Set-Check 'NetworkFirewallCheckBox' $false
-            Invoke-Control 'CreateNetwork'
             $networkCreated = $true
+            Invoke-Control 'CreateNetwork'
+            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Create'}
             $null = Select-ByName 'HostNetworksComboBox' ($managed+' (')
             Invoke-Control 'InspectNetwork'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Name -eq $managed}
             Invoke-Control 'DeleteNetwork'
             Confirm-Change
+            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
             Invoke-Control 'RefreshNetworks'
+            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
             if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'HCN network was not deleted' }
             $networkCreated = $false
         } finally {
@@ -303,9 +309,11 @@ try {
                 try {
                     Select-Tab 'TabNetwork'
                     Invoke-Control 'RefreshNetworks'
+                    $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
                     if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) {
                         Invoke-Control 'DeleteNetwork'
                         Confirm-Change
+                        $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
                     }
                 } catch { Write-Warning "HCN test network cleanup: $_" }
             }
@@ -385,6 +393,18 @@ try {
     Assert-Equal @($saved.VirtualSmbShares | Where-Object {$_}).Count 0 'SMB removed'
     Select-Tab 'TabGeneral'
     Assert-Equal (Get-Text 'NameTextBox') 'UI automation saved' 'Reloaded name'
+    $external = Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
+    $external.NanaBox.Name = 'External edit'
+    [IO.File]::WriteAllText($config,($external | ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($true)))
+    Set-Text 'NameTextBox' 'Stale edit'
+    Invoke-Control 'ApplyButton'
+    Invoke-Control 'MessageConfirmButton'
+    Assert-Equal (Get-Content -LiteralPath $config -Raw | ConvertFrom-Json).NanaBox.Name 'External edit' 'Concurrent change preserved'
+    Invoke-Control 'ReloadButton'
+    Assert-Equal (Get-Text 'NameTextBox') 'External edit' 'External change reloaded'
+    Set-Text 'NameTextBox' 'Recovered edit'
+    $saved = Save-Config
+    Assert-Equal $saved.Name 'Recovered edit' 'Save after conflict recovery'
     Write-Host 'Settings UI round trip passed'
 } catch {
     try { Capture 'failure' } catch { Write-Warning $_ }

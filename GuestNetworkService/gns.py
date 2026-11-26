@@ -628,6 +628,8 @@ def handle(sock, backend):
             backend.apply(target, resource, action, settings)
     except Exception as exc:
         detail = getattr(exc, 'stderr', '') or str(exc)
+        if isinstance(detail, bytes):
+            detail = detail.decode('utf-8', errors='replace')
         response = {'Version': 1, 'Success': False, 'Error': detail[:4000]}
     send(sock, response)
 

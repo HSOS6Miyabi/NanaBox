@@ -1143,3 +1143,11 @@ Note: Available starting with NanaBox 1.6 Update 1.
 Each network adapter may specify `NetworkId`, the GUID of an existing HCN network. This takes precedence over the suggested switch options. The specified network must exist; opening it never falls back to a different network.
 
 Optionally specify `FirewallCreatorId`, the GUID of a registered Hyper-V firewall VM creator on a firewall-enabled HCN network. NanaBox requests the HCN PortName and Firewall endpoint policies. Configure the creator's rules using Windows Hyper-V firewall tools. Windows and the network must support these policies.
+
+### Mirrored networking
+
+Set `MirroredNetworking` to `true` on a compatible Windows host with the WSL networking dependency installed. Install the NanaBox Guest Network Service in the guest and configure its mirrored network adapters as dedicated interfaces. HCN provides the host network endpoints; the guest service synchronizes addresses, interface metrics, routes, DNS and ephemeral port ranges. The current synchronization state is shown in the virtual machine window title.
+
+`MirroredAutoReservePorts` defaults to `true`. The service periodically detects guest listening TCP and bound UDP ports and requests their HCN reservations. Set it to `false` to use only explicit reservations. `MirroredTcpPorts` and `MirroredUdpPorts` are arrays of port numbers from 1 to 65535, reserved before the guest starts. Use explicit reservations for services that require a port before the first synchronization cycle. Port conflicts are displayed in the status. Automatic reservation is periodic and does not intercept each bind operation.
+
+`MirroredFirewallCreatorId` optionally selects a registered Hyper-V firewall VM creator GUID. Configure its policy and rules in Host management. A compatible HCN/Hyper-V firewall implementation is required. Saving VM state temporarily removes dynamic mirrored interfaces and releases GPU assignments. On restoration, NanaBox creates mirrored endpoints again and restores the configured GPU assignments; connections using removed interfaces may need to reconnect.

@@ -66,6 +66,22 @@ function Wait-ExactState([string]$name,[string]$state) {
     } while ([DateTime]::UtcNow -lt $until)
     throw "Expected HCS state $state, got $($vm.State)"
 }
+function Wait-NewRuntime([string]$name,[string]$previous,$process) {
+    $until = [DateTime]::UtcNow.AddMinutes(4)
+    do {
+        if ($process.HasExited) { throw 'VM app exited during restart' }
+        try {
+            $vm = Query-VM $name
+            if ($vm.State -eq 'Running' -and $vm.RuntimeId -ne $previous) { return $vm }
+        } catch {}
+        Start-Sleep -Seconds 1
+    } while ([DateTime]::UtcNow -lt $until)
+    throw 'Restart did not produce a new running HCS runtime'
+}
+function Wait-Exit($process,[string]$name,[string]$operation) {
+    Wait-VMState $name Absent 180
+    if (-not $process.WaitForExit(30000)) { throw "App did not exit after $operation" }
+}
 function Guest-Request([string]$runtimeId,[string]$resource,$settings) {
     $file = Join-Path $env:TEMP ('NanaBox-GNS-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
@@ -95,6 +111,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
     if (-not $cfg.MirroredNetworking) { throw 'Hardware test guest must have mirrored networking enabled' }
     if (-not $cfg.Gpu -or $cfg.Gpu.AssignmentMode -eq 'Disabled') { throw 'Hardware test guest must have GPU-PV enabled' }
     if ($cfg.GuestType -ne $guestType) { throw "Expected $guestType guest" }
+    if ($cfg.SaveStateFile) { throw 'Begin with a powered-off test VM without saved state' }
     if ((& hcsdiag.exe list | Out-String) -match [regex]::Escape($cfg.Name)) { throw "VM already running: $($cfg.Name)" }
     $process = Start-Process -FilePath $Executable -ArgumentList ('"' + $path + '"') -PassThru
     try {
@@ -122,11 +139,45 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         while ($p -and $p.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { $p = $walk.GetParent($p) }
         if (-not $p) { throw 'Settings window not found' }
         $p.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+        Invoke-UI $process 'RestartVirtualMachineButton'
+        $vm = Wait-NewRuntime $cfg.Name $vm.RuntimeId $process
+        Wait-Mirrored $process
+        $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
+        if ($connection.LocalAddress -notin $hostAddresses) { throw 'Mirrored connectivity failed after restart' }
+
+        Toggle-UI $process 'PauseVirtualMachineButton'
+        $null = Wait-ExactState $cfg.Name 'Paused'
+        Invoke-UI $process 'PowerMenu'
+        Invoke-UI $process 'SaveAction'
+        Wait-Exit $process $cfg.Name 'save state'
+        $saved = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).NanaBox.SaveStateFile
+        if (-not $saved) { throw 'Saved state was not recorded' }
+        $savedPath = if ([IO.Path]::IsPathRooted($saved)) { $saved } else { Join-Path (Split-Path -Parent $path) $saved }
+        if (-not (Test-Path -LiteralPath $savedPath -PathType Leaf)) { throw 'Saved state file is missing' }
+
+        $process = Start-Process -FilePath $Executable -ArgumentList ('"' + $path + '"') -PassThru
+        Wait-VMState $cfg.Name Present
+        $vm = Wait-ExactState $cfg.Name 'Running'
+        Wait-Mirrored $process
+        $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
+        if (($guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8) -notmatch $gpuPattern) { throw 'GPU was not restored' }
+        $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
+        if ($connection.LocalAddress -notin $hostAddresses) { throw 'Mirrored connectivity failed after restore' }
+        if ((Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).NanaBox.SaveStateFile) { throw 'Saved state was not consumed' }
+        if (Test-Path -LiteralPath $savedPath) { throw 'Consumed saved state file was not removed' }
+
         Invoke-UI $process 'PowerMenu'
         Invoke-UI $process 'ShutdownAction'
-        Wait-VMState $cfg.Name Absent 180
-        if (-not $process.WaitForExit(30000)) { throw 'App did not exit after shutdown' }
-        Write-Host "$guestType power and running settings UI passed"
+        Wait-Exit $process $cfg.Name 'shutdown'
+
+        $process = Start-Process -FilePath $Executable -ArgumentList ('"' + $path + '"') -PassThru
+        Wait-VMState $cfg.Name Present
+        $null = Wait-ExactState $cfg.Name 'Running'
+        Invoke-UI $process 'PowerMenu'
+        Invoke-UI $process 'PowerOffAction'
+        Invoke-UI $process '6'
+        Wait-Exit $process $cfg.Name 'forced power off'
+        Write-Host "$guestType GPU, networking and complete power lifecycle passed"
     } finally {
         if (-not $process.HasExited) {
             # Only this test process owns the disposable HCS compute system.
