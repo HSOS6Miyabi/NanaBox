@@ -785,7 +785,9 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
                 }
                 catch (...)
                 {
-
+                    for (auto& Adapter : this->m_Configuration.NetworkAdapters)
+                        NanaBox::ComputeNetworkDeleteEndpoint(Adapter);
+                    throw;
                 }
             }
         }
@@ -896,7 +898,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                 NanaBox::ComputeSystemRemoveComPort(
                     this->m_VirtualMachine,
                     0,
-                    Configuration.ComPorts.ComPort1);
+                    this->m_Configuration.ComPorts.ComPort1);
             }
             else
             {
@@ -933,7 +935,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                 NanaBox::ComputeSystemRemoveComPort(
                     this->m_VirtualMachine,
                     1,
-                    Configuration.ComPorts.ComPort2);
+                    this->m_Configuration.ComPorts.ComPort2);
             }
             else
             {
@@ -1035,10 +1037,13 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         {
             try
             {
-                NanaBox::ComputeSystemRemoveNetworkAdapter(
-                    this->m_VirtualMachine,
-                    Current);
-                NanaBox::ComputeNetworkDeleteEndpoint(Current);
+                if (Current.Connected)
+                {
+                    NanaBox::ComputeSystemRemoveNetworkAdapter(
+                        this->m_VirtualMachine,
+                        Current);
+                    NanaBox::ComputeNetworkDeleteEndpoint(Current);
+                }
             }
             catch (...)
             {
@@ -1064,7 +1069,11 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
             }
             catch (...)
             {
-
+                auto Error = Mile::WinRT::ToHResultError();
+                NanaBox::ComputeNetworkDeleteEndpoint(Current);
+                Current.Connected = false;
+                FinalList.push_back(Current);
+                ::ShowErrorMessageDialog(this->m_hWnd, Error);
             }
         }
 

@@ -1355,4 +1355,109 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>请选择 ISO 映像</value>
     <comment>Please select an ISO image</comment>
   </data>
+  <data name="GuestTypeLabel.Text" xml:space="preserve">
+    <value>客户机操作系统</value>
+  </data>
+  <data name="GuestUnknown.Content" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="HostGpuLabel" xml:space="preserve">
+    <value>可用 GPU-PV 显卡</value>
+  </data>
+  <data name="HostGpuHelp" xml:space="preserve">
+    <value>选择宿主机显卡以填写设备接口。分区 ID 为 65535 时使用 GPU-PV。</value>
+  </data>
+  <data name="NoHostGpus" xml:space="preserve">
+    <value>未检测到 GPU-PV 设备接口</value>
+  </data>
+  <data name="NoHostNetworks" xml:space="preserve">
+    <value>未检测到宿主机网络</value>
+  </data>
+  <data name="NetworkIdLabel" xml:space="preserve">
+    <value>HCN 网络 ID</value>
+  </data>
+  <data name="NetworkIdHelp" xml:space="preserve">
+    <value>选择现有 HCN 网络。留空时使用原有 NAT 交换机设置。</value>
+  </data>
+  <data name="FirewallCreatorLabel" xml:space="preserve">
+    <value>Hyper-V 防火墙创建者 ID</value>
+  </data>
+  <data name="FirewallCreatorHelp" xml:space="preserve">
+    <value>已注册的 Hyper-V 防火墙虚拟机创建者 GUID。需要所选网络启用防火墙。</value>
+  </data>
+  <data name="HostNetworkLabel" xml:space="preserve">
+    <value>可用 HCN 网络</value>
+  </data>
+  <data name="HostNetworkHelp" xml:space="preserve">
+    <value>选择网卡连接的 HCN 网络。</value>
+  </data>
+  <data name="HostNetworksTitle.Text" xml:space="preserve">
+    <value>宿主机网络管理器</value>
+  </data>
+  <data name="RefreshNetworks.Content" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="InspectNetwork.Content" xml:space="preserve">
+    <value>查看属性</value>
+  </data>
+  <data name="DeleteNetwork.Content" xml:space="preserve">
+    <value>删除已管理的网络</value>
+  </data>
+  <data name="NetworkName.Header" xml:space="preserve">
+    <value>新建 NAT (ICS) 网络名称</value>
+  </data>
+  <data name="NetworkFirewall.Content" xml:space="preserve">
+    <value>启用 Hyper-V 防火墙</value>
+  </data>
+  <data name="CreateNetwork.Content" xml:space="preserve">
+    <value>创建 NAT 网络</value>
+  </data>
+  <data name="NetworkManagerNote.Text" xml:space="preserve">
+    <value>创建网络后刷新列表，添加网卡并选择要连接的网络。</value>
+  </data>
+  <data name="DeleteNetworkConfirm" xml:space="preserve">
+    <value>是否删除所选 NanaBox 管理的网络？必须先断开所有端点。</value>
+  </data>
+  <data name="DiskCreate.Content" xml:space="preserve">
+    <value>创建虚拟磁盘</value>
+  </data>
+  <data name="DiskResize.Content" xml:space="preserve">
+    <value>调整容量</value>
+  </data>
+  <data name="DiskCompact.Content" xml:space="preserve">
+    <value>压缩虚拟磁盘</value>
+  </data>
+  <data name="GenerateCom1.Content" xml:space="preserve">
+    <value>生成 COM1 管道</value>
+  </data>
+  <data name="GenerateCom2.Content" xml:space="preserve">
+    <value>生成 COM2 管道</value>
+  </data>
+  <data name="ClearCom1.Content" xml:space="preserve">
+    <value>断开 COM1</value>
+  </data>
+  <data name="ClearCom2.Content" xml:space="preserve">
+    <value>断开 COM2</value>
+  </data>
+  <data name="TabGeneral.Header" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="TabSerial.Header" xml:space="preserve">
+    <value>串口</value>
+  </data>
+  <data name="TabGpu.Header" xml:space="preserve">
+    <value>显卡</value>
+  </data>
+  <data name="TabNetwork.Header" xml:space="preserve">
+    <value>网络</value>
+  </data>
+  <data name="TabStorage.Header" xml:space="preserve">
+    <value>存储</value>
+  </data>
+  <data name="TabSession.Header" xml:space="preserve">
+    <value>会话</value>
+  </data>
+  <data name="TabAdvanced.Header" xml:space="preserve">
+    <value>高级</value>
+  </data>
 </root>

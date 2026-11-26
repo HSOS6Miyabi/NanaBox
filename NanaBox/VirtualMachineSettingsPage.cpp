@@ -209,6 +209,53 @@ namespace
         return Input;
     }
 
+    winrt::ComboBox MakeHostPicker(
+        winrt::StackPanel const& Panel, winrt::TextBox const& Target,
+        LPCWSTR Label, LPCWSTR Help)
+    {
+        winrt::ComboBox Picker;
+        Picker.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
+        ::AddSettingRow(Panel, Picker, Label, Help, true);
+        Picker.SelectionChanged([WeakTarget = winrt::make_weak(Target)](
+            winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
+        {
+            auto Item = Sender.as<winrt::ComboBox>().SelectedItem();
+            if (auto Text = WeakTarget.get())
+                if (Item) Text.Text(winrt::unbox_value<winrt::hstring>(
+                    Item.as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>().Tag()));
+        });
+        return Picker;
+    }
+
+    void AddPickerItem(winrt::ComboBox const& Picker, winrt::hstring const& Name,
+        winrt::hstring const& Value)
+    {
+        winrt::Windows::UI::Xaml::Controls::ComboBoxItem Item;
+        Item.Content(winrt::box_value(Name));
+        Item.Tag(winrt::box_value(Value));
+        winrt::ToolTipService::SetToolTip(Item, winrt::box_value(Value));
+        Picker.Items().Append(Item);
+    }
+
+    void FillNetworkPicker(winrt::ComboBox const& Picker, bool AttachableOnly = false)
+    {
+        Picker.Items().Clear();
+        for (auto const& Network : NanaBox::EnumerateHostNetworks())
+        {
+            bool Mirrored = (Network.Flags & NanaBox::HcnNetworkFlags::EnableFlowSteering) != 0;
+            if (AttachableOnly && Mirrored) continue;
+            auto Id = ::FromGuid(Network.Id);
+            std::wstring Label(Network.Name.c_str());
+            Label += L" (";
+            Label += Network.Type.c_str();
+            if (Mirrored) Label += L", Mirrored";
+            Label += L")";
+            ::AddPickerItem(Picker, winrt::hstring(Label), Id);
+        }
+        if (!Picker.Items().Size())
+            Picker.PlaceholderText(::GetSettingsString(L"NoHostNetworks"));
+    }
+
     std::vector<std::string> ReadRedirectionSelection(
         winrt::StackPanel const& Panel)
     {
@@ -372,6 +419,8 @@ namespace winrt::NanaBox::implementation
             : winrt::Visibility::Collapsed);
 
         {
+            this->GuestTypeRow().Visibility(this->m_MainWindow ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+            this->GuestTypeComboBox().SelectedIndex(static_cast<std::int32_t>(this->m_Configuration.GuestType));
             this->NameTextBox().Text(
                 winrt::to_hstring(this->m_Configuration.Name));
             this->NameRow().Visibility(this->m_MainWindow
@@ -634,6 +683,7 @@ namespace winrt::NanaBox::implementation
         {
             if (!this->m_MainWindow)
             {
+                Result.GuestType = static_cast<NanaBox::GuestType>(::ReadSettingIndex(this->GuestTypeComboBox()));
                 Result.Name =
                     winrt::to_string(
                         this->NameTextBox().Text());
@@ -651,7 +701,7 @@ namespace winrt::NanaBox::implementation
                         this->VirtualizationExtensionsCheckBox().IsChecked());
             }
             Result.MemorySize =
-                ::ReadSettingInteger<std::uint32_t>(
+                ::ReadSettingInteger<std::uint64_t>(
                     this->MemorySizeTextBox());
 
             if (!this->m_MainWindow && Result.Name.empty())
@@ -726,6 +776,15 @@ namespace winrt::NanaBox::implementation
                     Row.Connected.IsChecked().Value();
                 Configuration.MacAddress =
                     winrt::to_string(Row.MacAddress.Text());
+                Configuration.NetworkId = winrt::to_string(Row.NetworkId.Text());
+                Configuration.FirewallCreatorId = winrt::to_string(Row.FirewallCreatorId.Text());
+                if (!Configuration.NetworkId.empty())
+                    (void)winrt::guid(Configuration.NetworkId);
+                if (!Configuration.FirewallCreatorId.empty())
+                {
+                    (void)winrt::guid(Configuration.FirewallCreatorId);
+                    if (Configuration.NetworkId.empty()) ::InvalidSetting(::GetSettingsString(L"NetworkIdLabel"));
+                }
                 Configuration.SuggestedSwitchId =
                     winrt::to_string(Row.SuggestedSwitchId.Text());
                 Configuration.SuggestedSwitchName =
@@ -1293,6 +1352,17 @@ namespace winrt::NanaBox::implementation
             L"GpuDeviceDeviceInterfaceHelp",
             winrt::to_hstring(DeviceInterface),
             false);
+        auto Picker = ::MakeHostPicker(Row.Container, Row.DeviceInterface, L"HostGpuLabel", L"HostGpuHelp");
+        try
+        {
+            for (auto const& Gpu : NanaBox::EnumeratePartitionableGpus())
+                ::AddPickerItem(Picker, Gpu.Name, Gpu.DeviceInterface);
+            if (!Picker.Items().Size()) Picker.PlaceholderText(::GetSettingsString(L"NoHostGpus"));
+        }
+        catch (...)
+        {
+            Picker.PlaceholderText(Mile::WinRT::ToHResultError().message());
+        }
         Row.PartitionId = ::AddSettingTextBox(
             Row.Container,
             L"GpuDevicePartitionIdLabel",
@@ -1355,6 +1425,86 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+
+    void VirtualMachineSettingsPage::RefreshNetworksButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        try { ::FillNetworkPicker(this->HostNetworksComboBox()); }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    void VirtualMachineSettingsPage::CreateNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            NanaBox::CreateManagedNetwork(this->NetworkNameTextBox().Text(), this->NetworkFirewallCheckBox().IsChecked().Value());
+            ::FillNetworkPicker(this->HostNetworksComboBox());
+            this->NetworkNameTextBox().Text(L"");
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    void VirtualMachineSettingsPage::DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto Item = this->HostNetworksComboBox().SelectedItem();
+            if (!Item) return;
+            auto Id = winrt::guid(winrt::to_string(winrt::unbox_value<winrt::hstring>(
+                Item.as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>().Tag())));
+            if (::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"DeleteNetworkConfirm").c_str(),
+                L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
+            NanaBox::DeleteManagedNetwork(Id);
+            ::FillNetworkPicker(this->HostNetworksComboBox());
+            this->NetworkPropertiesTextBox().Text(L"");
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    void VirtualMachineSettingsPage::InspectNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto Item = this->HostNetworksComboBox().SelectedItem();
+            if (!Item) return;
+            auto Id = winrt::guid(winrt::to_string(winrt::unbox_value<winrt::hstring>(
+                Item.as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>().Tag())));
+            auto Info = NanaBox::QueryHostNetwork(Id);
+            this->NetworkPropertiesTextBox().Text(winrt::to_hstring(
+                nlohmann::json::parse(winrt::to_string(Info.Properties)).dump(2)));
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    void VirtualMachineSettingsPage::DiskManagerButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            if (Action == L"Create") ::ShowNewVirtualHardDiskDialog(this->m_WindowHandle);
+            else if (Action == L"Resize") ::ShowResizeVirtualHardDiskDialog(this->m_WindowHandle);
+            else if (Action == L"Compact") ::ShowCompactVirtualHardDiskDialog(this->m_WindowHandle);
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    void VirtualMachineSettingsPage::SerialPipeButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            auto Input = (Action == L"1" || Action == L"Clear1") ? this->ComPort1TextBox() : this->ComPort2TextBox();
+            if (Action == L"Clear1" || Action == L"Clear2") { Input.Text(L""); return; }
+            GUID Id{};
+            winrt::check_hresult(::CoCreateGuid(&Id));
+            std::wstring Pipe = LR"(\\.\pipe\NanaBox-)";
+            Pipe += ::FromGuid(Id).c_str();
+            Input.Text(winrt::hstring(Pipe));
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
     void VirtualMachineSettingsPage::AddGpuDeviceButtonClick(
         winrt::IInspectable const& Sender,
         winrt::RoutedEventArgs const& Arguments)
@@ -1364,6 +1514,7 @@ namespace winrt::NanaBox::implementation
 
         try
         {
+            this->AssignmentModeComboBox().SelectedIndex(static_cast<int>(NanaBox::GpuAssignmentMode::List));
             this->AddGpuDevice(std::string(), 65535);
         }
         catch (...)
@@ -1394,6 +1545,16 @@ namespace winrt::NanaBox::implementation
             L"NetworkAdapterMacAddressHelp",
             winrt::to_hstring(Configuration.MacAddress),
             false);
+        Row.NetworkId = ::AddSettingTextBox(Row.Container, L"NetworkIdLabel", L"NetworkIdHelp",
+            winrt::to_hstring(Configuration.NetworkId), this->m_MainWindow && Existing);
+        Row.FirewallCreatorId = ::AddSettingTextBox(Row.Container, L"FirewallCreatorLabel", L"FirewallCreatorHelp",
+            winrt::to_hstring(Configuration.FirewallCreatorId), this->m_MainWindow && Existing);
+        if (!(this->m_MainWindow && Existing))
+        {
+            auto Picker = ::MakeHostPicker(Row.Container, Row.NetworkId, L"HostNetworkLabel", L"HostNetworkHelp");
+            try { ::FillNetworkPicker(Picker, true); }
+            catch (...) { Picker.PlaceholderText(Mile::WinRT::ToHResultError().message()); }
+        }
         Row.SuggestedSwitchId = ::AddSettingTextBox(
             Row.Container,
             L"NetworkAdapterSuggestedSwitchIdLabel",

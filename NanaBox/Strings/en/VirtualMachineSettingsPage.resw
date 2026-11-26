@@ -1355,4 +1355,109 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>Please select an ISO image</value>
     <comment>Please select an ISO image</comment>
   </data>
+  <data name="GuestTypeLabel.Text" xml:space="preserve">
+    <value>Guest operating system</value>
+  </data>
+  <data name="GuestUnknown.Content" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="HostGpuLabel" xml:space="preserve">
+    <value>Available GPU-PV devices</value>
+  </data>
+  <data name="HostGpuHelp" xml:space="preserve">
+    <value>Select a host GPU to fill its device interface. Partition ID 65535 requests GPU-PV.</value>
+  </data>
+  <data name="NoHostGpus" xml:space="preserve">
+    <value>No GPU-PV interfaces found</value>
+  </data>
+  <data name="NoHostNetworks" xml:space="preserve">
+    <value>No host networks found</value>
+  </data>
+  <data name="NetworkIdLabel" xml:space="preserve">
+    <value>HCN network ID</value>
+  </data>
+  <data name="NetworkIdHelp" xml:space="preserve">
+    <value>Select an existing HCN network. Leave empty to use the legacy NAT switch settings.</value>
+  </data>
+  <data name="FirewallCreatorLabel" xml:space="preserve">
+    <value>Hyper-V firewall creator ID</value>
+  </data>
+  <data name="FirewallCreatorHelp" xml:space="preserve">
+    <value>Optional GUID of a registered Hyper-V firewall VM creator. Requires a firewall-enabled network.</value>
+  </data>
+  <data name="HostNetworkLabel" xml:space="preserve">
+    <value>Available HCN networks</value>
+  </data>
+  <data name="HostNetworkHelp" xml:space="preserve">
+    <value>Select the exact HCN network used by this adapter.</value>
+  </data>
+  <data name="HostNetworksTitle.Text" xml:space="preserve">
+    <value>Host network manager</value>
+  </data>
+  <data name="RefreshNetworks.Content" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="InspectNetwork.Content" xml:space="preserve">
+    <value>Properties</value>
+  </data>
+  <data name="DeleteNetwork.Content" xml:space="preserve">
+    <value>Delete managed network</value>
+  </data>
+  <data name="NetworkName.Header" xml:space="preserve">
+    <value>New NAT (ICS) network name</value>
+  </data>
+  <data name="NetworkFirewall.Content" xml:space="preserve">
+    <value>Enable Hyper-V firewall</value>
+  </data>
+  <data name="CreateNetwork.Content" xml:space="preserve">
+    <value>Create NAT network</value>
+  </data>
+  <data name="NetworkManagerNote.Text" xml:space="preserve">
+    <value>Refresh after creating a network. Add a NIC and choose the network to attach it.</value>
+  </data>
+  <data name="DeleteNetworkConfirm" xml:space="preserve">
+    <value>Delete the selected NanaBox-managed network? All endpoints must be disconnected.</value>
+  </data>
+  <data name="DiskCreate.Content" xml:space="preserve">
+    <value>Create VHD</value>
+  </data>
+  <data name="DiskResize.Content" xml:space="preserve">
+    <value>Resize VHD</value>
+  </data>
+  <data name="DiskCompact.Content" xml:space="preserve">
+    <value>Compact VHD</value>
+  </data>
+  <data name="GenerateCom1.Content" xml:space="preserve">
+    <value>Generate COM1 pipe</value>
+  </data>
+  <data name="GenerateCom2.Content" xml:space="preserve">
+    <value>Generate COM2 pipe</value>
+  </data>
+  <data name="ClearCom1.Content" xml:space="preserve">
+    <value>Disconnect COM1</value>
+  </data>
+  <data name="ClearCom2.Content" xml:space="preserve">
+    <value>Disconnect COM2</value>
+  </data>
+  <data name="TabGeneral.Header" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="TabSerial.Header" xml:space="preserve">
+    <value>Serial</value>
+  </data>
+  <data name="TabGpu.Header" xml:space="preserve">
+    <value>GPU</value>
+  </data>
+  <data name="TabNetwork.Header" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="TabStorage.Header" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="TabSession.Header" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="TabAdvanced.Header" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
 </root>

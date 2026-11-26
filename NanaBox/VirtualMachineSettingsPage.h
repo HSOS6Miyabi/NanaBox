@@ -69,6 +69,13 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
 
+        void RefreshNetworksButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void CreateNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void InspectNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void DiskManagerButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void SerialPipeButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+
         void AddGpuDeviceButtonClick(
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
@@ -104,6 +111,8 @@ namespace winrt::NanaBox::implementation
             std::string EndpointId;
             winrt::CheckBox Connected = nullptr;
             winrt::TextBox MacAddress = nullptr;
+            winrt::TextBox NetworkId = nullptr;
+            winrt::TextBox FirewallCreatorId = nullptr;
             winrt::TextBox SuggestedSwitchId = nullptr;
             winrt::TextBox SuggestedSwitchName = nullptr;
             winrt::TextBox SuggestedSwitchSubnet = nullptr;
