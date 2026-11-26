@@ -179,6 +179,10 @@ try {
     $null = Find-Control 'InspectNetwork'
     $null = Find-Control 'DeleteNetwork'
     $null = Find-Control 'CreateNetwork'
+    Invoke-Control 'NetworkPreflightButton'
+    $diagnostics = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Mode -eq 'HostPreflight'}
+    if ($null -eq $diagnostics.ApiAvailable -or $null -eq $diagnostics.WslDependencyAvailable -or $null -eq $diagnostics.HcnReachable) { throw 'Incomplete host diagnostic result' }
+    Invoke-Control 'NetworkCopyButton'
     Set-Check 'MirroredNetworkingCheckBox' $true
     Set-Check 'MirroredAutoReservePortsCheckBox' $false
     Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'

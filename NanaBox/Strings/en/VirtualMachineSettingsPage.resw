@@ -1703,4 +1703,19 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredIgnoredPorts.Header" xml:space="preserve">
     <value>Exclude from automatic port reservation (one per line)</value>
   </data>
+  <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve">
+    <value>Network diagnostics</value>
+  </data>
+  <data name="NetworkPreflight.Content" xml:space="preserve">
+    <value>Check host</value>
+  </data>
+  <data name="NetworkStatus.Content" xml:space="preserve">
+    <value>Current status</value>
+  </data>
+  <data name="NetworkRetry.Content" xml:space="preserve">
+    <value>Retry sync</value>
+  </data>
+  <data name="NetworkCopy.Content" xml:space="preserve">
+    <value>Copy</value>
+  </data>
 </root>

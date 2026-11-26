@@ -1703,4 +1703,19 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredIgnoredPorts.Header" xml:space="preserve">
     <value>不自动预留的端口（每行一个）</value>
   </data>
+  <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve">
+    <value>网络诊断</value>
+  </data>
+  <data name="NetworkPreflight.Content" xml:space="preserve">
+    <value>检查宿主机</value>
+  </data>
+  <data name="NetworkStatus.Content" xml:space="preserve">
+    <value>当前状态</value>
+  </data>
+  <data name="NetworkRetry.Content" xml:space="preserve">
+    <value>重新同步</value>
+  </data>
+  <data name="NetworkCopy.Content" xml:space="preserve">
+    <value>复制</value>
+  </data>
 </root>

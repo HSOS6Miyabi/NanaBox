@@ -22,6 +22,7 @@
 #pragma comment(lib, "virtdisk.lib")
 #include <winrt/Windows.UI.Xaml.Automation.h>
 #include <winrt/Windows.UI.Core.h>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
 
 namespace winrt
 {
@@ -492,6 +493,8 @@ namespace winrt::NanaBox::implementation
         }
 
         {
+            this->NetworkStatusButton().IsEnabled(this->m_MainWindow != nullptr);
+            this->NetworkRetryButton().IsEnabled(this->m_MainWindow != nullptr && this->m_Configuration.MirroredNetworking);
             this->MirroredNetworkingPanel().Visibility(this->m_MainWindow
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
@@ -1488,6 +1491,61 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+
+    void VirtualMachineSettingsPage::NetworkDiagnosticsButtonClick(
+        winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        try
+        {
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            if (Action == L"Copy")
+            {
+                winrt::Windows::ApplicationModel::DataTransfer::DataPackage Data;
+                Data.SetText(this->NetworkDiagnosticsTextBox().Text());
+                winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(Data);
+                winrt::Windows::ApplicationModel::DataTransfer::Clipboard::Flush();
+                return;
+            }
+            if (Action == L"Host" || !this->m_MainWindow)
+            {
+                this->RunHostPreflight();
+                return;
+            }
+            auto Dispatcher = this->Dispatcher();
+            auto Weak = this->get_weak();
+            this->m_MainWindow->RequestNetworkDiagnostics(Action == L"Retry", [Dispatcher, Weak](winrt::hstring Report)
+            {
+                Dispatcher.RunAsync(winrt::CoreDispatcherPriority::Normal, [Weak, Report]()
+                {
+                    if (auto Page = Weak.get()) Page->NetworkDiagnosticsTextBox().Text(Report);
+                });
+            });
+        }
+        catch (...) { this->NetworkDiagnosticsTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunHostPreflight()
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        this->NetworkDiagnosticsTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+        this->NetworkPreflightButton().IsEnabled(false);
+        winrt::hstring Result;
+        try
+        {
+            co_await winrt::resume_background();
+            Result = winrt::to_hstring(::NanaBox::CheckMirroredHostSupport());
+        }
+        catch (...) { Result = Mile::WinRT::ToHResultError().message(); }
+        try
+        {
+            co_await Foreground;
+            this->NetworkDiagnosticsTextBox().Text(Result);
+            this->NetworkPreflightButton().IsEnabled(true);
+        }
+        catch (...) {}
+    }
 
     void VirtualMachineSettingsPage::SetNetworkManagementBusy(bool Busy)
     {

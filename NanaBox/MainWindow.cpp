@@ -433,6 +433,33 @@ void NanaBox::MainWindow::ReloadVirtualMachineSettings(std::function<void(winrt:
     });
 }
 
+void NanaBox::MainWindow::RequestNetworkDiagnostics(bool Retry, std::function<void(winrt::hstring)> Completion)
+{
+    this->m_MainWindowControl.Dispatcher().RunAsync(
+        winrt::CoreDispatcherPriority::Normal,
+        [this, Retry, Completion = std::move(Completion)]()
+    {
+        winrt::hstring Text;
+        try
+        {
+            if (this->m_MirroredNetworking)
+            {
+                if (Retry) this->m_MirroredNetworking->RequestRefresh();
+                auto Data = nlohmann::json::parse(this->m_MirroredNetworking->Diagnostics());
+                Data["RefreshRequested"] = Retry;
+                Text = winrt::to_hstring(Data.dump(2));
+            }
+            else
+                Text = winrt::to_hstring(nlohmann::json{{"Mode", "Conventional"},
+                    {"RuntimeId", this->m_VirtualMachineGuid}, {"Running", this->m_VirtualMachineRunning},
+                    {"MirroredEnabled", this->m_Configuration.MirroredNetworking}}.dump(2));
+        }
+        catch (...) { Text = winrt::to_hstring(nlohmann::json{{"Error",
+            winrt::to_string(Mile::WinRT::ToHResultError().message())}}.dump(2)); }
+        if (Completion) Completion(Text);
+    });
+}
+
 void NanaBox::MainWindow::OnTimer(
     UINT_PTR nIDEvent)
 {

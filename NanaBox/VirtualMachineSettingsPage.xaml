@@ -457,6 +457,14 @@
             <CheckBox x:Name="NetworkFirewallCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkFirewall" Content="Enable Hyper-V firewall" AutomationProperties.AutomationId="NetworkFirewallCheckBox" />
             <Button x:Name="CreateNetworkControl" x:Uid="/VirtualMachineSettingsPage/CreateNetwork" Content="Create NAT network" Click="CreateNetworkButtonClick" AutomationProperties.AutomationId="CreateNetwork" />
             <TextBlock x:Uid="/VirtualMachineSettingsPage/NetworkManagerNote" Text="Select an existing network when adding a virtual NIC." TextWrapping="Wrap" Opacity="0.75" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/NetworkDiagnosticsTitle" Text="Network diagnostics" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="NetworkPreflightButton" x:Uid="/VirtualMachineSettingsPage/NetworkPreflight" Content="Check host" Tag="Host" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkPreflightButton" />
+              <Button x:Name="NetworkStatusButton" x:Uid="/VirtualMachineSettingsPage/NetworkStatus" Content="Current status" Tag="Status" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkStatusButton" />
+              <Button x:Name="NetworkRetryButton" x:Uid="/VirtualMachineSettingsPage/NetworkRetry" Content="Retry sync" Tag="Retry" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkRetryButton" />
+              <Button x:Uid="/VirtualMachineSettingsPage/NetworkCopy" Content="Copy" Tag="Copy" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkCopyButton" />
+            </StackPanel>
+            <TextBox x:Name="NetworkDiagnosticsTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="240" AutomationProperties.AutomationId="NetworkDiagnosticsTextBox" />
             <StackPanel x:Name="MirroredNetworkingPanel" Spacing="8" Margin="0,12,0,12">
               <TextBlock x:Uid="/VirtualMachineSettingsPage/MirroredTitle" Text="Mirrored networking" FontSize="16" FontWeight="SemiBold" />
               <CheckBox x:Name="MirroredNetworkingCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredEnabled" Content="Enable HCN mirrored networking" AutomationProperties.AutomationId="MirroredNetworkingCheckBox" />

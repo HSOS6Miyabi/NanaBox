@@ -72,6 +72,8 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
 
+        void NetworkDiagnosticsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        winrt::fire_and_forget RunHostPreflight();
         void RefreshNetworksButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void CreateNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);

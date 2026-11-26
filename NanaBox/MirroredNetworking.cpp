@@ -407,6 +407,9 @@ struct NanaBox::MirroredNetworking::Impl
     mutable std::mutex Mutex;
     std::condition_variable Wake;
     std::wstring CurrentStatus = L"Connecting";
+    Json CurrentDiagnostics = Json::object();
+    ULONGLONG LastSuccessfulSync = 0;
+    unsigned ReconnectCount = 0;
     std::thread Worker;
 
     Impl(VirtualMachineConfiguration const& Config, winrt::guid const& Id) :
@@ -518,6 +521,25 @@ struct NanaBox::MirroredNetworking::Impl
     {
         std::lock_guard Lock(Mutex);
         return CurrentStatus;
+    }
+
+    std::string Diagnostics() const
+    {
+        std::lock_guard Lock(Mutex);
+        auto Result = CurrentDiagnostics;
+        Result["Mode"] = "Mirrored";
+        Result["RuntimeId"] = GuidString(RuntimeId);
+        Result["Status"] = winrt::to_string(CurrentStatus);
+        if (LastSuccessfulSync) Result["SecondsSinceLastSuccessfulSync"] = (::GetTickCount64() - LastSuccessfulSync) / 1000;
+        return Result.dump(2);
+    }
+
+    void PublishDiagnostics(Json Report, std::wstring State, bool Success)
+    {
+        std::lock_guard Lock(Mutex);
+        CurrentDiagnostics = std::move(Report);
+        CurrentStatus = std::move(State);
+        if (Success) LastSuccessfulSync = ::GetTickCount64();
     }
 
     void SetState(char const* State)
@@ -650,6 +672,7 @@ struct NanaBox::MirroredNetworking::Impl
         {
             SubscribeHcn();
             CreateGuestService();
+            ++ReconnectCount;
         }
         catch (...)
         {
@@ -767,7 +790,7 @@ struct NanaBox::MirroredNetworking::Impl
         NanaBox::HcnDeleteOwnedEndpoint(Entry.Id, Configuration.Name);
     }
 
-    std::set<PortKey> Synchronize(Endpoint& Entry)
+    std::set<PortKey> Synchronize(Endpoint& Entry, Json& Details)
     {
         auto Desired = ReadHostSnapshot(Entry.HostInterface);
         Json Addresses = Json::array(), Routes = Json::array();
@@ -787,6 +810,15 @@ struct NanaBox::MirroredNetworking::Impl
                 {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}, {"Suffix", Desired.DnsSuffix}}},
                 {"DiscoverPorts", Configuration.MirroredAutoReservePorts},
                 {"PortRange", {{"Start", Range.startingPort}, {"End", Range.endingPort}}}}}}, Stop);
+        Details["HostInterfaceId"] = GuidString(Entry.HostInterface);
+        Details["EndpointId"] = GuidString(Entry.Id);
+        Details["MacAddress"] = Entry.Mac;
+        Details["Interface"] = Desired.Interface;
+        Details["Addresses"] = Addresses;
+        Details["Routes"] = Routes;
+        Details["DnsServers"] = Desired.Dns;
+        Details["DnsSuffix"] = Desired.DnsSuffix;
+        Details["GuestAcknowledged"] = true;
         std::set<PortKey> Ports;
         if (Configuration.MirroredAutoReservePorts)
         {
@@ -842,6 +874,7 @@ struct NanaBox::MirroredNetworking::Impl
         while (!Stop)
         {
             NetworkChanged.exchange(false);
+            Json Report = {{"Endpoints", Json::array()}};
             try
             {
                 if (ServiceDisconnected.exchange(false) || !Service || !HcnCallbackHandle)
@@ -878,21 +911,38 @@ struct NanaBox::MirroredNetworking::Impl
                     for (auto& Entry : Endpoints)
                     {
                         if (Stop) break;
+                        Json Details = {{"NetworkId", Entry.first}, {"EndpointId", GuidString(Entry.second.Id)},
+                            {"MacAddress", Entry.second.Mac}, {"GuestAcknowledged", false}};
                         try
                         {
-                            auto List = Synchronize(Entry.second);
+                            auto List = Synchronize(Entry.second, Details);
                             Ports.insert(List.begin(), List.end());
                         }
-                        catch (...) { Errors += std::wstring(Mile::WinRT::ToHResultError().message().c_str()) + L"; "; }
+                        catch (...)
+                        {
+                            auto Error = Mile::WinRT::ToHResultError().message();
+                            Details["Error"] = winrt::to_string(Error);
+                            Errors += std::wstring(Error.c_str()) + L"; ";
+                        }
+                        Report["Endpoints"].push_back(std::move(Details));
                     }
                     if (Stop) break;
                     if (!Errors.empty()) throw winrt::hresult_error(E_FAIL, winrt::hstring(Errors));
                     auto Conflicts = ReconcileAutomaticPorts(Ports);
-                    // Verify the service handle on each reconciliation, including after HNS restart.
-                    try { SetState("Synchronized"); }
-                    catch (...) { ServiceDisconnected.store(true); throw; }
+                    if (!Synchronized)
+                    {
+                        try { SetState("Synchronized"); }
+                        catch (...) { ServiceDisconnected.store(true); throw; }
+                    }
                     Synchronized = true;
-                    Status(Conflicts.empty() ? L"Synchronized" : L"Synchronized; port conflicts: " + Conflicts);
+                    Report["PortRange"] = {{"Start", Range.startingPort}, {"End", Range.endingPort}};
+                    Report["ExplicitPortCount"] = ExplicitPorts.size();
+                    Report["AutomaticPortCount"] = AutomaticPorts.size();
+                    Report["IgnoredPorts"] = IgnoredPorts;
+                    Report["PortConflicts"] = winrt::to_string(Conflicts);
+                    Report["HcnReconnectCount"] = ReconnectCount;
+                    PublishDiagnostics(std::move(Report),
+                        Conflicts.empty() ? L"Synchronized" : L"Synchronized; port conflicts: " + Conflicts, true);
                 }
             }
             catch (...)
@@ -906,7 +956,9 @@ struct NanaBox::MirroredNetworking::Impl
                         catch (...) { ServiceDisconnected.store(true); }
                     }
                     Synchronized = false;
-                    Status(std::wstring(Error.message().c_str()));
+                    Report["Error"] = winrt::to_string(Error.message());
+                    Report["HcnReconnectCount"] = ReconnectCount;
+                    PublishDiagnostics(std::move(Report), std::wstring(Error.message().c_str()), false);
                 }
             }
             std::unique_lock Lock(Mutex);
@@ -950,4 +1002,54 @@ void NanaBox::MirroredNetworking::DetachForSave()
 void NanaBox::MirroredNetworking::VmExited() noexcept
 {
     m_Impl->VmExited();
+}
+
+std::string NanaBox::MirroredNetworking::Diagnostics() const
+{
+    return m_Impl->Diagnostics();
+}
+
+void NanaBox::MirroredNetworking::RequestRefresh() noexcept
+{
+    m_Impl->RequestRefresh();
+}
+
+std::string NanaBox::CheckMirroredHostSupport()
+{
+    Json Report = {{"Mode", "HostPreflight"}, {"ApiAvailable", false},
+        {"WslDependencyAvailable", false}, {"HcnReachable", false}};
+    HMODULE Module = ::LoadLibraryExW(L"computenetwork.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (Module)
+    {
+        auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::FreeLibrary(Module); });
+        Json Missing = Json::array();
+        for (auto Name : {"HcnCreateGuestNetworkService", "HcnModifyGuestNetworkService",
+            "HcnDeleteGuestNetworkService", "HcnCloseGuestNetworkService",
+            "HcnReserveGuestNetworkServicePortRange", "HcnReserveGuestNetworkServicePort",
+            "HcnReleaseGuestNetworkServicePortReservationHandle", "HcnRegisterServiceCallback"})
+            if (!::GetProcAddress(Module, Name)) Missing.push_back(Name);
+        Report["ApiAvailable"] = Missing.empty();
+        Report["MissingApis"] = Missing;
+    }
+    try
+    {
+        auto Path = WslDependencyPath();
+        auto Attributes = ::GetFileAttributesW(Path.c_str());
+        Report["WslDependencyAvailable"] = Attributes != INVALID_FILE_ATTRIBUTES &&
+            !(Attributes & FILE_ATTRIBUTE_DIRECTORY);
+    }
+    catch (...) { Report["DependencyError"] = winrt::to_string(Mile::WinRT::ToHResultError().message()); }
+    try
+    {
+        Json Networks = Json::array();
+        for (auto const& Network : NanaBox::EnumerateHostNetworks())
+            Networks.push_back({{"Id", GuidString(Network.Id)}, {"Name", winrt::to_string(Network.Name)},
+                {"Type", winrt::to_string(Network.Type)}, {"Flags", Network.Flags}});
+        Report["HcnReachable"] = true;
+        Report["Networks"] = std::move(Networks);
+    }
+    catch (...) { Report["HcnError"] = winrt::to_string(Mile::WinRT::ToHResultError().message()); }
+    Report["PrerequisitesAvailable"] = Report["ApiAvailable"].get<bool>() &&
+        Report["WslDependencyAvailable"].get<bool>() && Report["HcnReachable"].get<bool>();
+    return Report.dump(2);
 }
