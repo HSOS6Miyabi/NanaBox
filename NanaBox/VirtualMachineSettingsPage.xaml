@@ -1383,6 +1383,10 @@
                 AutomationProperties.Name="[DisableBasicSessionDpiScaling]"
                 ToolTipService.ToolTip="[(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.]" AutomationProperties.AutomationId="DisableDpiScalingCheckBox" />
             </Grid>
+            <CheckBox x:Name="DpiOverrideCheckBox" x:Uid="/VirtualMachineSettingsPage/DpiOverride" Content="Override display scaling" AutomationProperties.AutomationId="DpiOverrideCheckBox" />
+            <TextBox x:Name="DpiScaleTextBox" x:Uid="/VirtualMachineSettingsPage/DpiScale" Header="Display scaling (100–500%)" AutomationProperties.AutomationId="DpiScaleTextBox" AutomationProperties.Name="Display scaling" InputScope="Number" />
+            <CheckBox x:Name="ContentResizingCheckBox" x:Uid="/VirtualMachineSettingsPage/ContentResizing" Content="Resize the enhanced-session desktop with the window" AutomationProperties.AutomationId="ContentResizingCheckBox" />
+            <CheckBox x:Name="ConnectionBarCheckBox" x:Uid="/VirtualMachineSettingsPage/ConnectionBar" Content="Show connection bar in full screen" AutomationProperties.AutomationId="ConnectionBarCheckBox" />
             <StackPanel x:Name="PoliciesSection" Spacing="4">
               <TextBlock
                 x:Uid="/VirtualMachineSettingsPage/PoliciesTitle"

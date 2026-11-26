@@ -635,6 +635,10 @@ namespace winrt::NanaBox::implementation
                 : winrt::Visibility::Visible);
             this->DisableDpiScalingCheckBox().IsChecked(
                 Configuration.DisableBasicSessionDpiScaling);
+            this->DpiOverrideCheckBox().IsChecked(Configuration.EnableDpiScalingValueOverride);
+            this->DpiScaleTextBox().Text(winrt::to_hstring(Configuration.OverriddenDpiScalingValue));
+            this->ContentResizingCheckBox().IsChecked(Configuration.EnableContentResizing);
+            this->ConnectionBarCheckBox().IsChecked(Configuration.ShowFullScreenModeConnectionBar);
         }
 
         {
@@ -1003,6 +1007,12 @@ namespace winrt::NanaBox::implementation
             Result.VideoMonitor.DisableBasicSessionDpiScaling =
                 winrt::unbox_value<bool>(
                     this->DisableDpiScalingCheckBox().IsChecked());
+            Result.VideoMonitor.EnableDpiScalingValueOverride = this->DpiOverrideCheckBox().IsChecked().Value();
+            Result.VideoMonitor.OverriddenDpiScalingValue = ::ReadSettingInteger<std::uint32_t>(this->DpiScaleTextBox());
+            if (Result.VideoMonitor.OverriddenDpiScalingValue < 100 || Result.VideoMonitor.OverriddenDpiScalingValue > 500)
+                ::InvalidSetting(::GetSettingsString(L"DpiScale.Header"));
+            Result.VideoMonitor.EnableContentResizing = this->ContentResizingCheckBox().IsChecked().Value();
+            Result.VideoMonitor.ShowFullScreenModeConnectionBar = this->ConnectionBarCheckBox().IsChecked().Value();
         }
 
         {

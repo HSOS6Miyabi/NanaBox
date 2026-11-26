@@ -234,10 +234,10 @@ void NanaBox::MainWindow::OnCommand(
         this->ShowWindow(SW_RESTORE);
 
         UINT DpiValue = ::GetDpiForWindow(this->m_hWnd);
-        UINT RdpDpiValue =
-            this->m_RdpClientMode == RdpClientMode::BasicSession &&
-            this->m_Configuration.VideoMonitor.DisableBasicSessionDpiScaling
-            ? USER_DEFAULT_SCREEN_DPI : DpiValue;
+        UINT RdpDpiValue = static_cast<UINT>(::MulDiv(USER_DEFAULT_SCREEN_DPI,
+            NanaBox::EffectiveDisplayScale(this->m_Configuration.VideoMonitor,
+                static_cast<std::uint32_t>(::MulDiv(100, DpiValue, USER_DEFAULT_SCREEN_DPI)),
+                this->m_RdpClientMode == RdpClientMode::BasicSession), 100));
 
         RECT WindowRect;
         winrt::check_bool(this->GetWindowRect(&WindowRect));
@@ -447,7 +447,8 @@ void NanaBox::MainWindow::OnTimer(
     }
     if (nIDEvent == NanaBox::MainWindowTimerEvents::SyncDisplaySettings)
     {
-        if (this->m_RdpClientMode != RdpClientMode::EnhancedVideoSyncedSession)
+        if (!this->m_RdpClient || !this->m_Configuration.VideoMonitor.EnableContentResizing ||
+            this->m_RdpClientMode != RdpClientMode::EnhancedVideoSyncedSession)
         {
             return;
         }
@@ -463,7 +464,8 @@ void NanaBox::MainWindow::OnTimer(
         }
 
         CSize DisplayResolution = this->m_RecommendedDisplayResolution;
-        if (this->m_DisplayResolution == DisplayResolution)
+        if (DisplayResolution.cx < 200 || DisplayResolution.cy < 200) return;
+        if (this->m_DisplayResolution == DisplayResolution && this->m_AppliedDisplayScale == this->m_RecommendedZoomLevel)
         {
             return;
         }
@@ -480,6 +482,7 @@ void NanaBox::MainWindow::OnTimer(
                 100);
 
             this->m_DisplayResolution = DisplayResolution;
+            this->m_AppliedDisplayScale = this->m_RecommendedZoomLevel;
         }
         catch (...)
         {
@@ -511,10 +514,11 @@ void NanaBox::MainWindow::OnSize(
 
     UINT DpiValue = ::GetDpiForWindow(this->m_hWnd);
 
-    this->m_RecommendedZoomLevel = ::MulDiv(
-        100,
-        DpiValue,
-        USER_DEFAULT_SCREEN_DPI);
+    this->m_RecommendedZoomLevel = NanaBox::EffectiveDisplayScale(this->m_Configuration.VideoMonitor,
+        static_cast<std::uint32_t>(::MulDiv(100, DpiValue, USER_DEFAULT_SCREEN_DPI)),
+        this->m_RdpClientMode == RdpClientMode::BasicSession);
+    if (this->m_RdpClientMode == RdpClientMode::BasicSession && this->m_RecommendedMainWindowControlHeight == 0)
+        this->m_RecommendedZoomLevel = 100;
 
     int MainWindowControlScaledHeight = ::MulDiv(
         this->m_RecommendedMainWindowControlHeight,
@@ -1301,8 +1305,12 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
     }
 
     {
-        this->m_Configuration.VideoMonitor.DisableBasicSessionDpiScaling =
-            Configuration.VideoMonitor.DisableBasicSessionDpiScaling;
+        auto& Video = this->m_Configuration.VideoMonitor;
+        Video.DisableBasicSessionDpiScaling = Configuration.VideoMonitor.DisableBasicSessionDpiScaling;
+        Video.EnableDpiScalingValueOverride = Configuration.VideoMonitor.EnableDpiScalingValueOverride;
+        Video.OverriddenDpiScalingValue = Configuration.VideoMonitor.OverriddenDpiScalingValue;
+        Video.EnableContentResizing = Configuration.VideoMonitor.EnableContentResizing;
+        Video.ShowFullScreenModeConnectionBar = Configuration.VideoMonitor.ShowFullScreenModeConnectionBar;
     }
 
     auto ActualContent = NanaBox::SerializeConfiguration(this->m_Configuration);
@@ -1363,22 +1371,10 @@ void NanaBox::MainWindow::RdpClientOnRemoteDesktopSizeChange(
 
             // Reserve space for the RDP client window.
 
-            if (this->m_Configuration.VideoMonitor.DisableBasicSessionDpiScaling)
-            {
-                WindowRect.right += this->m_DisplayResolution.cx;
-                WindowRect.bottom += this->m_DisplayResolution.cy;
-            }
-            else
-            {
-                WindowRect.right += ::MulDiv(
-                    this->m_DisplayResolution.cx,
-                    DpiValue,
-                    USER_DEFAULT_SCREEN_DPI);
-                WindowRect.bottom += ::MulDiv(
-                    this->m_DisplayResolution.cy,
-                    DpiValue,
-                    USER_DEFAULT_SCREEN_DPI);
-            }
+            auto Scale = NanaBox::EffectiveDisplayScale(this->m_Configuration.VideoMonitor,
+                static_cast<std::uint32_t>(::MulDiv(100, DpiValue, USER_DEFAULT_SCREEN_DPI)), true);
+            WindowRect.right += ::MulDiv(this->m_DisplayResolution.cx, static_cast<int>(Scale), 100);
+            WindowRect.bottom += ::MulDiv(this->m_DisplayResolution.cy, static_cast<int>(Scale), 100);
         }
 
         this->SetWindowPos(
@@ -1586,6 +1582,9 @@ void NanaBox::MainWindow::RdpClientOnFocusReleased(
 
 void NanaBox::MainWindow::RdpClientInitialize()
 {
+    if (this->m_RdpClientMode == RdpClientMode::EnhancedVideoSyncedSession)
+        this->m_RdpClientMode = RdpClientMode::EnhancedSession;
+    this->m_AppliedDisplayScale = 0;
     this->m_RdpClient = winrt::make_self<NanaBox::RdpClient>();
 
     this->m_RdpClient->EnableEventsDispatcher();
@@ -1603,6 +1602,9 @@ void NanaBox::MainWindow::RdpClientInitialize()
         nullptr));
 
     this->m_RdpClient->ConnectionBarText(this->m_WindowTitle.c_str());
+    this->m_RdpClient->DisplayConnectionBar(this->m_Configuration.VideoMonitor.ShowFullScreenModeConnectionBar);
+    if (this->m_RdpClientMode == RdpClientMode::EnhancedSession)
+        this->m_RdpClient->SmartSizing(!this->m_Configuration.VideoMonitor.EnableContentResizing);
 
     this->m_RdpClient->EnableAutoReconnect(false);
     this->m_RdpClient->RelativeMouseMode(true);
@@ -1714,19 +1716,18 @@ void NanaBox::MainWindow::RdpClientInitialize()
 
     if (this->m_RdpClientMode == RdpClientMode::EnhancedSession)
     {
-        this->m_RdpClient->DesktopWidth(
-            this->m_RecommendedDisplayResolution.cx);
-        this->m_RdpClient->DesktopHeight(
-            this->m_RecommendedDisplayResolution.cy);
+        const auto& Video = this->m_Configuration.VideoMonitor;
+        this->m_RdpClient->DesktopWidth(Video.EnableContentResizing && this->m_RecommendedDisplayResolution.cx >= 200
+            ? this->m_RecommendedDisplayResolution.cx : Video.HorizontalResolution);
+        this->m_RdpClient->DesktopHeight(Video.EnableContentResizing && this->m_RecommendedDisplayResolution.cy >= 200
+            ? this->m_RecommendedDisplayResolution.cy : Video.VerticalResolution);
 
         try
         {
             VARIANT Value;
             Value.vt = VT_UI4;
-            Value.uintVal = ::MulDiv(
-                100,
-                ::GetDpiForWindow(this->m_hWnd),
-                USER_DEFAULT_SCREEN_DPI);
+            Value.uintVal = NanaBox::EffectiveDisplayScale(Video,
+                static_cast<std::uint32_t>(::MulDiv(100, ::GetDpiForWindow(this->m_hWnd), USER_DEFAULT_SCREEN_DPI)), false);
             this->m_RdpClient->Property(L"DesktopScaleFactor", Value);
         }
         catch (...)

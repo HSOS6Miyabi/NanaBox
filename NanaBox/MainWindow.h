@@ -140,6 +140,7 @@ namespace NanaBox
         CSize m_RecommendedDisplayResolution = CSize(1024, 768);
         std::uint32_t m_RecommendedZoomLevel = 100;
         CSize m_DisplayResolution = CSize(1024, 768);
+        std::uint32_t m_AppliedDisplayScale = 0;
         UINT64 m_SyncDisplaySettingsCheckPoint = 0;
         RECT m_RememberedMainWindowRect;
         LONG_PTR m_RememberedMainWindowStyle;

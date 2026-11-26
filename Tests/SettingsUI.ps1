@@ -342,6 +342,10 @@ try {
     Set-Text 'HorizontalResolutionTextBox' '1280'
     Set-Text 'VerticalResolutionTextBox' '720'
     Set-Check 'DisableDpiScalingCheckBox' $true
+    Set-Check 'DpiOverrideCheckBox' $true
+    Set-Text 'DpiScaleTextBox' '175'
+    Set-Check 'ContentResizingCheckBox' $false
+    Set-Check 'ConnectionBarCheckBox' $false
     Set-Text 'PoliciesTextBox' 'test-policy'
     Invoke-Control 'AddPlan9ShareButton'
     Set-Text 'Plan9SharePortLabel' '564'
@@ -370,6 +374,10 @@ try {
     Assert-Equal $saved.Plan9Shares[0].Name 'test-share' 'Plan9'
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
     Assert-Equal $saved.VideoMonitor.HorizontalResolution 1280 'Resolution'
+    Assert-Equal $saved.VideoMonitor.EnableDpiScalingValueOverride $true 'Display scaling override'
+    Assert-Equal $saved.VideoMonitor.OverriddenDpiScalingValue 175 'Display scale'
+    Assert-Equal $saved.VideoMonitor.EnableContentResizing $false 'Enhanced-session resizing'
+    Assert-Equal $saved.VideoMonitor.ShowFullScreenModeConnectionBar $false 'Full-screen connection bar'
     Invoke-Control 'ReloadButton'
     Select-Tab 'TabSerial'
     Assert-Equal (Get-Text 'ComPort1TextBox') $pipe1 'COM1 reloaded'

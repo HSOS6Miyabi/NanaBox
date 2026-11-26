@@ -393,7 +393,11 @@
               "DisableBasicSessionDpiScaling": {
                 "type": "boolean",
                 "description": "Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true. Available starting with NanaBox 1.5 Update 2."
-              }
+              },
+              "EnableDpiScalingValueOverride": {"type": "boolean", "default": false},
+              "OverriddenDpiScalingValue": {"type": "integer", "minimum": 100, "maximum": 500, "default": 100},
+              "EnableContentResizing": {"type": "boolean", "default": true},
+              "ShowFullScreenModeConnectionBar": {"type": "boolean", "default": true}
             }
           },
           "Policies": {

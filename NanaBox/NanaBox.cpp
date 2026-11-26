@@ -110,7 +110,16 @@ int WINAPI wWinMain(
             Config.NetworkAdapters.push_back(Adapter);
             Config.Gpu.AssignmentMode = NanaBox::GpuAssignmentMode::List;
             Config.Gpu.SelectedDevices["test-device"] = 65535;
+            Config.VideoMonitor.EnableDpiScalingValueOverride = true;
+            Config.VideoMonitor.OverriddenDpiScalingValue = 175;
+            Config.VideoMonitor.EnableContentResizing = false;
+            Config.VideoMonitor.ShowFullScreenModeConnectionBar = false;
             auto Loaded = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Config));
+            if (!Loaded.VideoMonitor.EnableDpiScalingValueOverride || Loaded.VideoMonitor.OverriddenDpiScalingValue != 175 ||
+                Loaded.VideoMonitor.EnableContentResizing || Loaded.VideoMonitor.ShowFullScreenModeConnectionBar ||
+                NanaBox::EffectiveDisplayScale(Loaded.VideoMonitor, 150, false) != 175) return 26;
+            Loaded.VideoMonitor.DisableBasicSessionDpiScaling = true;
+            if (NanaBox::EffectiveDisplayScale(Loaded.VideoMonitor, 150, true) != 100) return 27;
             if (Loaded.NetworkAdapters.size() != 1 ||
                 Loaded.NetworkAdapters[0].NetworkId != Adapter.NetworkId ||
                 Loaded.NetworkAdapters[0].FirewallCreatorId != Adapter.FirewallCreatorId ||

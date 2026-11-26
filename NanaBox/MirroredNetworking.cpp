@@ -536,8 +536,8 @@ struct NanaBox::MirroredNetworking::Impl
                 if (!Unique.insert(Port).second) throw winrt::hresult_invalid_argument(L"Duplicate mirrored port");
                 if (Port >= Range.startingPort && Port <= Range.endingPort) continue;
                 HANDLE Reservation = nullptr;
-                auto Hr = AllocatePort(Service, List.first, HCN_PORT_ACCESS_EXCLUSIVE, static_cast<USHORT>(Port), &Reservation);
-                if (FAILED(Hr)) { if (Reservation) Release(Reservation); winrt::check_hresult(Hr); }
+                auto PortResult = AllocatePort(Service, List.first, HCN_PORT_ACCESS_EXCLUSIVE, static_cast<USHORT>(Port), &Reservation);
+                if (FAILED(PortResult)) { if (Reservation) Release(Reservation); winrt::check_hresult(PortResult); }
                 Reservations.push_back(Reservation);
                 ExplicitPorts.emplace(List.first, static_cast<USHORT>(Port));
             }

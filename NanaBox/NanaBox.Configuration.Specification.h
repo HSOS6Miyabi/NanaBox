@@ -139,11 +139,19 @@ namespace NanaBox
         std::uint16_t HorizontalResolution = 1024;
         std::uint16_t VerticalResolution = 768;
         bool DisableBasicSessionDpiScaling = false;
-        bool EnableDpiScalingValueOverride = false; // Not Implemented
-        bool EnableContentResizing = true; // Not Implemented
-        bool ShowFullScreenModeConnectionBar = true; // Not Implemented
-        std::uint32_t OverriddenDpiScalingValue = 100; // Not Implemented
+        bool EnableDpiScalingValueOverride = false;
+        bool EnableContentResizing = true;
+        bool ShowFullScreenModeConnectionBar = true;
+        std::uint32_t OverriddenDpiScalingValue = 100;
     };
+
+    inline std::uint32_t EffectiveDisplayScale(VideoMonitorConfiguration const& Video,
+        std::uint32_t SystemScale, bool BasicSession) noexcept
+    {
+        if (BasicSession && Video.DisableBasicSessionDpiScaling) return 100;
+        auto Value = Video.EnableDpiScalingValueOverride ? Video.OverriddenDpiScalingValue : SystemScale;
+        return Value < 100 ? 100 : Value > 500 ? 500 : Value;
+    }
 
     struct Plan9ShareConfiguration
     {

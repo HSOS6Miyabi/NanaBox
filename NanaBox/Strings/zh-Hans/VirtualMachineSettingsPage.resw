@@ -1673,4 +1673,19 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredAutoReserve.Content" xml:space="preserve">
     <value>自动预留客户机监听端口</value>
   </data>
+  <data name="DpiOverride.Content" xml:space="preserve">
+    <value>自定义显示缩放比例</value>
+  </data>
+  <data name="DpiScale.Header" xml:space="preserve">
+    <value>显示缩放比例（100–500%）</value>
+  </data>
+  <data name="DpiScale.AutomationProperties.Name" xml:space="preserve">
+    <value>显示缩放比例</value>
+  </data>
+  <data name="ContentResizing.Content" xml:space="preserve">
+    <value>增强会话桌面随窗口调整分辨率</value>
+  </data>
+  <data name="ConnectionBar.Content" xml:space="preserve">
+    <value>在全屏模式下显示连接栏</value>
+  </data>
 </root>

@@ -9,6 +9,7 @@
  */
 
 #include "NanaBox.Configuration.Parser.h"
+#include <stdexcept>
 
 nlohmann::json NanaBox::FromGuestType(
     NanaBox::GuestType const& Value)
@@ -808,6 +809,10 @@ nlohmann::json NanaBox::FromVideoMonitorConfiguration(
     {
         Result["DisableBasicSessionDpiScaling"] = true;
     }
+    if (Value.EnableDpiScalingValueOverride) Result["EnableDpiScalingValueOverride"] = true;
+    if (!Value.EnableContentResizing) Result["EnableContentResizing"] = false;
+    if (!Value.ShowFullScreenModeConnectionBar) Result["ShowFullScreenModeConnectionBar"] = false;
+    if (Value.OverriddenDpiScalingValue != 100) Result["OverriddenDpiScalingValue"] = Value.OverriddenDpiScalingValue;
 
     return Result;
 }
@@ -830,6 +835,12 @@ NanaBox::VideoMonitorConfiguration NanaBox::ToVideoMonitorConfiguration(
     Result.DisableBasicSessionDpiScaling = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "DisableBasicSessionDpiScaling"),
         Result.DisableBasicSessionDpiScaling);
+    Result.EnableDpiScalingValueOverride = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "EnableDpiScalingValueOverride"), Result.EnableDpiScalingValueOverride);
+    Result.EnableContentResizing = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "EnableContentResizing"), Result.EnableContentResizing);
+    Result.ShowFullScreenModeConnectionBar = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "ShowFullScreenModeConnectionBar"), Result.ShowFullScreenModeConnectionBar);
+    auto Scale = Mile::Json::ToUInt64(Mile::Json::GetSubKey(Value, "OverriddenDpiScalingValue"), Result.OverriddenDpiScalingValue);
+    if (Scale < 100 || Scale > 500) throw std::invalid_argument("Display scaling must be between 100 and 500 percent");
+    Result.OverriddenDpiScalingValue = static_cast<std::uint32_t>(Scale);
 
     return Result;
 }
