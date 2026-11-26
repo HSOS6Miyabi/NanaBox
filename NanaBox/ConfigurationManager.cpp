@@ -527,6 +527,15 @@ void NanaBox::ComputeNetworkCreateEndpoint(
 {
     NanaBox::HcnNetwork NetworkHandle;
     winrt::guid SwitchId = NanaBox::NanaBoxSwitchId;
+    if (!Configuration.NetworkId.empty())
+    {
+        SwitchId = winrt::guid(Configuration.NetworkId);
+        auto Info = NanaBox::QueryHostNetwork(SwitchId);
+        if (Info.Flags & NanaBox::HcnNetworkFlags::EnableFlowSteering)
+            throw winrt::hresult_error(E_NOTIMPL, L"Mirrored networks require guest network synchronization.");
+        NetworkHandle = NanaBox::HcnOpenNetwork(SwitchId);
+    }
+    else
     {
         bool UseSuggestedSwitchId = false;
         bool UseSuggestedSwitchName = false;
@@ -684,6 +693,20 @@ void NanaBox::ComputeNetworkCreateEndpoint(
         Settings["MacAddress"] = Configuration.MacAddress;
     }
 
+    if (!Configuration.FirewallCreatorId.empty())
+    {
+        auto Creator = winrt::guid(Configuration.FirewallCreatorId);
+        auto Network = NanaBox::QueryHostNetwork(SwitchId);
+        if (!(Network.Flags & NanaBox::HcnNetworkFlags::EnableFirewall))
+            throw winrt::hresult_error(E_INVALIDARG, L"The selected HCN network does not enable Hyper-V firewall.");
+        Settings["SchemaVersion"]["Minor"] = 16;
+        Settings["Policies"] = nlohmann::json::array({
+            {{"Type", "PortName"}, {"Settings", {{"Name", ""}}}},
+            {{"Type", "Firewall"}, {"Settings", {
+                {"VmCreatorId", winrt::to_string(::FromGuid(Creator))}, {"PolicyFlags", 0}}}}
+        });
+    }
+
     EndpointHandle = NanaBox::HcnCreateEndpoint(
         NetworkHandle,
         EndpointId,
@@ -836,8 +859,7 @@ void NanaBox::ComputeSystemUpdateScsiDevice(
     Instance->Modify(winrt::to_hstring(Result.dump()));
 }
 
-void NanaBox::ComputeSystemUpdateGpu(
-    winrt::com_ptr<NanaBox::ComputeSystem> const& Instance,
+nlohmann::json NanaBox::MakeHcsGpuModification(
     NanaBox::GpuConfiguration const& Configuration)
 {
     nlohmann::json Result;
@@ -873,8 +895,14 @@ void NanaBox::ComputeSystemUpdateGpu(
     Settings["AllowVendorExtension"] = true;
 
     Result["Settings"] = Settings;
+    return Result;
+}
 
-    Instance->Modify(winrt::to_hstring(Result.dump()));
+void NanaBox::ComputeSystemUpdateGpu(
+    winrt::com_ptr<NanaBox::ComputeSystem> const& Instance,
+    GpuConfiguration const& Configuration)
+{
+    Instance->Modify(winrt::to_hstring(MakeHcsGpuModification(Configuration).dump()));
 }
 
 void NanaBox::RemoteDesktopUpdateKeyboardConfiguration(

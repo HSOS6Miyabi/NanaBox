@@ -80,6 +80,8 @@ namespace NanaBox
         std::uint32_t const& DeviceID,
         ScsiDeviceConfiguration const& Configuration);
 
+    nlohmann::json MakeHcsGpuModification(GpuConfiguration const& Configuration);
+
     void ComputeSystemUpdateGpu(
         winrt::com_ptr<ComputeSystem> const& Instance,
         GpuConfiguration const& Configuration);

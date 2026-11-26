@@ -20,6 +20,9 @@
 #include <Windows.h>
 #include <computecore.h>
 #include <computenetwork.h>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #include <winrt/Windows.Foundation.h>
 
@@ -190,6 +193,27 @@ namespace NanaBox
 
     HcnNetwork HcnOpenNetwork(
         winrt::guid const& NetworkId);
+
+    struct HostNetworkInfo
+    {
+        winrt::guid Id;
+        winrt::hstring Name;
+        winrt::hstring Type;
+        std::uint32_t Flags = 0;
+        winrt::hstring Properties;
+    };
+
+    struct HostGpuInfo
+    {
+        winrt::hstring Name;
+        winrt::hstring DeviceInterface;
+    };
+
+    std::vector<HostGpuInfo> EnumeratePartitionableGpus();
+    std::vector<HostNetworkInfo> EnumerateHostNetworks();
+    HostNetworkInfo QueryHostNetwork(winrt::guid const& Id);
+    void CreateManagedNetwork(winrt::hstring const& Name, bool Firewall);
+    void DeleteManagedNetwork(winrt::guid const& Id);
 
     HcnEndpoint HcnCreateEndpoint(
         HcnNetwork const& NetworkHandle,

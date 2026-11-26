@@ -14,6 +14,11 @@
 #pragma comment(lib, "computenetwork.lib")
 
 #include <Mile.Json.h>
+#include <SetupAPI.h>
+#include <memory>
+#include <string_view>
+#include <vector>
+#pragma comment(lib, "setupapi.lib")
 
 namespace winrt
 {
@@ -408,4 +413,156 @@ winrt::hstring NanaBox::HcnQueryEndpointProperties(
     }
 
     return Result;
+}
+
+
+namespace
+{
+    constexpr wchar_t ManagedNetworkPrefix[] = L"NanaBox.Managed.";
+    constexpr GUID GpuInterfaceClass =
+        {0x064092b3, 0x625e, 0x43bf, {0x9e, 0xb5, 0xdc, 0x84, 0x58, 0x97, 0xdd, 0x59}};
+
+    struct DeviceInfoSet
+    {
+        HDEVINFO Value;
+        ~DeviceInfoSet()
+        {
+            if (Value != INVALID_HANDLE_VALUE)
+                ::SetupDiDestroyDeviceInfoList(Value);
+        }
+    };
+
+    winrt::hstring DeviceName(HDEVINFO Set, SP_DEVINFO_DATA& Device)
+    {
+        for (DWORD Property : {SPDRP_FRIENDLYNAME, SPDRP_DEVICEDESC})
+        {
+            DWORD Bytes = 0;
+            ::SetupDiGetDeviceRegistryPropertyW(Set, &Device, Property, nullptr, nullptr, 0, &Bytes);
+            if (!Bytes) continue;
+            std::vector<wchar_t> Buffer(Bytes / sizeof(wchar_t) + 1);
+            if (::SetupDiGetDeviceRegistryPropertyW(Set, &Device, Property, nullptr,
+                reinterpret_cast<PBYTE>(Buffer.data()), Bytes, nullptr))
+                return winrt::hstring(Buffer.data());
+        }
+        return winrt::hstring(L"GPU");
+    }
+
+    nlohmann::json ReadHcnIds(bool Networks)
+    {
+        winrt::cotaskmem_string Result, Error;
+        HRESULT Status = Networks
+            ? ::HcnEnumerateNetworks(nullptr, Result.put(), Error.put())
+            : ::HcnEnumerateEndpoints(nullptr, Result.put(), Error.put());
+        ::CheckHcnCall(Status, Error);
+        if (!Result) throw winrt::hresult_error(E_UNEXPECTED);
+        auto Ids = nlohmann::json::parse(winrt::to_string(winrt::hstring(Result.get())));
+        if (!Ids.is_array()) throw winrt::hresult_error(E_UNEXPECTED);
+        return Ids;
+    }
+}
+
+std::vector<NanaBox::HostGpuInfo> NanaBox::EnumeratePartitionableGpus()
+{
+    DeviceInfoSet Set{::SetupDiGetClassDevsW(&GpuInterfaceClass, nullptr, nullptr,
+        DIGCF_PRESENT | DIGCF_DEVICEINTERFACE)};
+    winrt::check_bool(Set.Value != INVALID_HANDLE_VALUE);
+    std::vector<HostGpuInfo> Result;
+    for (DWORD Index = 0;; ++Index)
+    {
+        SP_DEVICE_INTERFACE_DATA Interface{};
+        Interface.cbSize = sizeof(Interface);
+        if (!::SetupDiEnumDeviceInterfaces(Set.Value, nullptr, &GpuInterfaceClass, Index, &Interface))
+        {
+            if (::GetLastError() == ERROR_NO_MORE_ITEMS) break;
+            winrt::throw_last_error();
+        }
+        DWORD Bytes = 0;
+        ::SetupDiGetDeviceInterfaceDetailW(Set.Value, &Interface, nullptr, 0, &Bytes, nullptr);
+        if (::GetLastError() != ERROR_INSUFFICIENT_BUFFER || Bytes < sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W))
+            winrt::throw_last_error();
+        auto Buffer = std::make_unique<BYTE[]>(Bytes);
+        auto Detail = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA_W*>(Buffer.get());
+        Detail->cbSize = sizeof(*Detail);
+        SP_DEVINFO_DATA Device{};
+        Device.cbSize = sizeof(Device);
+        winrt::check_bool(::SetupDiGetDeviceInterfaceDetailW(Set.Value, &Interface,
+            Detail, Bytes, nullptr, &Device));
+        std::wstring Path(Detail->DevicePath);
+        constexpr wchar_t Suffix[] = L"\\GPUPARAV";
+        constexpr size_t SuffixLength = _countof(Suffix) - 1;
+        if (Path.size() < SuffixLength ||
+            ::_wcsicmp(Path.c_str() + Path.size() - SuffixLength, Suffix) != 0)
+            continue;
+        Result.push_back({DeviceName(Set.Value, Device), winrt::hstring(Path)});
+    }
+    return Result;
+}
+
+NanaBox::HostNetworkInfo NanaBox::QueryHostNetwork(winrt::guid const& Id)
+{
+    auto Network = NanaBox::HcnOpenNetwork(Id);
+    winrt::cotaskmem_string Result, Error;
+    HRESULT Status = ::HcnQueryNetworkProperties(Network.get(), nullptr, Result.put(), Error.put());
+    ::CheckHcnCall(Status, Error);
+    if (!Result) throw winrt::hresult_error(E_UNEXPECTED);
+    winrt::hstring Raw(Result.get());
+    auto Json = nlohmann::json::parse(winrt::to_string(Raw));
+    return {Id, winrt::to_hstring(Json.value("Name", std::string())),
+        winrt::to_hstring(Json.value("Type", std::string())),
+        Json.value("Flags", 0u), Raw};
+}
+
+std::vector<NanaBox::HostNetworkInfo> NanaBox::EnumerateHostNetworks()
+{
+    std::vector<HostNetworkInfo> Result;
+    for (auto const& Id : ReadHcnIds(true))
+    {
+        try
+        {
+            Result.push_back(QueryHostNetwork(winrt::guid(Id.get<std::string>())));
+        }
+        catch (winrt::hresult_error const& Error)
+        {
+            if (Error.code() != HCN_E_NETWORK_NOT_FOUND) throw;
+        }
+    }
+    return Result;
+}
+
+void NanaBox::CreateManagedNetwork(winrt::hstring const& Name, bool Firewall)
+{
+    if (Name.empty()) throw winrt::hresult_invalid_argument();
+    GUID Id{};
+    winrt::check_hresult(::CoCreateGuid(&Id));
+    nlohmann::json Settings = {
+        {"Name", winrt::to_string(winrt::hstring(ManagedNetworkPrefix)) + winrt::to_string(Name)},
+        {"Type", "ICS"}, {"IsolateSwitch", true},
+        {"Flags", HcnNetworkFlags::EnableDns | HcnNetworkFlags::EnableDhcp |
+            HcnNetworkFlags::EnablePersistent | (Firewall ? HcnNetworkFlags::EnableFirewall : 0)}
+    };
+    NanaBox::HcnCreateNetwork(Id, winrt::to_hstring(Settings.dump()));
+}
+
+void NanaBox::DeleteManagedNetwork(winrt::guid const& Id)
+{
+    auto Info = QueryHostNetwork(Id);
+    if (std::wstring_view(Info.Name.c_str()).find(ManagedNetworkPrefix) != 0)
+        throw winrt::hresult_error(E_ACCESSDENIED, L"Only NanaBox-managed networks can be deleted here.");
+    for (auto const& Entry : ReadHcnIds(false))
+    {
+        HcnEndpoint Endpoint;
+        winrt::cotaskmem_string Error;
+        auto EndpointId = winrt::guid(Entry.get<std::string>());
+        HRESULT Status = ::HcnOpenEndpoint(EndpointId, Endpoint.put(), Error.put());
+        if (Status == HCN_E_ENDPOINT_NOT_FOUND) continue;
+        ::CheckHcnCall(Status, Error);
+        auto Properties = nlohmann::json::parse(winrt::to_string(HcnQueryEndpointProperties(Endpoint)));
+        auto NetworkId = Properties.value("HostComputeNetwork", std::string());
+        if (NetworkId.empty()) NetworkId = Properties.value("VirtualNetwork", std::string());
+        if (!NetworkId.empty() && winrt::guid(NetworkId) == Id)
+            throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_BUSY), L"Disconnect all endpoints before deleting the network.");
+    }
+    winrt::cotaskmem_string Error;
+    HRESULT Status = ::HcnDeleteNetwork(Id, Error.put());
+    ::CheckHcnCall(Status, Error);
 }

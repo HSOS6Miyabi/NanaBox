@@ -303,6 +303,16 @@ nlohmann::json NanaBox::FromNetworkAdapterConfiguration(
         Result["EndpointId"] = Value.EndpointId;
     }
 
+    if (!Value.NetworkId.empty())
+    {
+        Result["NetworkId"] = Value.NetworkId;
+    }
+
+    if (!Value.FirewallCreatorId.empty())
+    {
+        Result["FirewallCreatorId"] = Value.FirewallCreatorId;
+    }
+
     if (!Value.SuggestedSwitchId.empty())
     {
         Result["SuggestedSwitchId"] = Value.SuggestedSwitchId;
@@ -337,6 +347,12 @@ NanaBox::NetworkAdapterConfiguration NanaBox::ToNetworkAdapterConfiguration(
     Result.EndpointId = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "EndpointId"),
         Result.EndpointId);
+
+    Result.NetworkId = Mile::Json::ToString(
+        Mile::Json::GetSubKey(Value, "NetworkId"));
+
+    Result.FirewallCreatorId = Mile::Json::ToString(
+        Mile::Json::GetSubKey(Value, "FirewallCreatorId"));
 
     Result.SuggestedSwitchId = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "SuggestedSwitchId"),

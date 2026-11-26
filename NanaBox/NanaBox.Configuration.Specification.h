@@ -76,6 +76,8 @@ namespace NanaBox
         bool Connected = false;
         std::string MacAddress;
         std::string EndpointId;
+        std::string NetworkId;
+        std::string FirewallCreatorId;
         std::string SuggestedSwitchId;
         std::string SuggestedSwitchName;
         std::string SuggestedSwitchSubnet;

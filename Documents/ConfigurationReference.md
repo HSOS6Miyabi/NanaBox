@@ -1137,3 +1137,9 @@ Note: Available starting with NanaBox 1.6 Update 1.
   }
 }
 ```
+
+### Explicit HCN networks
+
+Each network adapter may specify `NetworkId`, the GUID of an existing HCN network. This takes precedence over the suggested switch options. The specified network must exist; opening it never falls back to a different network.
+
+Optionally specify `FirewallCreatorId`, the GUID of a registered Hyper-V firewall VM creator on a firewall-enabled HCN network. NanaBox requests the HCN PortName and Firewall endpoint policies. Configure the creator's rules using Windows Hyper-V firewall tools. Windows and the network must support these policies.
