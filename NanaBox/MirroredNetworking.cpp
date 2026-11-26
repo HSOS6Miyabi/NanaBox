@@ -6,6 +6,7 @@
 #include <netioapi.h>
 #include <sddl.h>
 #include <ShlObj.h>
+#include <knownfolders.h>
 #include <Mile.Json.h>
 #include "MirroredNetworking.h"
 #include "HostCompute.h"
@@ -228,7 +229,7 @@ namespace
         If.InterfaceLuid = Luid;
         winrt::check_win32(::GetIfEntry2(&If));
         Snapshot Result;
-        Result.Interface = {{"Connected", If.OperStatus == IfOperStatusUp}, {"NlMtu", If.Mtu}};
+        Result.Interface = {{"Connected", If.OperStatus == IfOperStatusUp}, {"NlMtu", If.Mtu}, {"Mirrored", true}};
         if (If.OperStatus != IfOperStatusUp) return Result;
         PMIB_UNICASTIPADDRESS_TABLE Addresses = nullptr;
         winrt::check_win32(::GetUnicastIpAddressTable(AF_UNSPEC, &Addresses));
@@ -240,7 +241,7 @@ namespace
                 (Row.DadState != IpDadStatePreferred && Row.DadState != IpDadStateDeprecated)) continue;
             auto Address = AddressString(Row.Address);
             if (Address.empty()) continue;
-            Json Settings = {{"Address", Address}, {"OnLinkPrefixLength", static_cast<unsigned>(Row.OnLinkPrefixLength)}};
+            Json Settings = {{"Address", Address}, {"OnLinkPrefixLength", static_cast<unsigned>(Row.OnLinkPrefixLength)}, {"Mirrored", true}};
             Result.Items.emplace("IPAddress|" + Settings.dump(), Json{{"ResourceType", "IPAddress"}, {"Settings", Settings}});
         }
         PMIB_IPFORWARD_TABLE2 Routes = nullptr;
@@ -320,6 +321,10 @@ struct NanaBox::MirroredNetworking::Impl
 {
     using RegisterRpc = HRESULT (WINAPI*)(PSECURITY_DESCRIPTOR, GUID*);
     using UnregisterRpc = HRESULT (WINAPI*)(GUID const*);
+    using CreateService = decltype(&::HcnCreateGuestNetworkService);
+    using DeleteService = decltype(&::HcnDeleteGuestNetworkService);
+    using CloseService = decltype(&::HcnCloseGuestNetworkService);
+    using ModifyService = decltype(&::HcnModifyGuestNetworkService);
     using ReserveRange = HRESULT (WINAPI*)(HCN_GUESTNETWORKSERVICE, USHORT, HCN_PORT_RANGE_RESERVATION*, HANDLE*);
     using ReservePort = HRESULT (WINAPI*)(HCN_GUESTNETWORKSERVICE, HCN_PORT_PROTOCOL, HCN_PORT_ACCESS, USHORT, HANDLE*);
     using ReleasePort = HRESULT (WINAPI*)(HANDLE);
@@ -347,6 +352,10 @@ struct NanaBox::MirroredNetworking::Impl
     HCN_PORT_RANGE_RESERVATION Range{};
     std::vector<HANDLE> Reservations;
     ReleasePort Release = nullptr;
+    CreateService CreateGns = nullptr;
+    DeleteService DeleteGns = nullptr;
+    CloseService CloseGns = nullptr;
+    ModifyService ModifyGns = nullptr;
     UnregisterRpc Unregister = nullptr;
     std::map<std::string, Endpoint> Endpoints;
     std::atomic<bool> Stop{false};
@@ -370,8 +379,8 @@ struct NanaBox::MirroredNetworking::Impl
         if (Service)
         {
             HcnText Error;
-            ::HcnDeleteGuestNetworkService(RuntimeId, &Error.Value);
-            ::HcnCloseGuestNetworkService(Service);
+            if (DeleteGns) DeleteGns(RuntimeId, &Error.Value);
+            if (CloseGns) CloseGns(Service);
         }
         if (RpcRegistered && Unregister) Unregister(&RpcId);
         if (Dependencies) ::FreeLibrary(Dependencies);
@@ -396,7 +405,7 @@ struct NanaBox::MirroredNetworking::Impl
         HcnText Error;
         Json Request = {{"ResourceType", "State"}, {"RequestType", "Update"}, {"Settings", {{"State", State}}}};
         auto Text = winrt::to_hstring(Request.dump());
-        auto Hr = ::HcnModifyGuestNetworkService(Service, Text.c_str(), &Error.Value);
+        auto Hr = ModifyGns(Service, Text.c_str(), &Error.Value);
         CheckHcn(Hr, Error);
     }
 
@@ -432,11 +441,15 @@ struct NanaBox::MirroredNetworking::Impl
             {"Flags", 3}};
         HcnText ServiceError;
         auto Text = winrt::to_hstring(Request.dump());
-        auto Hr = ::HcnCreateGuestNetworkService(RuntimeId, Text.c_str(), &Service, &ServiceError.Value);
-        CheckHcn(Hr, ServiceError);
-        SetState("Bootstrapping");
         NetworkModule = ::LoadLibraryExW(L"computenetwork.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
         winrt::check_pointer(NetworkModule);
+        CreateGns = Import<CreateService>(NetworkModule, "HcnCreateGuestNetworkService");
+        DeleteGns = Import<DeleteService>(NetworkModule, "HcnDeleteGuestNetworkService");
+        CloseGns = Import<CloseService>(NetworkModule, "HcnCloseGuestNetworkService");
+        ModifyGns = Import<ModifyService>(NetworkModule, "HcnModifyGuestNetworkService");
+        auto Hr = CreateGns(RuntimeId, Text.c_str(), &Service, &ServiceError.Value);
+        CheckHcn(Hr, ServiceError);
+        SetState("Bootstrapping");
         auto AllocateRange = Import<ReserveRange>(NetworkModule, "HcnReserveGuestNetworkServicePortRange");
         auto AllocatePort = Import<ReservePort>(NetworkModule, "HcnReserveGuestNetworkServicePort");
         Release = Import<ReleasePort>(NetworkModule, "HcnReleaseGuestNetworkServicePortReservationHandle");

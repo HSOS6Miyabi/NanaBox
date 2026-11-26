@@ -14,6 +14,7 @@
 #include <cwchar>
 #include <map>
 #include <sstream>
+#include <string_view>
 #include <set>
 #include <ShlObj.h>
 #include <Shlwapi.h>

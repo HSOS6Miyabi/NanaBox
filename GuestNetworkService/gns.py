@@ -63,7 +63,13 @@ def normalize(request):
         prefix = number(settings['OnLinkPrefixLength'], 0, address.max_prefixlen)
         if address.is_unspecified or address.is_multicast or address.is_loopback:
             raise ValueError('Invalid interface address')
-        return target, resource, action, {'Address': str(address), 'Prefix': prefix, 'Family': address.version}
+        mirrored = settings.get('Mirrored', False)
+        if type(mirrored) is not bool:
+            raise ValueError('Mirrored must be Boolean')
+        result = {'Address': str(address), 'Prefix': prefix, 'Family': address.version}
+        if mirrored:
+            result['Mirrored'] = True
+        return target, resource, action, result
     if resource == 'Route':
         dest = ipaddress.ip_network(settings['DestinationPrefix'], strict=False)
         hop = ipaddress.ip_address(settings.get('NextHop') or ('0.0.0.0' if dest.version == 4 else '::'))
@@ -73,7 +79,13 @@ def normalize(request):
     if resource == 'Interface' and action != 'Remove':
         if type(settings.get('Connected')) is not bool:
             raise ValueError('Connected must be Boolean')
-        return target, resource, action, {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 1280, 65535)}
+        mirrored = settings.get('Mirrored', False)
+        if type(mirrored) is not bool:
+            raise ValueError('Mirrored must be Boolean')
+        result = {'Connected': settings['Connected'], 'Mtu': number(settings['NlMtu'], 1280, 65535)}
+        if mirrored:
+            result['Mirrored'] = True
+        return target, resource, action, result
     if resource == 'PortRange' and action == 'Update':
         start = number(settings['Start'], 1024, 65535)
         end = number(settings['End'], start, 65535)
@@ -119,6 +131,9 @@ class LinuxBackend:
         if resource == 'PortRange':
             self.execute(['sysctl', '-w', f"net.ipv4.ip_local_port_range={s['Start']} {s['End']}"])
         elif resource == 'Interface':
+            if s.get('Mirrored'):
+                for name in ('accept_ra', 'autoconf', 'dad_transmits'):
+                    self.execute(['sysctl', '-w', f'net/ipv6/conf/{dev}/{name}=0'])
             self.execute(['ip', 'link', 'set', 'dev', dev, 'mtu', str(s['Mtu'])])
             self.execute(['ip', 'link', 'set', 'dev', dev, 'up' if s['Connected'] else 'down'])
         elif resource == 'IPAddress':
@@ -130,7 +145,10 @@ class LinuxBackend:
                     return
                 self.execute(['ip', family, 'address', 'del', cidr, 'dev', dev])
             else:
-                self.execute(['ip', family, 'address', 'replace', cidr, 'dev', dev, 'noprefixroute'])
+                command = ['ip', family, 'address', 'replace', cidr, 'dev', dev, 'noprefixroute']
+                if family == '-6' and s.get('Mirrored'):
+                    command.append('nodad')
+                self.execute(command)
         elif resource == 'Route':
             family = '-4' if s['Family'] == 4 else '-6'
             hop = s['NextHop']
@@ -184,6 +202,10 @@ switch ($r.Resource) {
     else { New-NetRoute -InterfaceIndex $i -DestinationPrefix $s.Destination -NextHop $s.NextHop -RouteMetric $s.Metric -PolicyStore ActiveStore | Out-Null }
   }
   'Interface' {
+    if ($s.Mirrored) {
+      Set-NetIPInterface -InterfaceIndex $i -AddressFamily IPv4 -Dhcp Disabled -DadTransmits 0 -PolicyStore ActiveStore
+      Set-NetIPInterface -InterfaceIndex $i -AddressFamily IPv6 -RouterDiscovery Disabled -DadTransmits 0 -PolicyStore ActiveStore
+    }
     Set-NetIPInterface -InterfaceIndex $i -NlMtuBytes $s.Mtu -PolicyStore ActiveStore
     if ($s.Connected) { $m[0] | Enable-NetAdapter -Confirm:$false }
     else { $m[0] | Disable-NetAdapter -Confirm:$false }

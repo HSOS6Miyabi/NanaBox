@@ -54,6 +54,22 @@ class ProtocolTests(unittest.TestCase):
             backend.apply(*gns.normalize(request('Route', 'Remove', DestinationPrefix='::/0', NextHop='2001:db8::1', Metric=10)))
             execute.assert_called_with(['ip', '-6', 'route', 'del', '::/0', 'via', '2001:db8::1', 'dev', 'eth9', 'metric', '10', 'proto', '242'])
 
+    def test_mirrored_interface(self):
+        with tempfile.TemporaryDirectory() as temp:
+            adapter = pathlib.Path(temp, 'eth9')
+            adapter.mkdir()
+            (adapter / 'device').mkdir()
+            (adapter / 'address').write_text('00:15:5d:12:34:56')
+            execute = Mock(return_value='')
+            backend = gns.LinuxBackend(execute, temp)
+            backend.apply(*gns.normalize(request('Interface', 'Update', Connected=True, NlMtu=1500, Mirrored=True)))
+            self.assertIn(['sysctl', '-w', 'net/ipv6/conf/eth9/accept_ra=0'], [c.args[0] for c in execute.call_args_list])
+            self.assertIn(['sysctl', '-w', 'net/ipv6/conf/eth9/dad_transmits=0'], [c.args[0] for c in execute.call_args_list])
+            backend.apply(*gns.normalize(request(Address='2001:db8::10', OnLinkPrefixLength=64, Mirrored=True)))
+            execute.assert_called_with(['ip', '-6', 'address', 'replace', '2001:db8::10/64', 'dev', 'eth9', 'noprefixroute', 'nodad'])
+        with self.assertRaises(ValueError):
+            gns.normalize(request('Interface', 'Update', Connected=True, NlMtu=1500, Mirrored='yes'))
+
     def test_windows_commands(self):
         execute = Mock()
         backend = gns.WindowsBackend(execute)
