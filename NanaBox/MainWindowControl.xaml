@@ -67,8 +67,8 @@
         x:Uid="/MainWindow/PowerMenu" AutomationProperties.Name="Power options" ToolTipService.ToolTip="Power options" AutomationProperties.AutomationId="PowerMenu">
         <AppBarButton.Flyout>
           <MenuFlyout>
-            <MenuFlyoutItem x:Uid="/MainWindow/ShutdownAction" Text="Shut down guest" Tag="Shutdown" Click="PowerActionClick" AutomationProperties.AutomationId="ShutdownAction" />
-            <MenuFlyoutItem x:Uid="/MainWindow/SaveAction" Text="Save state and close" Tag="Save" Click="PowerActionClick" AutomationProperties.AutomationId="SaveAction" />
+            <MenuFlyoutItem x:Name="ShutdownAction" x:Uid="/MainWindow/ShutdownAction" Text="Shut down guest" Tag="Shutdown" Click="PowerActionClick" AutomationProperties.AutomationId="ShutdownAction" />
+            <MenuFlyoutItem x:Name="SaveAction" x:Uid="/MainWindow/SaveAction" Text="Save state and close" Tag="Save" Click="PowerActionClick" AutomationProperties.AutomationId="SaveAction" />
             <MenuFlyoutItem x:Uid="/MainWindow/PowerOffAction" Text="Force power off" Tag="PowerOff" Click="PowerActionClick" AutomationProperties.AutomationId="PowerOffAction" />
           </MenuFlyout>
         </AppBarButton.Flyout>

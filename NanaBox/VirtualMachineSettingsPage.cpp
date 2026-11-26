@@ -357,13 +357,7 @@ namespace winrt::NanaBox::implementation
         }
     }
 
-    VirtualMachineSettingsPage::~VirtualMachineSettingsPage()
-    {
-        if (auto Client = this->m_ApplyClient.get())
-        {
-            Client->OnDisconnected.remove(this->m_DisconnectedToken);
-        }
-    }
+    VirtualMachineSettingsPage::~VirtualMachineSettingsPage() = default;
 
     void VirtualMachineSettingsPage::ReloadConfiguration()
     {
@@ -1150,6 +1144,7 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(Sender);
         UNREFERENCED_PARAMETER(Arguments);
 
+        if (this->m_ApplyPending) return;
         try
         {
             auto Configuration = this->ReadConfiguration();
@@ -1213,50 +1208,32 @@ namespace winrt::NanaBox::implementation
             this->PopulateControls();
             if (this->m_MainWindow)
             {
-                if (auto Client = this->m_ApplyClient.get())
-                {
-                    Client->OnDisconnected.remove(this->m_DisconnectedToken);
-                }
-                auto Client = this->m_MainWindow->m_RdpClient;
-                this->m_ApplyClient = Client->get_weak();
+                this->m_ApplyPending = true;
+                this->ApplyButton().IsEnabled(false);
+                this->ReloadButton().IsEnabled(false);
                 auto Dispatcher = this->Dispatcher();
                 auto Weak = this->get_weak();
                 auto Generation = ++this->m_ApplyGeneration;
-                this->m_DisconnectedToken = Client->OnDisconnected.add(
-                    [Dispatcher, Weak, Generation](LONG DisconnectReason)
+                this->m_MainWindow->ReloadVirtualMachineSettings([Dispatcher, Weak, Generation]()
                 {
-                    UNREFERENCED_PARAMETER(DisconnectReason);
-                    Dispatcher.RunAsync(
-                        winrt::CoreDispatcherPriority::Normal,
-                        [Weak, Generation]()
+                    Dispatcher.RunAsync(winrt::CoreDispatcherPriority::Normal, [Weak, Generation]()
                     {
                         auto Instance = Weak.get();
-                        if (Instance &&
-                            Instance->m_ApplyGeneration == Generation)
-                        {
-                            ++Instance->m_ApplyGeneration;
-                            if (auto Client = Instance->m_ApplyClient.get())
-                            {
-                                Client->OnDisconnected.remove(
-                                    Instance->m_DisconnectedToken);
-                            }
-                            try
-                            {
-                                Instance->ReloadConfiguration();
-                            }
-                            catch (...)
-                            {
-                                ::ShowSettingsError(Instance->m_WindowHandle);
-                            }
-                        }
+                        if (!Instance || Instance->m_ApplyGeneration != Generation) return;
+                        Instance->m_ApplyPending = false;
+                        Instance->ApplyButton().IsEnabled(true);
+                        Instance->ReloadButton().IsEnabled(true);
+                        try { Instance->ReloadConfiguration(); }
+                        catch (...) { ::ShowSettingsError(Instance->m_WindowHandle); }
                     });
                 });
-                Client = nullptr;
-                this->m_MainWindow->ReloadVirtualMachineSettings();
             }
         }
         catch (...)
         {
+            this->m_ApplyPending = false;
+            this->ApplyButton().IsEnabled(true);
+            this->ReloadButton().IsEnabled(!this->m_ConfigurationFilePath.empty());
             ::ShowSettingsError(this->m_WindowHandle);
         }
     }
@@ -1516,123 +1493,151 @@ namespace winrt::NanaBox::implementation
 
     void VirtualMachineSettingsPage::HostManagementButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
     {
+        if (this->m_HostManagementRunning) return;
         using Json = nlohmann::json;
         using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
-        auto Action = winrt::unbox_value<winrt::hstring>(
-            Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
-        auto Selected = [](winrt::ComboBox const& Box) -> std::string {
+        auto Selected = [](winrt::ComboBox const& Box) -> std::string
+        {
             if (!Box.SelectedItem()) throw winrt::hresult_invalid_argument(L"Select an item first.");
             return winrt::to_string(winrt::unbox_value<winrt::hstring>(Box.SelectedItem().as<Item>().Tag()));
         };
-        auto Fill = [](winrt::ComboBox const& Box, Json const& Items, char const* Key) {
-            Box.Items().Clear();
-            for (auto const& Entry : Items)
-            {
-                Item Value;
-                auto Id = Entry.at(Key).get<std::string>();
-                Value.Tag(winrt::box_value(winrt::to_hstring(Id)));
-                auto Name = Entry.value("Name", Id);
-                Value.Content(winrt::box_value(winrt::to_hstring(Name + (Name == Id ? "" : " (" + Id + ")"))));
-                Box.Items().Append(Value);
-            }
-            if (Box.Items().Size()) Box.SelectedIndex(0);
-        };
-        auto Confirm = [&]() {
+        auto Confirm = [&]()
+        {
             return ::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"HostManagementConfirm").c_str(),
                 L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES;
         };
-        auto Run = [](winrt::hstring const& Command, nlohmann::json const& Arguments) -> nlohmann::json {
-            return nlohmann::json::parse(winrt::to_string(::NanaBox::RunHostManagement(Command, winrt::to_hstring(Arguments.dump()))));
-        };
-        auto Inspect = [&]() {
-            auto Result = Run(L"FirewallInspect", {{"Id", Selected(this->FirewallCreatorsComboBox())}});
-            Fill(this->FirewallRulesComboBox(), Result.at("Rules"), "Id");
-            this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
-        };
         try
         {
-            if (Action == L"SwitchList")
-            {
-                auto Result = Run(Action, Json::object());
-                Fill(this->ManagedSwitchesComboBox(), Result, "Id");
-                this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
-            }
-            else if (Action == L"AdapterList")
-            {
-                auto Result = Run(Action, Json::object());
-                Fill(this->PhysicalAdaptersComboBox(), Result, "Name");
-                this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
-            }
-            else if (Action == L"SwitchCreate")
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            Json Data = Json::object();
+            if (Action == L"SwitchCreate")
             {
                 auto Type = Selected(this->ManagedSwitchTypeComboBox());
                 if (Type == "External" && !Confirm()) return;
-                auto Result = Run(Action, {{"Name", winrt::to_string(this->ManagedSwitchNameTextBox().Text())},
-                    {"Type", Type}, {"Adapter", Type == "External" ? Selected(this->PhysicalAdaptersComboBox()) : ""}});
-                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList", Json::object()), "Id");
-                this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
+                Data = {{"Name", winrt::to_string(this->ManagedSwitchNameTextBox().Text())},
+                    {"Type", Type}, {"Adapter", Type == "External" ? Selected(this->PhysicalAdaptersComboBox()) : ""}};
             }
             else if (Action == L"SwitchDelete")
             {
-                auto Id = Selected(this->ManagedSwitchesComboBox());
+                Data["Id"] = Selected(this->ManagedSwitchesComboBox());
                 if (!Confirm()) return;
-                auto Result = Run(Action, {{"Id", Id}});
-                Fill(this->ManagedSwitchesComboBox(), Run(L"SwitchList", Json::object()), "Id");
-                this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
             }
-            else if (Action == L"CreatorList" || Action == L"CreatorRegister")
-            {
-                Json Registered;
-                if (Action == L"CreatorRegister")
-                    Registered = Run(Action, {{"Name", winrt::to_string(this->FirewallCreatorNameTextBox().Text())}});
-                auto Result = Run(L"CreatorList", Json::object());
-                Fill(this->FirewallCreatorsComboBox(), Result, "Id");
-                if (!Registered.is_null())
-                {
-                    auto Id = Registered.at("Id").get<std::string>();
-                    for (uint32_t i = 0; i < this->FirewallCreatorsComboBox().Items().Size(); ++i)
-                    {
-                        auto Entry = this->FirewallCreatorsComboBox().Items().GetAt(i).as<Item>();
-                        if (winrt::to_string(winrt::unbox_value<winrt::hstring>(Entry.Tag())) == Id)
-                        { this->FirewallCreatorsComboBox().SelectedIndex(i); break; }
-                    }
-                }
-                this->FirewallRulesComboBox().Items().Clear();
-                this->HostManagementResult().Text(winrt::to_hstring((Registered.is_null() ? Result : Registered).dump(2)));
-            }
-            else if (Action == L"FirewallInspect") Inspect();
+            else if (Action == L"CreatorRegister")
+                Data["Name"] = winrt::to_string(this->FirewallCreatorNameTextBox().Text());
+            else if (Action == L"FirewallInspect")
+                Data["Id"] = Selected(this->FirewallCreatorsComboBox());
             else if (Action == L"UseCreator")
             {
                 if (this->m_MainWindow) throw winrt::hresult_invalid_argument(L"Stop the VM before changing mirrored firewall settings.");
                 this->MirroredFirewallCreatorTextBox().Text(winrt::to_hstring(Selected(this->FirewallCreatorsComboBox())));
+                return;
             }
             else if (Action == L"FirewallConfigure")
             {
                 if (!Confirm()) return;
-                Run(Action, {{"Id", Selected(this->FirewallCreatorsComboBox())},
+                Data = {{"Id", Selected(this->FirewallCreatorsComboBox())},
                     {"Inbound", Selected(this->FirewallInboundComboBox())}, {"Outbound", Selected(this->FirewallOutboundComboBox())},
                     {"Loopback", this->FirewallLoopbackCheckBox().IsChecked().Value()},
-                    {"Merge", this->FirewallMergeCheckBox().IsChecked().Value()}});
-                Inspect();
+                    {"Merge", this->FirewallMergeCheckBox().IsChecked().Value()}};
             }
             else if (Action == L"RuleCreate")
             {
-                Run(Action, {{"Id", Selected(this->FirewallCreatorsComboBox())},
+                Data = {{"Id", Selected(this->FirewallCreatorsComboBox())},
                     {"Name", winrt::to_string(this->FirewallRuleNameTextBox().Text())},
                     {"Direction", Selected(this->FirewallDirectionComboBox())}, {"RuleAction", Selected(this->FirewallActionComboBox())},
-                    {"Protocol", Selected(this->FirewallProtocolComboBox())}, {"Ports", winrt::to_string(this->FirewallPortsTextBox().Text())}});
-                Inspect();
+                    {"Protocol", Selected(this->FirewallProtocolComboBox())}, {"Ports", winrt::to_string(this->FirewallPortsTextBox().Text())}};
             }
             else if (Action == L"RuleEnable" || Action == L"RuleDisable" || Action == L"RuleDelete")
             {
-                auto Id = Selected(this->FirewallCreatorsComboBox());
-                auto RuleId = Selected(this->FirewallRulesComboBox());
+                Data = {{"Id", Selected(this->FirewallCreatorsComboBox())}, {"Rule", Selected(this->FirewallRulesComboBox())}};
                 if (Action == L"RuleDelete" && !Confirm()) return;
-                Run(Action, {{"Id", Id}, {"Rule", RuleId}});
-                Inspect();
             }
+            else if (Action != L"SwitchList" && Action != L"AdapterList" && Action != L"CreatorList")
+                throw winrt::hresult_invalid_argument();
+            this->m_HostManagementRunning = true;
+            this->HostManagementResult().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->RunHostManagementOperation(Action, Data.dump());
         }
-        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+        catch (...) { this->m_HostManagementRunning = false; ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunHostManagementOperation(
+        winrt::hstring Action, std::string Arguments)
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        using Json = nlohmann::json;
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        Json Result, List, Details;
+        std::wstring ErrorText;
+        try
+        {
+            co_await winrt::resume_background();
+            auto Run = [](winrt::hstring const& Command, Json const& Data) -> Json
+            {
+                return Json::parse(winrt::to_string(::NanaBox::RunHostManagement(Command, winrt::to_hstring(Data.dump()))));
+            };
+            auto Data = Json::parse(Arguments);
+            Result = Run(Action, Data);
+            if (Action == L"SwitchCreate" || Action == L"SwitchDelete")
+                List = Run(L"SwitchList", Json::object());
+            else if (Action == L"CreatorRegister")
+                List = Run(L"CreatorList", Json::object());
+            else if (Action == L"FirewallConfigure" || Action == L"RuleCreate" ||
+                Action == L"RuleEnable" || Action == L"RuleDisable" || Action == L"RuleDelete")
+                Details = Run(L"FirewallInspect", Json{{"Id", Data.at("Id")}});
+        }
+        catch (...) { ErrorText = Mile::WinRT::ToHResultError().message().c_str(); }
+
+        try
+        {
+            co_await Foreground;
+            this->m_HostManagementRunning = false;
+            if (!ErrorText.empty())
+            {
+                this->HostManagementResult().Text(winrt::to_hstring(Json{{"Success", false},
+                    {"Error", winrt::to_string(ErrorText)}}.dump(2)));
+                return;
+            }
+            auto Fill = [](winrt::ComboBox const& Box, Json const& Items, char const* Key, std::string Preferred)
+            {
+                if (Preferred.empty() && Box.SelectedItem())
+                    Preferred = winrt::to_string(winrt::unbox_value<winrt::hstring>(Box.SelectedItem().as<Item>().Tag()));
+                Box.Items().Clear();
+                int Selection = -1;
+                for (auto const& Entry : Items)
+                {
+                    Item Value;
+                    auto Id = Entry.at(Key).get<std::string>();
+                    Value.Tag(winrt::box_value(winrt::to_hstring(Id)));
+                    auto Name = Entry.value("Name", Id);
+                    Value.Content(winrt::box_value(winrt::to_hstring(Name + (Name == Id ? "" : " (" + Id + ")"))));
+                    if (Id == Preferred) Selection = static_cast<int>(Box.Items().Size());
+                    Box.Items().Append(Value);
+                }
+                if (Selection >= 0) Box.SelectedIndex(Selection);
+                else if (Box.Items().Size()) Box.SelectedIndex(0);
+            };
+            if (Action == L"SwitchList" || Action == L"SwitchCreate" || Action == L"SwitchDelete")
+                Fill(this->ManagedSwitchesComboBox(), List.is_null() ? Result : List, "Id", "");
+            else if (Action == L"AdapterList")
+                Fill(this->PhysicalAdaptersComboBox(), Result, "Name", "");
+            else if (Action == L"CreatorList" || Action == L"CreatorRegister")
+            {
+                Fill(this->FirewallCreatorsComboBox(), List.is_null() ? Result : List, "Id",
+                    Action == L"CreatorRegister" ? Result.at("Id").get<std::string>() : "");
+                this->FirewallRulesComboBox().Items().Clear();
+            }
+            if (Action == L"FirewallInspect") Details = Result;
+            if (!Details.is_null())
+            {
+                Fill(this->FirewallRulesComboBox(), Details.at("Rules"), "Id", "");
+                Result = Details;
+            }
+            this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
+        }
+        catch (...) { this->m_HostManagementRunning = false; }
     }
 
     void VirtualMachineSettingsPage::DiskManagerButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)

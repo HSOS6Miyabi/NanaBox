@@ -17,6 +17,7 @@
 #include "MainWindowControl.h"
 #include "VirtualMachineCapture.h"
 #include <atomic>
+#include <functional>
 
 namespace NanaBox
 {
@@ -105,7 +106,7 @@ namespace NanaBox
         winrt::com_ptr<NanaBox::RdpClient> m_RdpClient;
         ATL::CWindow m_RdpClientWindow;
 
-        void ReloadVirtualMachineSettings();
+        void ReloadVirtualMachineSettings(std::function<void()> Completion);
 
         void RdpClientOnDisconnected(
             _In_ LONG DisconnectReason);

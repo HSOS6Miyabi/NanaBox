@@ -697,7 +697,9 @@ try {
             $rules = @(Get-NetFirewallHyperVRule -VMCreatorId $id | ForEach-Object {
                 [pscustomobject]@{Id=$_.Name; Name=$_.DisplayName; Direction=[string]$_.Direction; Action=[string]$_.Action; Protocol=[string]$_.Protocol; LocalPorts=@($_.LocalPorts); RemotePorts=@($_.RemotePorts); Enabled=[string]$_.Enabled}
             })
-            @{Settings=@($setting | Select-Object Name,Enabled,DefaultInboundAction,DefaultOutboundAction,LoopbackEnabled,AllowHostPolicyMerge); Rules=$rules}
+            @{Settings=@($setting | ForEach-Object {
+                [pscustomobject]@{Name=$_.Name; Enabled=[string]$_.Enabled; DefaultInboundAction=[string]$_.DefaultInboundAction; DefaultOutboundAction=[string]$_.DefaultOutboundAction; LoopbackEnabled=[string]$_.LoopbackEnabled; AllowHostPolicyMerge=[string]$_.AllowHostPolicyMerge}
+            }); Rules=$rules}
         }
         'FirewallConfigure' {
             $id = ManagedCreator $a.Id

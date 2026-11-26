@@ -198,11 +198,11 @@
     <comment>Resize Virtual Hard Disk</comment>
   </data>
   <data name="RestartVirtualMachineButton.AutomationProperties.Name" xml:space="preserve">
-    <value>Restart Virtual Machine</value>
+    <value>Restart guest gracefully</value>
     <comment>Restart Virtual Machine</comment>
   </data>
   <data name="RestartVirtualMachineButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Restart Virtual Machine</value>
+    <value>Restart guest gracefully</value>
     <comment>Restart Virtual Machine</comment>
   </data>
   <data name="RestoreVirtualMachineWindowSizeButton.AutomationProperties.Name" xml:space="preserve">

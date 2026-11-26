@@ -145,13 +145,14 @@ namespace winrt::NanaBox::implementation
         };
 
         bool m_DiskOperationRunning = false;
+        bool m_HostManagementRunning = false;
+        winrt::fire_and_forget RunHostManagementOperation(winrt::hstring Action, std::string Arguments);
         HWND m_WindowHandle = nullptr;
         std::wstring m_ConfigurationFilePath;
         std::string m_LoadedConfigurationContent;
         NanaBox::VirtualMachineConfiguration m_Configuration;
         NanaBox::MainWindow* m_MainWindow = nullptr;
-        winrt::weak_ref<NanaBox::RdpClient> m_ApplyClient;
-        winrt::event_token m_DisconnectedToken;
+        bool m_ApplyPending = false;
         std::uint64_t m_ApplyGeneration = 0;
         winrt::com_ptr<NanaBox::RdpClient> m_EnumerationClient;
         std::vector<GpuDeviceSettings> m_GpuDeviceSettings;

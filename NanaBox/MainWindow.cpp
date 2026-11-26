@@ -420,20 +420,15 @@ void NanaBox::MainWindow::StartCapture(_In_ bool Recording)
     }
 }
 
-void NanaBox::MainWindow::ReloadVirtualMachineSettings()
+void NanaBox::MainWindow::ReloadVirtualMachineSettings(std::function<void()> Completion)
 {
     this->m_MainWindowControl.Dispatcher().RunAsync(
         winrt::CoreDispatcherPriority::Normal,
-        [=]()
+        [this, Completion = std::move(Completion)]()
     {
-        try
-        {
-            this->TryReloadVirtualMachine();
-        }
-        catch (...)
-        {
-
-        }
+        auto Complete = Mile::ScopeExitTaskHandler([&]() { if (Completion) Completion(); });
+        try { this->TryReloadVirtualMachine(); }
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
     });
 }
 
@@ -655,6 +650,8 @@ void NanaBox::MainWindow::UpdatePowerControls()
     Control->RestartVirtualMachineButton().IsEnabled(Enabled);
     // Keep the power menu available while a graceful shutdown is pending.
     Control->PowerMenuButton().IsEnabled(this->m_VirtualMachineRunning);
+    Control->ShutdownAction().IsEnabled(Enabled);
+    Control->SaveAction().IsEnabled(Enabled);
 }
 
 void NanaBox::MainWindow::SetVirtualMachinePaused(bool Paused)
@@ -1044,6 +1041,14 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
 
 void NanaBox::MainWindow::TryReloadVirtualMachine()
 {
+    if (!this->m_VirtualMachineRunning || !this->m_VirtualMachine || this->m_PowerTransitionPending)
+        throw winrt::hresult_error(E_PENDING, L"The virtual machine is changing power state.");
+    std::wstring Errors;
+    auto Report = [&](std::wstring const& Setting)
+    {
+        auto Error = Mile::WinRT::ToHResultError();
+        Errors += Setting + L": " + Error.message().c_str() + L"\n";
+    };
     std::string ConfigurationFileContent =
         ::ReadAllTextFromUtf8TextFile(this->m_ConfigurationFilePath);
 
@@ -1063,7 +1068,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         }
         catch (...)
         {
-
+            Report(L"Memory");
         }
     }
 
@@ -1100,7 +1105,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         }
         catch (...)
         {
-
+            Report(L"COM1");
         }
     }
 
@@ -1137,10 +1142,12 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         }
         catch (...)
         {
-
+            Report(L"COM2");
         }
     }
 
+    if (this->m_Configuration.Gpu.AssignmentMode != Configuration.Gpu.AssignmentMode ||
+        this->m_Configuration.Gpu.SelectedDevices != Configuration.Gpu.SelectedDevices)
     try
     {
         NanaBox::ComputeSystemUpdateGpu(
@@ -1150,16 +1157,13 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
     }
     catch (...)
     {
-
+        Report(L"GPU assignment");
     }
 
     {
-        auto Report = [&](NanaBox::NetworkAdapterConfiguration const& Adapter, char const* Operation)
+        auto ReportAdapter = [&](NanaBox::NetworkAdapterConfiguration const& Adapter, char const* Operation)
         {
-            auto Error = Mile::WinRT::ToHResultError();
-            auto Message = winrt::to_hstring(std::string(Operation) + " network adapter " + Adapter.EndpointId + ": ");
-            ::ShowErrorMessageDialog(this->m_hWnd, winrt::hresult_error(Error.code(),
-                winrt::hstring(std::wstring(Message.c_str()) + Error.message().c_str())));
+            Report(winrt::to_hstring(std::string(Operation) + " network adapter " + Adapter.EndpointId).c_str());
         };
         this->m_Configuration.NetworkAdapters = NanaBox::ReconcileNetworkAdapters(
             this->m_Configuration.NetworkAdapters, Configuration.NetworkAdapters,
@@ -1188,7 +1192,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                     throw;
                 }
             },
-            Report);
+            ReportAdapter);
     }
 
     {
@@ -1214,6 +1218,8 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                         {
                             try
                             {
+                                NanaBox::ValidateScsiDeviceConfiguration(
+                                    winrt::to_hstring(this->m_Configuration.Name), Current);
                                 NanaBox::ComputeSystemUpdateScsiDevice(
                                     this->m_VirtualMachine,
                                     i,
@@ -1222,10 +1228,11 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                             }
                             catch (...)
                             {
-
+                                Report(L"SCSI device " + std::to_wstring(i));
                             }
                         }
                     }
+                    else Errors += L"Changing the type of an attached SCSI device requires shutting down the VM.\n";
                 }
                 else
                 {
@@ -1243,11 +1250,14 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                     }
                     catch (...)
                     {
-
+                        Report(L"Add SCSI device " + std::to_wstring(i));
+                        // Later attachment indices depend on this device.
+                        break;
                     }
                 }
             }
         }
+        else Errors += L"Removing attached SCSI devices requires shutting down the VM.\n";
     }
 
     try
@@ -1269,7 +1279,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         }
         catch (...)
         {
-
+            Report(L"Keyboard settings");
         }
 
         try
@@ -1282,12 +1292,12 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         }
         catch (...)
         {
-
+            Report(L"Enhanced session settings");
         }
     }
     catch (...)
     {
-
+        Report(L"RDP client initialization");
     }
 
     {
@@ -1295,14 +1305,18 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
             Configuration.VideoMonitor.DisableBasicSessionDpiScaling;
     }
 
-    ConfigurationFileContent =
-        NanaBox::SerializeConfiguration(this->m_Configuration);
-    ::WriteAllTextToUtf8TextFile(
-        this->m_ConfigurationFilePath,
-        ConfigurationFileContent);
+    auto ActualContent = NanaBox::SerializeConfiguration(this->m_Configuration);
+    ::WriteAllTextToUtf8TextFile(this->m_ConfigurationFilePath, ActualContent, &ConfigurationFileContent);
+    this->m_PersistedConfigurationContent = std::string("\xEF\xBB\xBF") + ActualContent;
 
     this->m_NeedRdpClientModeChange = true;
-    this->m_RdpClient->Disconnect();
+    if (this->m_RdpClient)
+    {
+        try { this->m_RdpClient->Disconnect(); }
+        catch (...) { Report(L"Reconnect remote desktop"); }
+    }
+    if (!Errors.empty())
+        throw winrt::hresult_error(E_FAIL, winrt::hstring(Errors));
 }
 
 void NanaBox::MainWindow::RdpClientOnRemoteDesktopSizeChange(
