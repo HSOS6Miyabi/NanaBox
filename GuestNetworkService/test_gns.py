@@ -14,6 +14,32 @@ def request(resource='IPAddress', action='Add', **settings):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_snapshot_validation_and_route_order(self):
+        settings = {
+            'Interface': {'Connected': True, 'NlMtu': 1500, 'Mirrored': True},
+            'Addresses': [{'Address': '192.0.2.10', 'OnLinkPrefixLength': 24, 'Mirrored': True}],
+            'Routes': [
+                {'DestinationPrefix': '0.0.0.0/0', 'NextHop': '192.0.2.1', 'Metric': 10},
+                {'DestinationPrefix': '192.0.2.0/24', 'NextHop': '0.0.0.0', 'Metric': 10},
+            ],
+            'DNS': {'ServerList': []}, 'PortRange': {'Start': 49152, 'End': 53247},
+        }
+        target, resource, action, normalized = gns.normalize(request('Reconcile', 'Update', **settings))
+        self.assertEqual(normalized['Routes'][0]['Destination'], '192.0.2.0/24')
+        self.assertEqual(normalized['Routes'][1]['Destination'], '0.0.0.0/0')
+        backend = gns.WindowsBackend(Mock())
+        backend.reconcile(target, normalized)
+        args, kwargs = backend.execute.call_args
+        self.assertIn('ReadAddresses', args[0][-1])
+        self.assertEqual(json.loads(kwargs['input'])['Settings'], normalized)
+        settings['Routes'].append(settings['Routes'][0])
+        with self.assertRaises(ValueError):
+            gns.normalize(request('Reconcile', 'Update', **settings))
+        settings['Routes'].pop()
+        settings['Interface']['Connected'] = False
+        with self.assertRaises(ValueError):
+            gns.normalize(request('Reconcile', 'Update', **settings))
+
     def test_validation(self):
         value = gns.normalize(request(Address='2001:db8::123', OnLinkPrefixLength=64))
         self.assertEqual(value, ('00155d123456', 'IPAddress', 'Add', {'Address': '2001:db8::123', 'Prefix': 64, 'Family': 6}))

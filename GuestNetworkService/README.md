@@ -75,3 +75,7 @@ For mirrored networking, dedicate guest adapters to host-managed configuration. 
 
 Read-only requests: `{"Version":1,"ResourceType":"Diagnostics","RequestType":"Query","Settings":{}}` returns actual guest addresses, adapters, GPU information and dynamic port ranges. `Connectivity` with `RequestType: "Query"` and settings `Address` (literal IP) and `Port` attempts a single TCP connection and reports its local source address. Both operations use the same host-only transport.
 The host registers the Hyper-V socket service when starting a mirrored VM, checking that the service GUID is not registered to another application.
+
+The host sends a complete `Reconcile` request for each dedicated mirrored adapter. The guest validates and compares the desired addresses, routes, DNS, MTU and dynamic port range with its actual network configuration. Direct routes are installed before gateway routes; stale agent-managed routes are removed before addresses. Repeated synchronization repairs configuration drift after guest service restarts without a host-side applied-state cache. IPv6 link-local addresses remain managed by the guest kernel. Use the current host and guest service versions together.
+
+On Ubuntu, the guest workflow additionally runs `live_network_test.py` in an isolated network namespace with a real veth pair. It checks route ordering, stale-address cleanup, repeated reconciliation and recovery after simulated drift. Resolver calls in that test use a controlled in-memory resolver; production resolver commands use systemd-resolved.

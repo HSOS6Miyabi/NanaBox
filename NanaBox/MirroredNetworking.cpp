@@ -31,7 +31,6 @@ namespace
     using Json = nlohmann::json;
     using namespace NanaBox;
     constexpr GUID GnsServiceId{27453, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
-    constexpr DWORD IoTimeout = 10000;
     constexpr std::uint32_t MaxMessage = 256 * 1024;
 
     std::string GuidString(GUID const& Value)
@@ -102,11 +101,33 @@ namespace
             winrt::throw_hresult(HRESULT_FROM_WIN32(::WSAGetLastError()));
     }
 
-    void SendAll(SOCKET S, const char* Data, size_t Size)
+    using Deadline = std::chrono::steady_clock::time_point;
+
+    void WaitSocket(SOCKET S, bool Writing, Deadline End, std::atomic<bool> const& Stop)
+    {
+        while (!Stop.load())
+        {
+            if (std::chrono::steady_clock::now() >= End)
+                winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_TIMEOUT));
+            fd_set Ready, Except;
+            FD_ZERO(&Ready); FD_SET(S, &Ready);
+            FD_ZERO(&Except); FD_SET(S, &Except);
+            timeval Timeout{0, 200000};
+            int Result = ::select(0, Writing ? nullptr : &Ready, Writing ? &Ready : nullptr, &Except, &Timeout);
+            CheckSocket(Result);
+            if (Result > 0) return;
+        }
+        winrt::throw_hresult(E_ABORT);
+    }
+
+    void Transfer(SOCKET S, char* Data, size_t Size, bool Writing, Deadline End, std::atomic<bool> const& Stop)
     {
         while (Size)
         {
-            int Count = ::send(S, Data, static_cast<int>(Size), 0);
+            WaitSocket(S, Writing, End, Stop);
+            int Count = Writing ? ::send(S, Data, static_cast<int>(Size), 0) :
+                ::recv(S, Data, static_cast<int>(Size), 0);
+            if (Count == SOCKET_ERROR && ::WSAGetLastError() == WSAEWOULDBLOCK) continue;
             CheckSocket(Count);
             if (!Count) winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_CONNECTION_ABORTED));
             Data += Count;
@@ -114,19 +135,7 @@ namespace
         }
     }
 
-    void ReceiveAll(SOCKET S, char* Data, size_t Size)
-    {
-        while (Size)
-        {
-            int Count = ::recv(S, Data, static_cast<int>(Size), 0);
-            CheckSocket(Count);
-            if (!Count) winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_CONNECTION_ABORTED));
-            Data += Count;
-            Size -= Count;
-        }
-    }
-
-    void GuestRequest(winrt::guid const& RuntimeId, Json const& Request)
+    void GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop)
     {
         auto Body = Request.dump();
         if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
@@ -144,31 +153,21 @@ namespace
         {
             int Error = ::WSAGetLastError();
             if (Error != WSAEWOULDBLOCK && Error != WSAEINPROGRESS) CheckSocket(SOCKET_ERROR);
-            fd_set Write, Except;
-            FD_ZERO(&Write); FD_SET(Connection.Value, &Write);
-            FD_ZERO(&Except); FD_SET(Connection.Value, &Except);
-            timeval Timeout{2, 0};
-            int Ready = ::select(0, nullptr, &Write, &Except, &Timeout);
-            CheckSocket(Ready);
-            if (!Ready) winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_TIMEOUT));
+            WaitSocket(Connection.Value, true, std::chrono::steady_clock::now() + std::chrono::seconds(3), Stop);
             int ConnectError = 0;
             int Length = sizeof(ConnectError);
             CheckSocket(::getsockopt(Connection.Value, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&ConnectError), &Length));
             if (ConnectError) winrt::throw_hresult(HRESULT_FROM_WIN32(ConnectError));
         }
-        NonBlocking = 0;
-        CheckSocket(::ioctlsocket(Connection.Value, FIONBIO, &NonBlocking));
-        DWORD Timeout = IoTimeout;
-        CheckSocket(::setsockopt(Connection.Value, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&Timeout), sizeof(Timeout)));
-        CheckSocket(::setsockopt(Connection.Value, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&Timeout), sizeof(Timeout)));
+        auto End = std::chrono::steady_clock::now() + std::chrono::seconds(90);
         auto Length = ::htonl(static_cast<u_long>(Body.size()));
-        SendAll(Connection.Value, reinterpret_cast<char const*>(&Length), sizeof(Length));
-        SendAll(Connection.Value, Body.data(), Body.size());
-        ReceiveAll(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length));
+        Transfer(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length), true, End, Stop);
+        Transfer(Connection.Value, Body.data(), Body.size(), true, End, Stop);
+        Transfer(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length), false, End, Stop);
         Length = ::ntohl(Length);
         if (!Length || Length > MaxMessage) throw winrt::hresult_error(E_UNEXPECTED);
         std::string Response(Length, '\0');
-        ReceiveAll(Connection.Value, Response.data(), Response.size());
+        Transfer(Connection.Value, Response.data(), Response.size(), false, End, Stop);
         auto Reply = Json::parse(Response);
         if (Reply.value("Version", 0) != 1 || !Reply.value("Success", false))
             throw winrt::hresult_error(E_FAIL, winrt::to_hstring(Reply.value("Error", std::string("Guest network request failed"))));
@@ -208,7 +207,8 @@ namespace
         if (Address.si_family == AF_INET6)
         {
             auto const& Value = Address.Ipv6.sin6_addr;
-            return !IN6_IS_ADDR_UNSPECIFIED(&Value) && !IN6_IS_ADDR_LOOPBACK(&Value) && !IN6_IS_ADDR_MULTICAST(&Value);
+            return !IN6_IS_ADDR_UNSPECIFIED(&Value) && !IN6_IS_ADDR_LOOPBACK(&Value) &&
+                !IN6_IS_ADDR_MULTICAST(&Value) && !IN6_IS_ADDR_LINKLOCAL(&Value);
         }
         return false;
     }
@@ -262,7 +262,8 @@ namespace
                 if ((V >> 24) == 127 || (V >> 28) == 14 || V == 0xffffffff) continue;
             }
             else if (Prefix.si_family == AF_INET6 &&
-                (IN6_IS_ADDR_MULTICAST(&Prefix.Ipv6.sin6_addr) || IN6_IS_ADDR_LOOPBACK(&Prefix.Ipv6.sin6_addr))) continue;
+                (IN6_IS_ADDR_MULTICAST(&Prefix.Ipv6.sin6_addr) || IN6_IS_ADDR_LOOPBACK(&Prefix.Ipv6.sin6_addr) ||
+                    IN6_IS_ADDR_LINKLOCAL(&Prefix.Ipv6.sin6_addr))) continue;
             Json Settings = {{"DestinationPrefix", Destination + "/" + std::to_string(Row.DestinationPrefix.PrefixLength)},
                 {"NextHop", Hop}, {"Metric", Row.Metric}};
             Result.Items.emplace("Route|" + Settings.dump(), Json{{"ResourceType", "Route"}, {"Settings", Settings}});
@@ -359,10 +360,7 @@ struct NanaBox::MirroredNetworking::Impl
         winrt::guid Id{};
         winrt::guid HostInterface{};
         std::string Mac;
-        std::map<std::string, Json> Applied;
-        Json Dns;
-        Json Interface;
-        bool RangeApplied = false;
+        bool Attached = false;
     };
 
     winrt::guid RuntimeId;
@@ -399,7 +397,10 @@ struct NanaBox::MirroredNetworking::Impl
         Stop = true;
         Wake.notify_all();
         if (Worker.joinable()) Worker.join();
-        for (auto const& Entry : Endpoints) RemoveEndpoint(Entry.second);
+        for (auto& Entry : Endpoints)
+        {
+            try { RemoveEndpoint(Entry.second); } catch (...) {}
+        }
         if (Release) for (auto Handle : Reservations) Release(Handle);
         if (Service)
         {
@@ -539,6 +540,7 @@ struct NanaBox::MirroredNetworking::Impl
             Entry.HostInterface = winrt::guid(Constraint.at("InterfaceGuid").get<std::string>());
             ModifyVm(Vm.get(), "VirtualMachine/Devices/NetworkAdapters/" + GuidString(Entry.Id), "Add",
                 Json{{"EndpointId", GuidString(Entry.Id)}, {"MacAddress", Entry.Mac}});
+            Entry.Attached = true;
         }
         catch (...)
         {
@@ -549,66 +551,36 @@ struct NanaBox::MirroredNetworking::Impl
         return Entry;
     }
 
-    void RemoveEndpoint(Endpoint const& Entry) noexcept
+    void RemoveEndpoint(Endpoint& Entry)
     {
-        try
+        if (Entry.Attached)
         {
             ModifyVm(Vm.get(), "VirtualMachine/Devices/NetworkAdapters/" + GuidString(Entry.Id), "Remove",
                 Json{{"EndpointId", GuidString(Entry.Id)}, {"MacAddress", Entry.Mac}});
+            Entry.Attached = false;
         }
-        catch (...) {}
-        try { NanaBox::HcnDeleteEndpoint(Entry.Id); } catch (...) {}
-    }
-
-    void Send(Endpoint const& Entry, char const* Resource, char const* Action, Json const& Settings)
-    {
-        if (Stop) throw winrt::hresult_error(E_ABORT);
-        GuestRequest(RuntimeId, Json{{"Version", 1}, {"AdapterMac", Entry.Mac}, {"ResourceType", Resource},
-            {"RequestType", Action}, {"Settings", Settings}});
+        NanaBox::HcnDeleteOwnedEndpoint(Entry.Id, Configuration.Name);
     }
 
     void Synchronize(Endpoint& Entry)
     {
         auto Desired = ReadHostSnapshot(Entry.HostInterface);
-        if (Entry.Interface != Desired.Interface)
+        Json Addresses = Json::array(), Routes = Json::array();
+        for (auto const& Item : Desired.Items)
         {
-            Send(Entry, "Interface", "Update", Desired.Interface);
-            Entry.Interface = Desired.Interface;
+            auto const& Value = Item.second;
+            if (Value["ResourceType"] == "IPAddress")
+                Addresses.push_back(Value.at("Settings"));
+            else if (Value["ResourceType"] == "Route")
+                Routes.push_back(Value.at("Settings"));
         }
-        if (!Entry.RangeApplied)
-        {
-            Send(Entry, "PortRange", "Update", Json{{"Start", Range.startingPort}, {"End", Range.endingPort}});
-            Entry.RangeApplied = true;
-        }
-        // Remove routes first, then addresses; add addresses before routes.
-        for (auto Kind : {"Route", "IPAddress"})
-        {
-            for (auto It = Entry.Applied.begin(); It != Entry.Applied.end();)
-            {
-                if (!Desired.Items.count(It->first) && It->second["ResourceType"] == Kind)
-                {
-                    Send(Entry, Kind, "Remove", It->second.at("Settings"));
-                    It = Entry.Applied.erase(It);
-                }
-                else ++It;
-            }
-        }
-        for (auto Kind : {"IPAddress", "Route"})
-        {
-            for (auto const& Item : Desired.Items)
-            {
-                if (Item.second["ResourceType"] == Kind && !Entry.Applied.count(Item.first))
-                {
-                    Send(Entry, Kind, "Add", Item.second.at("Settings"));
-                    Entry.Applied.emplace(Item);
-                }
-            }
-        }
-        if (Entry.Dns != Desired.Dns)
-        {
-            Send(Entry, "DNS", Desired.Dns.empty() ? "Remove" : "Update", Json{{"ServerList", Desired.Dns}});
-            Entry.Dns = Desired.Dns;
-        }
+        // The agent reads and reconciles its actual state on every request.
+        // No host-side cache is used to infer whether a configuration survived.
+        GuestRequest(RuntimeId, Json{{"Version", 1}, {"AdapterMac", Entry.Mac},
+            {"ResourceType", "Reconcile"}, {"RequestType", "Update"},
+            {"Settings", {{"Interface", Desired.Interface}, {"Addresses", Addresses},
+                {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}}},
+                {"PortRange", {{"Start", Range.startingPort}, {"End", Range.endingPort}}}}}}, Stop);
     }
 
     void Run() noexcept
@@ -626,7 +598,7 @@ struct NanaBox::MirroredNetworking::Impl
                 for (auto const& Network : Networks) Active.insert(GuidString(Network));
                 for (auto It = Endpoints.begin(); It != Endpoints.end();)
                 {
-                    if (!Active.count(It->first))
+                    if (!Active.count(It->first) || !It->second.Attached)
                     {
                         RemoveEndpoint(It->second);
                         It = Endpoints.erase(It);
@@ -662,7 +634,7 @@ struct NanaBox::MirroredNetworking::Impl
                 }
             }
             std::unique_lock Lock(Mutex);
-            Wake.wait_for(Lock, std::chrono::seconds(2), [this]() { return Stop.load(); });
+            Wake.wait_for(Lock, std::chrono::seconds(5), [this]() { return Stop.load(); });
         }
     }
 };

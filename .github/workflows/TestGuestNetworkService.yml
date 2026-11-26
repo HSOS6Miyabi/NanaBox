@@ -23,6 +23,10 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m unittest discover -s GuestNetworkService -v
+      - name: Reconcile real Linux interfaces and routes in a network namespace
+        if: runner.os == 'Linux'
+        shell: bash
+        run: sudo unshare --net "$(command -v python)" GuestNetworkService/live_network_test.py
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
