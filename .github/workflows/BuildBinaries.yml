@@ -21,26 +21,37 @@ jobs:
     - uses: microsoft/setup-msbuild@v3
     - name: Clear local NuGet cache (workaround for failed restores on windows-latest)
       run: dotnet nuget locals all --clear
-    - name: Build
-      run: msbuild BuildAllTargets.proj
+    - name: Restore project dependencies
+      shell: pwsh
+      run: msbuild BuildAllTargets.proj /t:Restore
+    - name: Build x64 Release for functional tests
+      shell: pwsh
+      run: |
+        msbuild NanaBox\NanaBox.vcxproj /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $test = Join-Path $env:RUNNER_TEMP 'NanaBox-Test'
+        New-Item -ItemType Directory -Path $test -Force | Out-Null
+        Copy-Item Output\Binaries\Release\x64\NanaBox.exe $test
+        Copy-Item Output\Binaries\Release\x64\NanaBox.pri (Join-Path $test 'resources.pri')
+        Copy-Item Output\Binaries\Release\x64\Mile.Xaml.Styles.SunValley.xbf $test
     - name: Test configuration and HCS GPU requests
       shell: pwsh
       run: |
-        $exe = Resolve-Path 'Output\Binaries\Release\x64\NanaBox.exe'
+        $exe = Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe'
         $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "NanaBox self-test failed: $($process.ExitCode)" }
     - name: Virtual disk API integration test
       shell: pwsh
       timeout-minutes: 5
       run: |
-        $exe = Resolve-Path 'Output\Binaries\Root\Binaries\x64\NanaBox.exe'
+        $exe = Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe'
         $process = Start-Process -FilePath $exe -ArgumentList '--disk-self-test' -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "Virtual disk test failed: $($process.ExitCode)" }
     - name: Settings GUI round-trip
       shell: powershell
       timeout-minutes: 12
       run: |
-        & .\Tests\SettingsUI.ps1 -Executable .\Output\Binaries\Root\Binaries\x64\NanaBox.exe -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
+        & .\Tests\SettingsUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
     - name: Upload GUI test diagnostics
       if: always()
       uses: actions/upload-artifact@v7
@@ -48,6 +59,9 @@ jobs:
         name: NanaBox_GUI_Test_Diagnostics
         path: ${{ runner.temp }}/NanaBox-UI
         if-no-files-found: ignore
+    - name: Build all architectures and configurations and package
+      shell: pwsh
+      run: msbuild BuildAllTargets.proj '/t:Build;Packaging'
     - name: Prepare artifacts
       run: rm Output\Binaries\* -vb -Recurse -Force -Include *.exp, *.idb, *.ilk, *.iobj, *.ipdb, *.lastbuildstate, *.lib, *.obj, *.res, *.tlog
     - uses: actions/upload-artifact@v7
