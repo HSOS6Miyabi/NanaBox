@@ -75,6 +75,7 @@ namespace winrt::NanaBox::implementation
         void InspectNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void HostManagementButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void DiskManagerButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        winrt::fire_and_forget RunDiskManagerOperation(winrt::hstring Action, winrt::hstring Path, std::uint64_t Size);
         void SerialPipeButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
 
         void AddGpuDeviceButtonClick(
@@ -143,6 +144,7 @@ namespace winrt::NanaBox::implementation
             winrt::TextBox Name = nullptr;
         };
 
+        bool m_DiskOperationRunning = false;
         HWND m_WindowHandle = nullptr;
         std::wstring m_ConfigurationFilePath;
         NanaBox::VirtualMachineConfiguration m_Configuration;

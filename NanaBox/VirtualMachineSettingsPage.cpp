@@ -17,6 +17,8 @@
 #include <set>
 #include <ShlObj.h>
 #include <Shlwapi.h>
+#include <virtdisk.h>
+#pragma comment(lib, "virtdisk.lib")
 #include <winrt/Windows.UI.Xaml.Automation.h>
 #include <winrt/Windows.UI.Core.h>
 
@@ -1630,15 +1632,103 @@ namespace winrt::NanaBox::implementation
 
     void VirtualMachineSettingsPage::DiskManagerButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
     {
+        if (this->m_DiskOperationRunning) return;
         try
         {
             auto Action = winrt::unbox_value<winrt::hstring>(
                 Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
-            if (Action == L"Create") ::ShowNewVirtualHardDiskDialog(this->m_WindowHandle);
-            else if (Action == L"Resize") ::ShowResizeVirtualHardDiskDialog(this->m_WindowHandle);
-            else if (Action == L"Compact") ::ShowCompactVirtualHardDiskDialog(this->m_WindowHandle);
+            if (Action == L"Browse")
+            {
+                COMDLG_FILTERSPEC Types[] = {{L"Virtual disks (*.vhd;*.vhdx)", L"*.vhd;*.vhdx"}};
+                LPWSTR Raw = nullptr;
+                HRESULT Hr = ::ShowFileDialog(this->m_WindowHandle, FALSE, ARRAYSIZE(Types), Types,
+                    nullptr, nullptr, nullptr, &Raw);
+                auto Free = Mile::ScopeExitTaskHandler([&]() { ::CoTaskMemFree(Raw); });
+                if (Hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+                winrt::check_hresult(Hr);
+                if (Raw) this->DiskPathTextBox().Text(winrt::hstring(Raw));
+                return;
+            }
+            auto Path = this->DiskPathTextBox().Text();
+            auto Extension = ::PathFindExtensionW(Path.c_str());
+            bool Vhd = ::_wcsicmp(Extension, L".vhd") == 0;
+            if (Path.empty() || (!Vhd && ::_wcsicmp(Extension, L".vhdx") != 0))
+                throw winrt::hresult_invalid_argument(L"Specify a VHD or VHDX file.");
+            std::uint64_t Size = 0;
+            if (Action == L"Create" || Action == L"Resize")
+            {
+                auto Value = winrt::to_string(this->DiskSizeTextBox().Text());
+                std::uint64_t MiB = 0;
+                auto Parsed = std::from_chars(Value.data(), Value.data() + Value.size(), MiB);
+                std::uint64_t Limit = Vhd ? 2040ull * 1024 : 64ull * 1024 * 1024;
+                if (Parsed.ec != std::errc() || Parsed.ptr != Value.data() + Value.size() || MiB < 3 || MiB > Limit)
+                    throw winrt::hresult_invalid_argument(L"Invalid virtual disk capacity in MiB.");
+                Size = MiB << 20;
+            }
+            this->m_DiskOperationRunning = true;
+            this->DiskResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->RunDiskManagerOperation(Action, Path, Size);
         }
-        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
+        catch (...) { this->m_DiskOperationRunning = false; ::ShowSettingsError(this->m_WindowHandle); }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunDiskManagerOperation(
+        winrt::hstring Action, winrt::hstring Path, std::uint64_t Size)
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        std::string Result;
+        try
+        {
+            co_await winrt::resume_background();
+            auto Inspect = [&]() {
+                VIRTUAL_STORAGE_TYPE Type{VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN, VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN};
+                OPEN_VIRTUAL_DISK_PARAMETERS Open{};
+                Open.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+                HANDLE Raw = INVALID_HANDLE_VALUE;
+                winrt::check_hresult(HRESULT_FROM_WIN32(::OpenVirtualDisk(&Type, Path.c_str(),
+                    VIRTUAL_DISK_ACCESS_GET_INFO, OPEN_VIRTUAL_DISK_FLAG_NONE, &Open, &Raw)));
+                winrt::handle Disk(Raw);
+                GET_VIRTUAL_DISK_INFO Info{};
+                Info.Version = GET_VIRTUAL_DISK_INFO_SIZE;
+                ULONG Bytes = sizeof(Info);
+                winrt::check_hresult(HRESULT_FROM_WIN32(::GetVirtualDiskInformation(Disk.get(), &Bytes, &Info, nullptr)));
+                return nlohmann::json{{"Path", winrt::to_string(Path)}, {"VirtualSize", Info.Size.VirtualSize},
+                    {"PhysicalSize", Info.Size.PhysicalSize}, {"BlockSize", Info.Size.BlockSize}, {"SectorSize", Info.Size.SectorSize}};
+            };
+            if (Action == L"Create")
+            {
+                HANDLE Raw = INVALID_HANDLE_VALUE;
+                winrt::check_hresult(HRESULT_FROM_WIN32(::SimpleCreateVirtualDisk(Path.c_str(), Size, &Raw)));
+                ::CloseHandle(Raw);
+            }
+            else if (Action == L"Resize")
+            {
+                if (Size < Inspect().at("VirtualSize").get<std::uint64_t>())
+                    throw winrt::hresult_invalid_argument(L"Use a larger capacity to expand the virtual disk.");
+                winrt::check_hresult(HRESULT_FROM_WIN32(::SimpleResizeVirtualDisk(Path.c_str(), Size)));
+            }
+            else if (Action == L"Compact")
+                winrt::check_hresult(HRESULT_FROM_WIN32(::SimpleCompactVirtualDisk(Path.c_str())));
+            else if (Action != L"Inspect")
+                throw winrt::hresult_invalid_argument();
+            auto Data = Inspect();
+            Data["Operation"] = winrt::to_string(Action);
+            Data["Success"] = true;
+            Result = Data.dump(2);
+        }
+        catch (...)
+        {
+            auto Error = Mile::WinRT::ToHResultError();
+            Result = nlohmann::json{{"Success", false}, {"Error", winrt::to_string(Error.message())}}.dump(2);
+        }
+        try
+        {
+            co_await Foreground;
+            this->m_DiskOperationRunning = false;
+            this->DiskResultTextBox().Text(winrt::to_hstring(Result));
+        }
+        catch (...) {}
     }
 
     void VirtualMachineSettingsPage::SerialPipeButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
@@ -1647,8 +1737,21 @@ namespace winrt::NanaBox::implementation
         {
             auto Action = winrt::unbox_value<winrt::hstring>(
                 Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
-            auto Input = (Action == L"1" || Action == L"Clear1") ? this->ComPort1TextBox() : this->ComPort2TextBox();
-            if (Action == L"Clear1" || Action == L"Clear2") { Input.Text(L""); return; }
+            auto Input = (Action == L"1" || Action == L"Clear1" || Action == L"Check1") ? this->ComPort1TextBox() : this->ComPort2TextBox();
+            if (Action == L"Clear1" || Action == L"Clear2") { Input.Text(L""); this->SerialPipeStatusTextBox().Text(L""); return; }
+            if (Action == L"Check1" || Action == L"Check2")
+            {
+                auto Pipe = Input.Text();
+                if (Pipe.empty()) { this->SerialPipeStatusTextBox().Text(::GetSettingsString(L"SerialNotConfigured")); return; }
+                if (std::wstring_view(Pipe.c_str()).find(LR"(\\.\pipe\)") != 0)
+                { this->SerialPipeStatusTextBox().Text(::GetSettingsString(L"SerialLocalPipeOnly")); return; }
+                BOOL Ready = ::WaitNamedPipeW(Pipe.c_str(), 1);
+                DWORD Error = Ready ? ERROR_SUCCESS : ::GetLastError();
+                this->SerialPipeStatusTextBox().Text(Ready ? ::GetSettingsString(L"SerialPipeReady") :
+                    winrt::hstring(std::wstring(::GetSettingsString(L"SerialPipeUnavailable").c_str()) +
+                        L" (" + std::to_wstring(Error) + L")"));
+                return;
+            }
             GUID Id{};
             winrt::check_hresult(::CoCreateGuid(&Id));
             std::wstring Pipe = LR"(\\.\pipe\NanaBox-)";

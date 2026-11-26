@@ -87,7 +87,7 @@
         Content="[Create]" AutomationProperties.AutomationId="CreateButton" />
       <Button
         x:Uid="/NewVirtualHardDiskPage/CancelButton"
-        Grid.Column="4"
+        Grid.Column="2"
         HorizontalAlignment="Stretch"
         Click="CancelButtonClick"
         Content="[Cancel]"

@@ -328,11 +328,14 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button x:Uid="/VirtualMachineSettingsPage/GenerateCom1" Content="Generate COM1 pipe" Tag="1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom1" />
               <Button x:Uid="/VirtualMachineSettingsPage/ClearCom1" Content="Disconnect COM1" Tag="Clear1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom1" />
+              <Button x:Uid="/VirtualMachineSettingsPage/CheckCom1" Content="Check COM1 pipe" Tag="Check1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom1" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button x:Uid="/VirtualMachineSettingsPage/GenerateCom2" Content="Generate COM2 pipe" Tag="2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom2" />
               <Button x:Uid="/VirtualMachineSettingsPage/ClearCom2" Content="Disconnect COM2" Tag="Clear2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom2" />
+              <Button x:Uid="/VirtualMachineSettingsPage/CheckCom2" Content="Check COM2 pipe" Tag="Check2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom2" />
             </StackPanel>
+            <TextBox x:Name="SerialPipeStatusTextBox" x:Uid="/VirtualMachineSettingsPage/SerialPipeStatus" Header="Pipe status" IsReadOnly="True" AutomationProperties.AutomationId="SerialPipeStatusTextBox" />
             <TextBlock
               x:Uid="/VirtualMachineSettingsPage/StateNote"
               FontSize="12"
@@ -525,11 +528,17 @@
               Opacity="0.75"
               Text="[The SCSI devices setting object array of virtual machine.]"
               TextWrapping="Wrap" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/DiskManagerTitle" Text="Virtual disk manager" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox x:Name="DiskPathTextBox" x:Uid="/VirtualMachineSettingsPage/DiskPath" Header="VHD/VHDX path" AutomationProperties.AutomationId="DiskPathTextBox" />
+            <Button x:Uid="/VirtualMachineSettingsPage/DiskBrowse" Content="Browse existing disk" Tag="Browse" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskBrowse" />
+            <TextBox x:Name="DiskSizeTextBox" x:Uid="/VirtualMachineSettingsPage/DiskSize" Header="Capacity (MiB)" Text="32768" AutomationProperties.AutomationId="DiskSizeTextBox" />
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
               <Button x:Uid="/VirtualMachineSettingsPage/DiskCreate" Content="Create VHD" Tag="Create" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCreate" />
-              <Button x:Uid="/VirtualMachineSettingsPage/DiskResize" Content="Resize VHD" Tag="Resize" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskResize" />
+              <Button x:Uid="/VirtualMachineSettingsPage/DiskResize" Content="Expand VHD" Tag="Resize" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskResize" />
               <Button x:Uid="/VirtualMachineSettingsPage/DiskCompact" Content="Compact VHD" Tag="Compact" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCompact" />
+              <Button x:Uid="/VirtualMachineSettingsPage/DiskInspect" Content="Inspect" Tag="Inspect" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskInspect" />
             </StackPanel>
+            <TextBox x:Name="DiskResultTextBox" x:Uid="/VirtualMachineSettingsPage/DiskResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="200" AutomationProperties.AutomationId="DiskResultTextBox" />
             <StackPanel x:Name="ScsiDevicePanel" Spacing="4" />
             <Button
               x:Name="AddScsiDeviceButton"

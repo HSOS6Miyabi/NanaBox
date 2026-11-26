@@ -16,6 +16,7 @@
 #include <Mile.Json.h>
 #include <SetupAPI.h>
 #include <wincrypt.h>
+#include <cwchar>
 #include <string>
 #pragma comment(lib, "crypt32.lib")
 #include <memory>

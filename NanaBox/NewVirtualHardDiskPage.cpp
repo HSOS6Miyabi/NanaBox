@@ -7,6 +7,8 @@
 #include "Utils.h"
 
 #include <ShObjIdl_core.h>
+#include <Shlwapi.h>
+#include <limits>
 
 namespace winrt
 {
@@ -133,15 +135,30 @@ namespace winrt::NanaBox::implementation
 
         winrt::hstring Path =
             this->FileNameTextBox().Text();
-        std::uint64_t OriginalSize =
-            std::stoull(this->SizeTextBox().Text().c_str());
-        std::int32_t UnitIndex =
-            this->SizeUnitComboBox().SelectedIndex();
-        if (UnitIndex > MaximumUnitFactorsIndex)
+        std::uint64_t Size = 0;
+        try
         {
-            UnitIndex = MaximumUnitFactorsIndex;
+            if (Path.empty() || (::_wcsicmp(::PathFindExtensionW(Path.c_str()), L".vhd") != 0 &&
+                ::_wcsicmp(::PathFindExtensionW(Path.c_str()), L".vhdx") != 0))
+                throw winrt::hresult_invalid_argument(L"Specify a VHD or VHDX file.");
+            auto Text = std::wstring(this->SizeTextBox().Text().c_str());
+            size_t End = 0;
+            auto OriginalSize = std::stoull(Text, &End);
+            auto UnitIndex = this->SizeUnitComboBox().SelectedIndex();
+            if (End != Text.size() || UnitIndex < 0 ||
+                static_cast<size_t>(UnitIndex) > MaximumUnitFactorsIndex ||
+                OriginalSize > (std::numeric_limits<std::uint64_t>::max)() / UnitFactors[UnitIndex])
+                throw winrt::hresult_invalid_argument(L"Invalid virtual disk capacity.");
+            Size = OriginalSize * UnitFactors[UnitIndex];
+            auto Limit = ::_wcsicmp(::PathFindExtensionW(Path.c_str()), L".vhd") == 0 ? 2040ull << 30 : 64ull << 40;
+            if (Size < (3ull << 20) || Size > Limit || Size % 512)
+                throw winrt::hresult_invalid_argument(L"Invalid virtual disk capacity.");
         }
-        std::uint64_t Size = OriginalSize * UnitFactors[UnitIndex];
+        catch (...)
+        {
+            ::ShowErrorMessageDialog(this->m_WindowHandle, winrt::hresult_invalid_argument(L"Specify a valid VHD/VHDX path and capacity."));
+            return;
+        }
 
         winrt::hstring SuccessInstructionText =
             Mile::WinRT::GetLocalizedString(

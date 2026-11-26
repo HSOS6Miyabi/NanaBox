@@ -1422,7 +1422,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>Create VHD</value>
   </data>
   <data name="DiskResize.Content" xml:space="preserve">
-    <value>Resize VHD</value>
+    <value>Expand VHD</value>
   </data>
   <data name="DiskCompact.Content" xml:space="preserve">
     <value>Compact VHD</value>
@@ -1627,5 +1627,47 @@ UseExtendedMaxVpPerSocketLimit</comment>
   </data>
   <data name="HostManagementConfirm" xml:space="preserve">
     <value>Apply this host-wide change? Check all dependent VMs and network connections first.</value>
+  </data>
+  <data name="DiskManagerTitle.Text" xml:space="preserve">
+    <value>Virtual disk manager</value>
+  </data>
+  <data name="DiskPath.Header" xml:space="preserve">
+    <value>VHD/VHDX path</value>
+  </data>
+  <data name="DiskBrowse.Content" xml:space="preserve">
+    <value>Browse existing disk</value>
+  </data>
+  <data name="DiskSize.Header" xml:space="preserve">
+    <value>Capacity (MiB)</value>
+  </data>
+  <data name="DiskInspect.Content" xml:space="preserve">
+    <value>Inspect</value>
+  </data>
+  <data name="DiskResult.Header" xml:space="preserve">
+    <value>Operation result</value>
+  </data>
+  <data name="DiskOperationRunning" xml:space="preserve">
+    <value>Working…</value>
+  </data>
+  <data name="CheckCom1.Content" xml:space="preserve">
+    <value>Check COM1 pipe</value>
+  </data>
+  <data name="CheckCom2.Content" xml:space="preserve">
+    <value>Check COM2 pipe</value>
+  </data>
+  <data name="SerialPipeStatus.Header" xml:space="preserve">
+    <value>Pipe status</value>
+  </data>
+  <data name="SerialNotConfigured" xml:space="preserve">
+    <value>No pipe configured.</value>
+  </data>
+  <data name="SerialLocalPipeOnly" xml:space="preserve">
+    <value>Status is available for local named pipes only.</value>
+  </data>
+  <data name="SerialPipeReady" xml:space="preserve">
+    <value>Pipe is available.</value>
+  </data>
+  <data name="SerialPipeUnavailable" xml:space="preserve">
+    <value>Pipe is unavailable.</value>
   </data>
 </root>

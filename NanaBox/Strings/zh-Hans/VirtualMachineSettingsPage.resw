@@ -1422,7 +1422,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>创建虚拟磁盘</value>
   </data>
   <data name="DiskResize.Content" xml:space="preserve">
-    <value>调整容量</value>
+    <value>扩展虚拟磁盘</value>
   </data>
   <data name="DiskCompact.Content" xml:space="preserve">
     <value>压缩虚拟磁盘</value>
@@ -1627,5 +1627,47 @@ UseExtendedMaxVpPerSocketLimit</comment>
   </data>
   <data name="HostManagementConfirm" xml:space="preserve">
     <value>是否应用此宿主机设置？请先确认相关虚拟机和网络连接。</value>
+  </data>
+  <data name="DiskManagerTitle.Text" xml:space="preserve">
+    <value>虚拟磁盘管理器</value>
+  </data>
+  <data name="DiskPath.Header" xml:space="preserve">
+    <value>VHD/VHDX 文件路径</value>
+  </data>
+  <data name="DiskBrowse.Content" xml:space="preserve">
+    <value>选择现有磁盘</value>
+  </data>
+  <data name="DiskSize.Header" xml:space="preserve">
+    <value>容量（MiB）</value>
+  </data>
+  <data name="DiskInspect.Content" xml:space="preserve">
+    <value>查看属性</value>
+  </data>
+  <data name="DiskResult.Header" xml:space="preserve">
+    <value>操作结果</value>
+  </data>
+  <data name="DiskOperationRunning" xml:space="preserve">
+    <value>正在执行操作…</value>
+  </data>
+  <data name="CheckCom1.Content" xml:space="preserve">
+    <value>检查 COM1 管道</value>
+  </data>
+  <data name="CheckCom2.Content" xml:space="preserve">
+    <value>检查 COM2 管道</value>
+  </data>
+  <data name="SerialPipeStatus.Header" xml:space="preserve">
+    <value>管道状态</value>
+  </data>
+  <data name="SerialNotConfigured" xml:space="preserve">
+    <value>未配置管道。</value>
+  </data>
+  <data name="SerialLocalPipeOnly" xml:space="preserve">
+    <value>仅可检查本地命名管道。</value>
+  </data>
+  <data name="SerialPipeReady" xml:space="preserve">
+    <value>管道可用。</value>
+  </data>
+  <data name="SerialPipeUnavailable" xml:space="preserve">
+    <value>管道不可用。</value>
   </data>
 </root>
