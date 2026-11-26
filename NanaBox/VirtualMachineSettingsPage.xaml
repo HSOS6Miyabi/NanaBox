@@ -447,14 +447,14 @@
             <TextBlock x:Uid="/VirtualMachineSettingsPage/HostNetworksTitle" Text="Host network manager" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
             <ComboBox x:Name="HostNetworksComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HostNetworksComboBox" />
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button x:Uid="/VirtualMachineSettingsPage/RefreshNetworks" Content="Refresh" Click="RefreshNetworksButtonClick" AutomationProperties.AutomationId="RefreshNetworks" />
-              <Button x:Uid="/VirtualMachineSettingsPage/InspectNetwork" Content="Properties" Click="InspectNetworkButtonClick" AutomationProperties.AutomationId="InspectNetwork" />
-              <Button x:Uid="/VirtualMachineSettingsPage/DeleteNetwork" Content="Delete managed network" Click="DeleteNetworkButtonClick" AutomationProperties.AutomationId="DeleteNetwork" />
+              <Button x:Name="RefreshNetworksControl" x:Uid="/VirtualMachineSettingsPage/RefreshNetworks" Content="Refresh" Click="RefreshNetworksButtonClick" AutomationProperties.AutomationId="RefreshNetworks" />
+              <Button x:Name="InspectNetworkControl" x:Uid="/VirtualMachineSettingsPage/InspectNetwork" Content="Properties" Click="InspectNetworkButtonClick" AutomationProperties.AutomationId="InspectNetwork" />
+              <Button x:Name="DeleteNetworkControl" x:Uid="/VirtualMachineSettingsPage/DeleteNetwork" Content="Delete managed network" Click="DeleteNetworkButtonClick" AutomationProperties.AutomationId="DeleteNetwork" />
             </StackPanel>
             <TextBox x:Name="NetworkPropertiesTextBox" IsReadOnly="True" AcceptsReturn="True" MaxHeight="160" TextWrapping="Wrap" AutomationProperties.AutomationId="NetworkPropertiesTextBox" />
             <TextBox x:Name="NetworkNameTextBox" x:Uid="/VirtualMachineSettingsPage/NetworkName" Header="New NAT (ICS) network name" AutomationProperties.AutomationId="NetworkNameTextBox" />
             <CheckBox x:Name="NetworkFirewallCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkFirewall" Content="Enable Hyper-V firewall" AutomationProperties.AutomationId="NetworkFirewallCheckBox" />
-            <Button x:Uid="/VirtualMachineSettingsPage/CreateNetwork" Content="Create NAT network" Click="CreateNetworkButtonClick" AutomationProperties.AutomationId="CreateNetwork" />
+            <Button x:Name="CreateNetworkControl" x:Uid="/VirtualMachineSettingsPage/CreateNetwork" Content="Create NAT network" Click="CreateNetworkButtonClick" AutomationProperties.AutomationId="CreateNetwork" />
             <TextBlock x:Uid="/VirtualMachineSettingsPage/NetworkManagerNote" Text="Select an existing network when adding a virtual NIC." TextWrapping="Wrap" Opacity="0.75" />
             <StackPanel x:Name="MirroredNetworkingPanel" Spacing="8" Margin="0,12,0,12">
               <TextBlock x:Uid="/VirtualMachineSettingsPage/MirroredTitle" Text="Mirrored networking" FontSize="16" FontWeight="SemiBold" />

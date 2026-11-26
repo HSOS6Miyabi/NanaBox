@@ -547,6 +547,7 @@ struct NanaBox::MirroredNetworking::Impl
 
     void PauseSynchronization()
     {
+        if (!Worker.joinable() && Status() == L"Paused") return;
         StopWorker();
         try
         {
@@ -572,7 +573,7 @@ struct NanaBox::MirroredNetworking::Impl
         StopWorker();
         try
         {
-            SetState("Paused");
+            if (Status() != L"Paused") SetState("Paused");
             for (auto It = Endpoints.begin(); It != Endpoints.end();)
             {
                 RemoveEndpoint(It->second);

@@ -4,6 +4,7 @@
 
 #include "NanaBox.Configuration.Specification.h"
 #include "RdpClient.h"
+#include "HostCompute.h"
 
 #include <string>
 #include <vector>
@@ -114,6 +115,7 @@ namespace winrt::NanaBox::implementation
             winrt::CheckBox Connected = nullptr;
             winrt::TextBox MacAddress = nullptr;
             winrt::TextBox NetworkId = nullptr;
+            winrt::ComboBox NetworkPicker = nullptr;
             winrt::TextBox FirewallCreatorId = nullptr;
             winrt::TextBox SuggestedSwitchId = nullptr;
             winrt::TextBox SuggestedSwitchName = nullptr;
@@ -146,6 +148,10 @@ namespace winrt::NanaBox::implementation
 
         bool m_DiskOperationRunning = false;
         bool m_HostManagementRunning = false;
+        bool m_NetworkManagementRunning = false;
+        std::vector<::NanaBox::HostNetworkInfo> m_HostNetworks;
+        void SetNetworkManagementBusy(bool Busy);
+        winrt::fire_and_forget RunNetworkManagementOperation(winrt::hstring Action, winrt::hstring Value = {}, bool Firewall = false);
         winrt::fire_and_forget RunHostManagementOperation(winrt::hstring Action, std::string Arguments);
         HWND m_WindowHandle = nullptr;
         std::wstring m_ConfigurationFilePath;
