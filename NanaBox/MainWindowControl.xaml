@@ -32,7 +32,7 @@
         x:Uid="/MainWindow/EnhancedSessionButton"
         Width="48"
         AutomationProperties.Name="[Enhanced Session]"
-        Click="EnhancedSessionButtonClick"
+        Checked="EnhancedSessionButtonChanged" Unchecked="EnhancedSessionButtonChanged"
         Icon="NewWindow"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Enhanced Session]" AutomationProperties.AutomationId="EnhancedSessionButton" />
@@ -50,7 +50,7 @@
         x:Uid="/MainWindow/PauseVirtualMachineButton"
         Width="48"
         AutomationProperties.Name="[Pause Virtual Machine]"
-        Click="PauseVirtualMachineButtonClick"
+        Checked="PauseVirtualMachineButtonChanged" Unchecked="PauseVirtualMachineButtonChanged"
         Icon="Pause"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Pause Virtual Machine]" AutomationProperties.AutomationId="PauseVirtualMachineButton" />
@@ -87,7 +87,7 @@
         x:Uid="/MainWindow/RedirectKeyboardNavigationButton"
         Width="48"
         AutomationProperties.Name="[Redirect Keyboard Navigation]"
-        Click="RedirectKeyboardNavigationButtonClick"
+        Checked="RedirectKeyboardNavigationButtonChanged" Unchecked="RedirectKeyboardNavigationButtonChanged"
         Icon="Keyboard"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Redirect Keyboard Navigation]" AutomationProperties.AutomationId="RedirectKeyboardNavigationButton" />
@@ -112,7 +112,7 @@
         x:Uid="/MainWindow/RecordVideoButton"
         Width="48"
         AutomationProperties.Name="[Record Video]"
-        Click="RecordVideoButtonClick"
+        Checked="RecordVideoButtonChanged" Unchecked="RecordVideoButtonChanged"
         Icon="Video"
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Record Video]" AutomationProperties.AutomationId="RecordVideoButton" />

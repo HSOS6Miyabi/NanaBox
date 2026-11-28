@@ -263,10 +263,10 @@ void NanaBox::MainWindow::OnCommand(
     case NanaBox::MainWindowCommands::ToggleRecording:
     {
         bool Recording = nID == NanaBox::MainWindowCommands::ToggleRecording;
-        auto Button = winrt::get_self<
+        auto Control = winrt::get_self<
             winrt::NanaBox::implementation::MainWindowControl>(
-                this->m_MainWindowControl)->RecordVideoButton();
-        Button.IsChecked(this->m_Recording.load());
+                this->m_MainWindowControl);
+        Control->SetToggleState(Control->RecordVideoButton(), this->m_Recording.load());
         if (uNotifyCode == NanaBox::MainWindowNotifications::CaptureStateChanged)
         {
             if (!Recording && this->m_Screenshot)
@@ -679,7 +679,7 @@ void NanaBox::MainWindow::UpdatePowerControls()
     if (!this->m_MainWindowControl) return;
     auto Control = winrt::get_self<winrt::NanaBox::implementation::MainWindowControl>(this->m_MainWindowControl);
     bool Enabled = this->m_VirtualMachineRunning && !this->m_PowerTransitionPending;
-    Control->PauseVirtualMachineButton().IsChecked(this->m_VirtualMachinePaused);
+    Control->SetToggleState(Control->PauseVirtualMachineButton(), this->m_VirtualMachinePaused);
     Control->PauseVirtualMachineButton().IsEnabled(Enabled);
     Control->RestartVirtualMachineButton().IsEnabled(Enabled);
     // Keep the power menu available while a graceful shutdown is pending.
@@ -1428,9 +1428,9 @@ void NanaBox::MainWindow::RdpClientOnLoginComplete()
     MainWindowControlImplementation* Control =
         winrt::get_self<MainWindowControlImplementation>(
             this->m_MainWindowControl);
-    Control->EnhancedSessionButton().IsChecked(
+    Control->SetToggleState(Control->EnhancedSessionButton(),
         this->m_RdpClientMode != RdpClientMode::BasicSession);
-    Control->RedirectKeyboardNavigationButton().IsChecked(
+    Control->SetToggleState(Control->RedirectKeyboardNavigationButton(),
         this->m_RedirectKeyboardNavigation);
 }
 

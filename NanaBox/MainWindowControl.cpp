@@ -46,6 +46,7 @@ namespace winrt::NanaBox::implementation
     void MainWindowControl::InitializeComponent()
     {
         MainWindowControlT::InitializeComponent();
+        this->m_TogglesReady = true;
 
         this->m_DispatcherQueue =
             winrt::DispatcherQueue::GetForCurrentThread();
@@ -64,6 +65,14 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+    void MainWindowControl::SetToggleState(winrt::Windows::UI::Xaml::Controls::AppBarToggleButton const& Button, bool Checked)
+    {
+        const bool Previous = this->m_SynchronizingToggle;
+        this->m_SynchronizingToggle = true;
+        auto Restore = Mile::ScopeExitTaskHandler([&]() { this->m_SynchronizingToggle = Previous; });
+        Button.IsChecked(Checked);
+    }
+
     void MainWindowControl::PageLoaded(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
@@ -74,11 +83,12 @@ namespace winrt::NanaBox::implementation
         if (this->m_EnableStore) this->RefreshSponsorButtonContent();
     }
 
-    void MainWindowControl::EnhancedSessionButtonClick(
+    void MainWindowControl::EnhancedSessionButtonChanged(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
     {
         UNREFERENCED_PARAMETER(e);
+        if (!this->m_TogglesReady || this->m_SynchronizingToggle) return;
 
         ::PostMessageW(
             this->m_WindowHandle,
@@ -110,11 +120,12 @@ namespace winrt::NanaBox::implementation
             0);
     }
 
-    void MainWindowControl::PauseVirtualMachineButtonClick(
+    void MainWindowControl::PauseVirtualMachineButtonChanged(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
     {
         UNREFERENCED_PARAMETER(e);
+        if (!this->m_TogglesReady || this->m_SynchronizingToggle) return;
 
         ::PostMessageW(
             this->m_WindowHandle,
@@ -172,11 +183,12 @@ namespace winrt::NanaBox::implementation
             0);
     }
 
-    void MainWindowControl::RedirectKeyboardNavigationButtonClick(
+    void MainWindowControl::RedirectKeyboardNavigationButtonChanged(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
     {
         UNREFERENCED_PARAMETER(e);
+        if (!this->m_TogglesReady || this->m_SynchronizingToggle) return;
 
         ::PostMessageW(
             this->m_WindowHandle,
@@ -224,12 +236,13 @@ namespace winrt::NanaBox::implementation
             0);
     }
 
-    void MainWindowControl::RecordVideoButtonClick(
+    void MainWindowControl::RecordVideoButtonChanged(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)
     {
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
+        if (!this->m_TogglesReady || this->m_SynchronizingToggle) return;
 
         ::PostMessageW(
             this->m_WindowHandle,

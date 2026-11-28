@@ -4,14 +4,6 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public static class ToolbarMouse {
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
-}
-'@
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $log = Join-Path $OutputDirectory 'toolbar-commands.txt'
 $exe = (Resolve-Path -LiteralPath $Executable).Path
@@ -35,20 +27,17 @@ function Find-Control([string]$id) {
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Toolbar control unavailable: $id"
 }
-function Click-Control([string]$id,[switch]$Physical) {
+function Click-Control([string]$id,[switch]$Toggle) {
     $element = Find-Control $id
-    Write-Host "Click: $id"
-    $invoke = $null
-    if (-not $Physical -and $element.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern,[ref]$invoke)) {
-        $invoke.Invoke()
-        return
+    Write-Host "Invoke: $id"
+    if ($Toggle) {
+        $pattern = $element.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+        $previous = $pattern.Current.ToggleState
+        $pattern.Toggle()
+        if ($pattern.Current.ToggleState -eq $previous) { throw "Toggle state unchanged: $id" }
+    } else {
+        $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     }
-    # TogglePattern may change IsChecked without raising the Click event.
-    # Use a real pointer click for toggle buttons.
-    $point = $element.GetClickablePoint()
-    if (-not [ToolbarMouse]::SetCursorPos([int]$point.X,[int]$point.Y)) { throw "Unable to position pointer: $id" }
-    [ToolbarMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
-    [ToolbarMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
 }
 function Read-CommandLog {
     $stream = [IO.File]::Open($log,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
@@ -56,9 +45,9 @@ function Read-CommandLog {
     try { $reader.ReadToEnd() -split '\r?\n' | Where-Object { $_ -ne '' } }
     finally { $reader.Dispose() }
 }
-function Assert-Command([string]$id,[int]$command,[switch]$Physical) {
+function Assert-Command([string]$id,[int]$command,[switch]$Toggle) {
     $expected.Add($command)
-    Click-Control $id -Physical:$Physical
+    Click-Control $id -Toggle:$Toggle
     $deadline = [DateTime]::UtcNow.AddSeconds(15)
     do {
         try { $actual = @(Read-CommandLog) } catch [IO.IOException] { Start-Sleep -Milliseconds 100; continue }
@@ -74,25 +63,25 @@ function Assert-Command([string]$id,[int]$command,[switch]$Physical) {
     throw "No command from $id"
 }
 try {
-    Assert-Command 'EnhancedSessionButton' 0x1002 -Physical
-    Assert-Command 'EnhancedSessionButton' 0x1001 -Physical
+    Assert-Command 'EnhancedSessionButton' 0x1002 -Toggle
+    Assert-Command 'EnhancedSessionButton' 0x1001 -Toggle
     Assert-Command 'FullScreenButton' 0x1003
-    Assert-Command 'PauseVirtualMachineButton' 0x1004 -Physical
-    Assert-Command 'PauseVirtualMachineButton' 0x1005 -Physical
+    Assert-Command 'PauseVirtualMachineButton' 0x1004 -Toggle
+    Assert-Command 'PauseVirtualMachineButton' 0x1005 -Toggle
     Assert-Command 'RestartVirtualMachineButton' 0x1006
-    Click-Control 'PowerMenu' -Physical
+    Click-Control 'PowerMenu'
     Assert-Command 'ShutdownAction' 0x1011
-    Click-Control 'PowerMenu' -Physical
+    Click-Control 'PowerMenu'
     Assert-Command 'SaveAction' 0x1013
-    Click-Control 'PowerMenu' -Physical
+    Click-Control 'PowerMenu'
     Assert-Command 'PowerOffAction' 0x1012
     Assert-Command 'VirtualMachineSettingsButton' 0x1007
-    Assert-Command 'RedirectKeyboardNavigationButton' 0x1008 -Physical
-    Assert-Command 'RedirectKeyboardNavigationButton' 0x1009 -Physical
+    Assert-Command 'RedirectKeyboardNavigationButton' 0x1008 -Toggle
+    Assert-Command 'RedirectKeyboardNavigationButton' 0x1009 -Toggle
     Assert-Command 'RestoreVirtualMachineWindowSizeButton' 0x100A
     Assert-Command 'CopyScreenshotButton' 0x100B
-    Assert-Command 'RecordVideoButton' 0x100C -Physical
-    Assert-Command 'RecordVideoButton' 0x100C -Physical
+    Assert-Command 'RecordVideoButton' 0x100C -Toggle
+    Assert-Command 'RecordVideoButton' 0x100C -Toggle
     Assert-Command 'CreateVirtualHardDiskButton' 0x100D
     Assert-Command 'ResizeVirtualHardDiskButton' 0x100E
     Assert-Command 'CompactVirtualHardDiskButton' 0x100F

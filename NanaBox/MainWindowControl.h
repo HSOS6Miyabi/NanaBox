@@ -68,7 +68,7 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
-        void EnhancedSessionButtonClick(
+        void EnhancedSessionButtonChanged(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
@@ -76,7 +76,7 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
-        void PauseVirtualMachineButtonClick(
+        void PauseVirtualMachineButtonChanged(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
@@ -90,7 +90,7 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
-        void RedirectKeyboardNavigationButtonClick(
+        void RedirectKeyboardNavigationButtonChanged(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
@@ -102,7 +102,7 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
-        void RecordVideoButtonClick(
+        void RecordVideoButtonChanged(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
@@ -127,11 +127,14 @@ namespace winrt::NanaBox::implementation
             winrt::RoutedEventArgs const& e);
 
         void AcquireSponsorEdition();
+        void SetToggleState(winrt::Windows::UI::Xaml::Controls::AppBarToggleButton const& Button, bool Checked);
 
     private:
 
         HWND m_WindowHandle;
         bool m_EnableStore;
+        bool m_TogglesReady = false;
+        bool m_SynchronizingToggle = false;
         winrt::DispatcherQueue m_DispatcherQueue = nullptr;
         winrt::StoreContext m_StoreContext = nullptr;
 
