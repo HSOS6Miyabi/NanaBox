@@ -85,6 +85,9 @@ jobs:
         name: NanaBox_GUI_Test_Diagnostics
         path: ${{ runner.temp }}/NanaBox-UI
         if-no-files-found: ignore
+    - name: Build and test Windows GuestTool binaries
+      shell: pwsh
+      run: .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
     - name: Build all architectures and configurations and package
       shell: pwsh
       run: msbuild BuildAllTargets.proj '/t:Build;Packaging'

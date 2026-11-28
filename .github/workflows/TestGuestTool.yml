@@ -44,21 +44,10 @@ jobs:
         run: |
           sudo unshare --net "$(command -v python)" GuestTool/live_network_test.py
           sudo unshare --net "$(command -v python)" GuestTool/live_loopback_test.py
-      - name: Build and test Windows GPU GuestTool
+      - name: Build and test Windows GuestTool
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $vs) { throw 'MSVC was not found' }
-          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install nlohmann-json:x64-windows
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $inc = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\include"
-          $cmd = 'call "' + $vs + '\VC\Auxiliary\Build\vcvars64.bat" && cl /nologo /EHsc /std:c++17 /W4 /O2 /MT /I"' + $inc + '" GuestTool\WddmGuest.cpp /Fe:GuestTool\nanabox-gpu.exe'
-          cmd /c $cmd
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & .\GuestTool\nanabox-gpu.exe --self-test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
       - name: Build and test native Linux GuestTool
         if: runner.os == 'Linux'
         shell: bash
@@ -66,19 +55,6 @@ jobs:
           sudo apt-get install -y nlohmann-json3-dev libssl-dev
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/GuestTool.cpp -lcrypto -o GuestTool/nanabox-guest-tool
           GuestTool/nanabox-guest-tool --self-test
-      - name: Build and test native Windows GuestTool
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $vs) { throw 'MSVC was not found' }
-          $inc = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\include"
-          $cmd = 'call "' + $vs + '\VC\Auxiliary\Build\vcvars64.bat" && cl /nologo /EHsc /std:c++17 /W4 /O2 /MT /I"' + $inc + '" GuestTool\GuestTool.cpp /Fe:GuestTool\nanabox-guest-tool.exe'
-          cmd /c $cmd
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & .\GuestTool\nanabox-guest-tool.exe --self-test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:

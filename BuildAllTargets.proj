@@ -60,7 +60,9 @@
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.exe" DestinationFiles="$(OutputBinariesPath)x64\NanaBox.exe" />
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.pri" DestinationFiles="$(OutputBinariesPath)x64\resources.pri" />
     <ItemGroup>
-      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestTool\gns.py;$(MSBuildThisFileDirectory)GuestTool\*.cpp;$(MSBuildThisFileDirectory)GuestTool\*.h;$(MSBuildThisFileDirectory)GuestTool\*.c;$(MSBuildThisFileDirectory)GuestTool\*.ps1;$(MSBuildThisFileDirectory)GuestTool\*.sh;$(MSBuildThisFileDirectory)GuestTool\*.service;$(MSBuildThisFileDirectory)GuestTool\README.md;$(MSBuildThisFileDirectory)GuestTool\*.exe;$(MSBuildThisFileDirectory)GuestTool\nanabox-plan9;$(MSBuildThisFileDirectory)GuestTool\nanabox-guest-tool" Exclude="$(MSBuildThisFileDirectory)GuestTool\*Tests.cpp" />
+      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestTool\gns.py;$(MSBuildThisFileDirectory)GuestTool\*.cpp;$(MSBuildThisFileDirectory)GuestTool\*.h;$(MSBuildThisFileDirectory)GuestTool\*.c;$(MSBuildThisFileDirectory)GuestTool\*.ps1;$(MSBuildThisFileDirectory)GuestTool\*.sh;$(MSBuildThisFileDirectory)GuestTool\*.service;$(MSBuildThisFileDirectory)GuestTool\README.md;$(MSBuildThisFileDirectory)GuestTool\*.exe" Exclude="$(MSBuildThisFileDirectory)GuestTool\*Tests.cpp" />
+      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestTool\nanabox-plan9" Condition="Exists('$(MSBuildThisFileDirectory)GuestTool\nanabox-plan9')" />
+      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestTool\nanabox-guest-tool" Condition="Exists('$(MSBuildThisFileDirectory)GuestTool\nanabox-guest-tool')" />
     </ItemGroup>
     <Copy SourceFiles="@(GuestToolsFiles)" DestinationFolder="$(OutputBinariesPath)GuestTools" />
 
