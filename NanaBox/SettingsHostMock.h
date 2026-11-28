@@ -260,6 +260,38 @@ namespace NanaBox
                     }
                     else if (Action == "VmmsCpuPolicy") Machine["CpuPolicy"] = A;
                     else if (Action == "VmmsSecureBoot") Machine["SecureBoot"] = A;
+                    else if (Action == "VmmsAutomaticActions")
+                    {
+                        Machine["AutomaticStartAction"] = A.at("StartAction");
+                        Machine["AutomaticStartDelay"] = A.at("Delay");
+                        Machine["AutomaticStopAction"] = A.at("StopAction");
+                    }
+                    else if (Action == "VmmsCheckpointPolicy")
+                    {
+                        Machine["CheckpointType"] = A.at("Type");
+                        Machine["AutomaticCheckpointsEnabled"] = A.at("Enabled");
+                    }
+                    else if (Action == "VmmsDeleteSavedState")
+                    {
+                        if (Machine.at("State") != "Saved") throw winrt::hresult_invalid_argument();
+                        Machine["State"] = "Off";
+                    }
+                    else if (Action == "VmmsLocalKeyProtector" || Action == "VmmsTpmEnable" || Action == "VmmsTpmDisable")
+                    {
+                        if (Machine.at("Generation") != 2 || Machine.at("State") != "Off")
+                            throw winrt::hresult_invalid_argument();
+                        bool HasProtector = Machine.value("HasKeyProtector", false);
+                        if (Action == "VmmsLocalKeyProtector")
+                        {
+                            if (HasProtector) throw winrt::hresult_invalid_argument();
+                            Machine["HasKeyProtector"] = true;
+                        }
+                        else
+                        {
+                            if (Action == "VmmsTpmEnable" && !HasProtector) throw winrt::hresult_invalid_argument();
+                            Machine["TpmEnabled"] = Action == "VmmsTpmEnable";
+                        }
+                    }
                     else if (Action == "VmmsDiskAttach" || Action == "VmmsDvdAdd" || Action == "VmmsNicAdd")
                     {
                         auto& Devices = Machine.at("Devices");
@@ -318,6 +350,12 @@ namespace NanaBox
                     }
                     else if (Action == "VmmsCheckpointCreate")
                         Snapshots.push_back(Json{{"Id", NewId()}, {"Name", Text("Name")}, {"MemoryMiB", Machine["MemoryMiB"]}});
+                    else if (Action == "VmmsCheckpointRename") (*Find(Snapshots, Text("CheckpointId")))["Name"] = Text("Name");
+                    else if (Action == "VmmsCheckpointExport")
+                    {
+                        (void)Find(Snapshots, Text("CheckpointId"));
+                        Result["ExportedTo"] = Text("Path");
+                    }
                     else if (Action == "VmmsCheckpointRestore") Machine["MemoryMiB"] = Find(Snapshots, Text("CheckpointId"))->at("MemoryMiB");
                     else if (Action == "VmmsCheckpointRemove") Snapshots.erase(Find(Snapshots, Text("CheckpointId")));
                     else if (Action == "VmmsMoveStorage") Machine["Path"] = Text("Path");

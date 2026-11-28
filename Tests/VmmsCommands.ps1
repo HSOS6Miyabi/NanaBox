@@ -62,6 +62,14 @@ function Set-VMNetworkAdapterVlan { [CmdletBinding(SupportsShouldProcess)] param
 function Enable-VMIntegrationService { [CmdletBinding(SupportsShouldProcess)] param($VMIntegrationService) Record-Call 'Enable-VMIntegrationService' $PSBoundParameters }
 function Disable-VMIntegrationService { [CmdletBinding(SupportsShouldProcess)] param($VMIntegrationService) Record-Call 'Disable-VMIntegrationService' $PSBoundParameters }
 function Set-VMFirmware { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$EnableSecureBoot,[string]$SecureBootTemplate) Record-Call 'Set-VMFirmware' $PSBoundParameters }
+function Set-VM { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$AutomaticStartAction,[int]$AutomaticStartDelay,[string]$AutomaticStopAction,[string]$CheckpointType,[bool]$AutomaticCheckpointsEnabled) Record-Call 'Set-VM' $PSBoundParameters }
+function Remove-VMSavedState { [CmdletBinding(SupportsShouldProcess)] param($VM) Record-Call 'Remove-VMSavedState' $PSBoundParameters; $VM.State='Off' }
+function Rename-VMSnapshot { [CmdletBinding(SupportsShouldProcess)] param($VMSnapshot,[string]$NewName) Record-Call 'Rename-VMSnapshot' $PSBoundParameters; $VMSnapshot.Name=$NewName }
+function Export-VMSnapshot { param($VMSnapshot,[string]$Path) Record-Call 'Export-VMSnapshot' $PSBoundParameters }
+function Get-VMKeyProtector { param($VM) if ($a.MockProtector) { [byte[]]@(1,2,3) } }
+function Set-VMKeyProtector { [CmdletBinding(SupportsShouldProcess)] param($VM,[switch]$NewLocalKeyProtector) Record-Call 'Set-VMKeyProtector' $PSBoundParameters }
+function Enable-VMTPM { [CmdletBinding(SupportsShouldProcess)] param($VM) Record-Call 'Enable-VMTPM' $PSBoundParameters }
+function Disable-VMTPM { [CmdletBinding(SupportsShouldProcess)] param($VM) Record-Call 'Disable-VMTPM' $PSBoundParameters }
 function Get-VMReplication { [CmdletBinding()] param($VM) }
 function New-VM { param([string]$Name,[int]$Generation,[long]$MemoryStartupBytes,[switch]$NoVHD,[string]$Path)
     Record-Call 'New-VM' $PSBoundParameters
@@ -203,6 +211,21 @@ try {
     Test-Command 'VmmsIntegration' @{DeviceId='Service:Heartbeat';Enabled=$true} 'Enable-VMIntegrationService' @{VMIntegrationService='Heartbeat'}
     Test-Command 'VmmsIntegration' @{DeviceId='Service:Heartbeat';Enabled=$false} 'Disable-VMIntegrationService' @{VMIntegrationService='Heartbeat'}
     Test-Command 'VmmsSecureBoot' @{Enabled=$true;Template='MicrosoftUEFICertificateAuthority'} 'Set-VMFirmware' @{VM=$vm;EnableSecureBoot='On';SecureBootTemplate='MicrosoftUEFICertificateAuthority'}
+    Test-Command 'VmmsAutomaticActions' @{StartAction='Start';StopAction='ShutDown';Delay=30} 'Set-VM' @{VM=$vm;AutomaticStartAction='Start';AutomaticStopAction='ShutDown';AutomaticStartDelay=30}
+    Test-Command 'VmmsAutomaticActions' @{StartAction='Invalid';StopAction='Save';Delay=0} '' @{} $true
+    Test-Command 'VmmsAutomaticActions' @{StartAction='Start';StopAction='Save';Delay=-1} '' @{} $true
+    Test-Command 'VmmsCheckpointPolicy' @{Type='ProductionOnly';Enabled=$true} 'Set-VM' @{VM=$vm;CheckpointType='ProductionOnly';AutomaticCheckpointsEnabled=$true}
+    Test-Command 'VmmsCheckpointPolicy' @{Type='Disabled';Enabled=$true} '' @{} $true
+    Test-Command 'VmmsDeleteSavedState' @{MockState='Saved'} 'Remove-VMSavedState' @{VM=$vm;Confirm=$false}
+    Test-Command 'VmmsDeleteSavedState' @{} '' @{} $true
+    Test-Command 'VmmsCheckpointRename' @{CheckpointId=$checkpoint;Name='Renamed checkpoint'} 'Rename-VMSnapshot' @{VMSnapshot=$checkpoint;NewName='Renamed checkpoint'}
+    Test-Command 'VmmsCheckpointExport' @{CheckpointId=$checkpoint;Path=$temp} 'Export-VMSnapshot' @{VMSnapshot=$checkpoint;Path=$temp}
+    Test-Command 'VmmsLocalKeyProtector' @{} 'Set-VMKeyProtector' @{VM=$vm;NewLocalKeyProtector=$true}
+    Test-Command 'VmmsLocalKeyProtector' @{MockProtector=$true} '' @{} $true
+    Test-Command 'VmmsTpmEnable' @{MockProtector=$true} 'Enable-VMTPM' @{VM=$vm}
+    Test-Command 'VmmsTpmEnable' @{} '' @{} $true
+    Test-Command 'VmmsTpmDisable' @{} 'Disable-VMTPM' @{VM=$vm}
+    Test-Command 'VmmsTpmDisable' @{MockState='Running'} '' @{} $true
     Test-Command 'VmmsDiskAttach' @{ControllerType='SCSI';ControllerNumber=0;ControllerLocation=0;Path=$disk} '' @{} $true
     Test-Command 'VmmsDiskDetach' @{DeviceId='Nic:nic1'} '' @{} $true
     Test-Command 'VmmsNicMac' @{DeviceId='Nic:nic1';Mac='010000000000'} '' @{} $true

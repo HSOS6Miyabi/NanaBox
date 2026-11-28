@@ -1453,4 +1453,73 @@
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>选择宿主机目录</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>剪贴板键盘布局</value></data>
   <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请与客户机的键盘布局保持一致：美式 00000409、英式 00000809、日语 00000411、德语 00000407、法语 0000040C，或输入 Host 使用宿主机布局。扫描码模式不支持需要输入法组合的字符。</value></data>
+  <data name="VmmsAutomaticActions.Content" xml:space="preserve">
+    <value>设置自动启动和关闭策略</value>
+  </data>
+  <data name="VmmsCheckpointPolicy.Content" xml:space="preserve">
+    <value>设置检查点策略</value>
+  </data>
+  <data name="VmmsDeleteSavedState.Content" xml:space="preserve">
+    <value>丢弃保存的状态</value>
+  </data>
+  <data name="VmmsCheckpointRename.Content" xml:space="preserve">
+    <value>重命名所选检查点</value>
+  </data>
+  <data name="VmmsCheckpointExport.Content" xml:space="preserve">
+    <value>导出所选检查点</value>
+  </data>
+  <data name="VmmsLocalKeyProtector.Content" xml:space="preserve">
+    <value>创建本地密钥保护器</value>
+  </data>
+  <data name="VmmsTpmEnable.Content" xml:space="preserve">
+    <value>启用虚拟 TPM（第二代）</value>
+  </data>
+  <data name="VmmsTpmDisable.Content" xml:space="preserve">
+    <value>禁用虚拟 TPM（第二代）</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBox.Header" xml:space="preserve">
+    <value>自动启动操作</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxNothing.Content" xml:space="preserve">
+    <value>不执行操作</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxStartIfRunning.Content" xml:space="preserve">
+    <value>恢复先前运行的虚拟机</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxStart.Content" xml:space="preserve">
+    <value>始终启动</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBox.Header" xml:space="preserve">
+    <value>自动关闭操作</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxTurnOff.Content" xml:space="preserve">
+    <value>关闭电源</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxSave.Content" xml:space="preserve">
+    <value>保存状态</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxShutDown.Content" xml:space="preserve">
+    <value>关闭客户机</value>
+  </data>
+  <data name="VmmsAutomaticDelayTextBox.Header" xml:space="preserve">
+    <value>自动启动延迟（秒）</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBox.Header" xml:space="preserve">
+    <value>检查点类型</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxDisabled.Content" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxStandard.Content" xml:space="preserve">
+    <value>标准</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxProduction.Content" xml:space="preserve">
+    <value>生产</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxProductionOnly.Content" xml:space="preserve">
+    <value>仅生产</value>
+  </data>
+  <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve">
+    <value>启用自动检查点</value>
+  </data>
 </root>

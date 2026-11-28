@@ -1453,4 +1453,73 @@
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>Choose host folder</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
   <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host. Characters requiring an input method cannot be typed using scan codes.</value></data>
+  <data name="VmmsAutomaticActions.Content" xml:space="preserve">
+    <value>Configure automatic start and stop</value>
+  </data>
+  <data name="VmmsCheckpointPolicy.Content" xml:space="preserve">
+    <value>Configure checkpoint policy</value>
+  </data>
+  <data name="VmmsDeleteSavedState.Content" xml:space="preserve">
+    <value>Discard saved state</value>
+  </data>
+  <data name="VmmsCheckpointRename.Content" xml:space="preserve">
+    <value>Rename selected checkpoint</value>
+  </data>
+  <data name="VmmsCheckpointExport.Content" xml:space="preserve">
+    <value>Export selected checkpoint</value>
+  </data>
+  <data name="VmmsLocalKeyProtector.Content" xml:space="preserve">
+    <value>Provision local key protector</value>
+  </data>
+  <data name="VmmsTpmEnable.Content" xml:space="preserve">
+    <value>Enable virtual TPM (Generation 2)</value>
+  </data>
+  <data name="VmmsTpmDisable.Content" xml:space="preserve">
+    <value>Disable virtual TPM (Generation 2)</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBox.Header" xml:space="preserve">
+    <value>Automatic start action</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxNothing.Content" xml:space="preserve">
+    <value>Do nothing</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxStartIfRunning.Content" xml:space="preserve">
+    <value>Start if previously running</value>
+  </data>
+  <data name="VmmsAutomaticStartComboBoxStart.Content" xml:space="preserve">
+    <value>Always start</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBox.Header" xml:space="preserve">
+    <value>Automatic stop action</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxTurnOff.Content" xml:space="preserve">
+    <value>Turn off</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxSave.Content" xml:space="preserve">
+    <value>Save state</value>
+  </data>
+  <data name="VmmsAutomaticStopComboBoxShutDown.Content" xml:space="preserve">
+    <value>Shut down guest</value>
+  </data>
+  <data name="VmmsAutomaticDelayTextBox.Header" xml:space="preserve">
+    <value>Automatic start delay (seconds)</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBox.Header" xml:space="preserve">
+    <value>Checkpoint type</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxDisabled.Content" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxStandard.Content" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxProduction.Content" xml:space="preserve">
+    <value>Production</value>
+  </data>
+  <data name="VmmsCheckpointTypeComboBoxProductionOnly.Content" xml:space="preserve">
+    <value>Production only</value>
+  </data>
+  <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve">
+    <value>Enable automatic checkpoints</value>
+  </data>
 </root>

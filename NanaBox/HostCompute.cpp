@@ -1226,6 +1226,8 @@ function VmInfo($vm) {
         Generation=[int]$vm.Generation; Version=[string]$vm.Version; Path=$vm.Path
         CPUUsage=$vm.CPUUsage; MemoryAssigned=$vm.MemoryAssigned; Uptime=[string]$vm.Uptime
         CheckpointType=[string]$vm.CheckpointType; ReplicationState=[string]$vm.ReplicationState
+        AutomaticStartAction=[string]$vm.AutomaticStartAction; AutomaticStartDelay=$vm.AutomaticStartDelay
+        AutomaticStopAction=[string]$vm.AutomaticStopAction; AutomaticCheckpointsEnabled=$vm.AutomaticCheckpointsEnabled
     }
 }
 function RequireMedia($path, $extensions) {
@@ -1316,6 +1318,41 @@ try {
                 if ([string]$vm.State -ne 'Off') { throw 'Shut down the virtual machine before deleting its configuration.' }
                 Remove-VM -VM $vm -Confirm:$false
                 $selected = $null
+            }
+            'VmmsAutomaticActions' {
+                if ($a.StartAction -notin @('Nothing','StartIfRunning','Start') -or $a.StopAction -notin @('TurnOff','Save','ShutDown')) { throw 'Invalid automatic VM action.' }
+                $delay = [int]$a.Delay
+                if ($delay -lt 0) { throw 'Invalid automatic start delay.' }
+                Set-VM -VM $vm -AutomaticStartAction $a.StartAction -AutomaticStartDelay $delay -AutomaticStopAction $a.StopAction -Confirm:$false | Out-Null
+            }
+            'VmmsCheckpointPolicy' {
+                if ($a.Type -notin @('Disabled','Standard','Production','ProductionOnly') -or $a.Enabled -isnot [bool]) { throw 'Invalid checkpoint policy.' }
+                if ($a.Type -eq 'Disabled' -and $a.Enabled) { throw 'Automatic checkpoints require checkpoints to be enabled.' }
+                Set-VM -VM $vm -CheckpointType $a.Type -AutomaticCheckpointsEnabled $a.Enabled -Confirm:$false | Out-Null
+            }
+            'VmmsDeleteSavedState' {
+                if ([string]$vm.State -ne 'Saved') { throw 'The virtual machine does not have a saved state.' }
+                Remove-VMSavedState -VM $vm -Confirm:$false | Out-Null
+            }
+            'VmmsCheckpointRename' {
+                Rename-VMSnapshot -VMSnapshot (Get-SelectedCheckpoint $vm $a.CheckpointId) -NewName (RequireName $a.Name) -Confirm:$false | Out-Null
+            }
+            'VmmsCheckpointExport' {
+                Export-VMSnapshot -VMSnapshot (Get-SelectedCheckpoint $vm $a.CheckpointId) -Path (RequireDirectory $a.Path) | Out-Null
+            }
+            'VmmsLocalKeyProtector' {
+                if ($vm.Generation -ne 2 -or [string]$vm.State -ne 'Off') { throw 'Shut down the Generation 2 VM before provisioning a key protector.' }
+                if (@(Get-VMKeyProtector -VM $vm).Count -gt 0) { throw 'A key protector is already configured. It will not be replaced.' }
+                Set-VMKeyProtector -VM $vm -NewLocalKeyProtector -Confirm:$false | Out-Null
+            }
+            'VmmsTpmEnable' {
+                if ($vm.Generation -ne 2 -or [string]$vm.State -ne 'Off') { throw 'Shut down the Generation 2 VM before enabling TPM.' }
+                if (@(Get-VMKeyProtector -VM $vm).Count -eq 0) { throw 'Provision a key protector before enabling TPM.' }
+                Enable-VMTPM -VM $vm -Confirm:$false | Out-Null
+            }
+            'VmmsTpmDisable' {
+                if ($vm.Generation -ne 2 -or [string]$vm.State -ne 'Off') { throw 'Shut down the Generation 2 VM before disabling TPM.' }
+                Disable-VMTPM -VM $vm -Confirm:$false | Out-Null
             }
             'VmmsCheckpointCreate' { Checkpoint-VM -VM $vm -SnapshotName (RequireName $a.Name) | Out-Null }
             'VmmsCheckpointRestore' { Restore-VMSnapshot -VMSnapshot (Get-SelectedCheckpoint $vm $a.CheckpointId) -Confirm:$false | Out-Null }

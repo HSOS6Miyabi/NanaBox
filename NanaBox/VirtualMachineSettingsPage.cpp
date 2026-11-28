@@ -2211,10 +2211,42 @@ namespace winrt::NanaBox::implementation
                         Data["Name"] = winrt::to_string(this->VmmsNameTextBox().Text());
                         Confirmation += L"\n" + std::wstring(this->VmmsNameTextBox().Text().c_str());
                     }
-                    else if (Action == L"VmmsCheckpointRestore" || Action == L"VmmsCheckpointRemove")
+                    else if (Action == L"VmmsAutomaticActions")
+                    {
+                        Data["StartAction"] = Selected(this->VmmsAutomaticStartComboBox());
+                        Data["StopAction"] = Selected(this->VmmsAutomaticStopComboBox());
+                        Data["Delay"] = Number(this->VmmsAutomaticDelayTextBox(), 0, 2147483647);
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsCheckpointPolicy")
+                    {
+                        Data["Type"] = Selected(this->VmmsCheckpointTypeComboBox());
+                        Data["Enabled"] = this->VmmsAutomaticCheckpointsCheckBox().IsChecked().Value();
+                        if (Data["Type"] == "Disabled" && Data["Enabled"] == true)
+                            throw winrt::hresult_invalid_argument(L"Automatic checkpoints require checkpoints to be enabled.");
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsTpmDisable" || Action == L"VmmsDeleteSavedState")
+                    {
+                        Confirmation += Action == L"VmmsTpmDisable"
+                            ? L"\nEnsure that guest encryption recovery keys are available before disabling TPM."
+                            : L"\nThe saved execution state will be discarded.";
+                    }
+                    else if (Action == L"VmmsCheckpointRestore" || Action == L"VmmsCheckpointRemove" ||
+                        Action == L"VmmsCheckpointRename" || Action == L"VmmsCheckpointExport")
                     {
                         Data["CheckpointId"] = Selected(this->VmmsCheckpointsComboBox());
                         Confirmation += L"\n" + std::wstring(winrt::unbox_value<winrt::hstring>(this->VmmsCheckpointsComboBox().SelectedItem().as<Item>().Content()).c_str());
+                        if (Action == L"VmmsCheckpointRename")
+                        {
+                            Data["Name"] = winrt::to_string(this->VmmsNameTextBox().Text());
+                            Confirmation += L"\n" + std::wstring(this->VmmsNameTextBox().Text().c_str());
+                        }
+                        else if (Action == L"VmmsCheckpointExport")
+                        {
+                            Data["Path"] = winrt::to_string(this->VmmsPathTextBox().Text());
+                            Confirmation += L"\n" + std::wstring(this->VmmsPathTextBox().Text().c_str());
+                        }
                     }
                     else if (Action == L"VmmsExport" || Action == L"VmmsMoveStorage")
                     {
