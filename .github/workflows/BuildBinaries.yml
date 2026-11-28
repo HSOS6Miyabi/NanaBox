@@ -96,6 +96,9 @@ jobs:
       run: |
         .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
         .\GuestTool\BuildWindowsGuestTool.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
+    - name: Bundle the pinned Mile.Cirno release
+      shell: pwsh
+      run: .\GuestTool\PrepareCirnoPackage.ps1
     - name: Build all architectures and configurations and package
       shell: pwsh
       run: msbuild BuildAllTargets.proj '/t:Build;Packaging'

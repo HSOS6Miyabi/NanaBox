@@ -63,6 +63,10 @@ jobs:
           sudo unshare --net GuestTool/nanabox-guest-tool --network-self-test
           sudo unshare --net GuestTool/nanabox-guest-tool --loopback-self-test
           GuestTool/nanabox-guest-tool --bind-self-test
+      - name: Verify and bundle the pinned Mile.Cirno release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\GuestTool\PrepareCirnoPackage.ps1
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
@@ -82,6 +86,7 @@ jobs:
             GuestTool/WddmMapping.h
             GuestTool/nanabox-gpu.exe
             GuestTool/arm64/*.exe
+            GuestTool/Cirno.zip
             GuestTool/*.ps1
             GuestTool/*.sh
             GuestTool/*.service

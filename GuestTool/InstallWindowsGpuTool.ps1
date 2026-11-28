@@ -1,24 +1,26 @@
-# Run in a Windows guest as administrator after installing the Mile.Cirno Dokany driver.
+# Run in a Windows guest as administrator.
 param(
-    [Parameter(Mandatory=$true)][string]$CirnoDirectory,
+    [string]$CirnoDirectory,
+    [string]$DokanyDriver,
+    [string]$CirnoArchive,
     [string]$Executable,
+    [switch]$UseExistingDokany,
     [switch]$DisableAutomaticGpuRestart
 )
 $ErrorActionPreference = 'Stop'
 if (-not [Environment]::Is64BitProcess) { throw 'Use native 64-bit PowerShell.' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not ([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run as administrator.' }
-$source = (Resolve-Path -LiteralPath $CirnoDirectory).Path
+. (Join-Path $PSScriptRoot 'CirnoPackage.ps1')
+$architecture = Get-GuestArchitecture
 if (-not $Executable) {
-    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
-    $Executable = if ($architecture -eq 'Arm64') {
+    $Executable = if ($architecture -eq 'arm64') {
         Join-Path $PSScriptRoot 'arm64\nanabox-gpu.exe'
-    } elseif ($architecture -eq 'X64') {
+    } elseif ($architecture -eq 'x64') {
         Join-Path $PSScriptRoot 'nanabox-gpu.exe'
     } else { throw "Unsupported Windows guest architecture: $architecture" }
 }
 $binary = (Resolve-Path -LiteralPath $Executable).Path
-if (-not (Test-Path -LiteralPath (Join-Path $source 'Mile.Cirno.exe') -PathType Leaf)) { throw 'Mile.Cirno.exe was not found.' }
 $name = 'NanaBoxGuestGpu'
 $root = Join-Path $env:ProgramFiles 'NanaBox Guest GPU'
 $client = Join-Path $root 'Cirno'
@@ -43,9 +45,41 @@ function Protect-Directory([string]$Path) {
 }
 Protect-Directory $root
 Protect-Directory $client
+if ((Get-PeMachine $binary) -ne (Get-ArchitectureMachine $architecture)) { throw 'Wrong GuestTool architecture.' }
+$staging = Join-Path $root ('package-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $staging | Out-Null
+try {
 if (Get-Process -Name 'Mile.Cirno' -ErrorAction SilentlyContinue) {
     throw 'Disable GPU-PV devices and dismount the existing Mile.Cirno filesystem before upgrading the client.'
 }
+if ($CirnoDirectory) {
+    $source = (Resolve-Path -LiteralPath $CirnoDirectory).Path
+    $cirno = Join-Path $source 'Mile.Cirno.exe'
+    if (-not (Test-Path -LiteralPath $cirno -PathType Leaf) -or
+        (Get-PeMachine $cirno) -ne (Get-ArchitectureMachine $architecture)) { throw 'Mile.Cirno executable is missing or has the wrong architecture.' }
+    if ($DokanyDriver) { $DokanyDriver = (Resolve-Path -LiteralPath $DokanyDriver).Path }
+    elseif (-not $UseExistingDokany) {
+        $candidate = Join-Path $source ('Driver\' + $architecture + '\Dokan2.sys')
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            $candidate = Join-Path (Split-Path -Parent $source) ('Driver\' + $architecture + '\Dokan2.sys')
+        }
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $DokanyDriver = $candidate }
+    }
+} else {
+    $archive = Join-Path $staging 'Cirno.zip'
+    if (-not $CirnoArchive) {
+        $bundled = Join-Path $PSScriptRoot 'Cirno.zip'
+        if (Test-Path -LiteralPath $bundled -PathType Leaf) { $CirnoArchive = $bundled }
+    }
+    if ($CirnoArchive) { Copy-Item -LiteralPath $CirnoArchive -Destination $archive }
+    Get-CirnoArchive $archive
+    $expanded = Join-Path $staging 'Extracted'
+    Expand-CirnoPackage $archive $expanded
+    $files = Resolve-CirnoFiles $expanded $architecture
+    $source = $files.ClientDirectory
+    $DokanyDriver = $files.Driver
+}
+Install-CirnoDriver $DokanyDriver $architecture -UseExistingDriver:$UseExistingDokany
 $service = Get-Service -Name $name -ErrorAction SilentlyContinue
 if ($service -and $service.Status -ne 'Stopped') {
     Stop-Service -Name $name
@@ -76,4 +110,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to register GPU service.' }
 & sc.exe failure $name reset= 86400 actions= restart/5000/restart/10000/restart/30000
 if ($LASTEXITCODE -ne 0) { throw 'Failed to configure GPU service recovery.' }
 Start-Service -Name $name
+(Get-Service -Name $name).WaitForStatus('Running',[TimeSpan]::FromSeconds(30))
 Write-Host 'NanaBox GPU service is running. Use the host Guest tools to inspect the mount.'
+} finally {
+    if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
+}
