@@ -50,12 +50,18 @@ function Click-Control([string]$id,[switch]$Physical) {
     [ToolbarMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
     [ToolbarMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
 }
+function Read-CommandLog {
+    $stream = [IO.File]::Open($log,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+    $reader = New-Object IO.StreamReader($stream)
+    try { $reader.ReadToEnd() -split '\r?\n' | Where-Object { $_ -ne '' } }
+    finally { $reader.Dispose() }
+}
 function Assert-Command([string]$id,[int]$command,[switch]$Physical) {
     $expected.Add($command)
     Click-Control $id -Physical:$Physical
     $deadline = [DateTime]::UtcNow.AddSeconds(15)
     do {
-        $actual = @(Get-Content -LiteralPath $log -ErrorAction Stop | Where-Object { $_ -ne '' })
+        try { $actual = @(Read-CommandLog) } catch [IO.IOException] { Start-Sleep -Milliseconds 100; continue }
         if ($actual.Count -gt $expected.Count) { throw "Unexpected duplicate command from $id" }
         if ($actual.Count -eq $expected.Count) {
             if (($actual -join ',') -ne ($expected -join ',')) {
@@ -74,11 +80,11 @@ try {
     Assert-Command 'PauseVirtualMachineButton' 0x1004 -Physical
     Assert-Command 'PauseVirtualMachineButton' 0x1005 -Physical
     Assert-Command 'RestartVirtualMachineButton' 0x1006
-    Click-Control 'PowerMenu'
+    Click-Control 'PowerMenu' -Physical
     Assert-Command 'ShutdownAction' 0x1011
-    Click-Control 'PowerMenu'
+    Click-Control 'PowerMenu' -Physical
     Assert-Command 'SaveAction' 0x1013
-    Click-Control 'PowerMenu'
+    Click-Control 'PowerMenu' -Physical
     Assert-Command 'PowerOffAction' 0x1012
     Assert-Command 'VirtualMachineSettingsButton' 0x1007
     Assert-Command 'RedirectKeyboardNavigationButton' 0x1008 -Physical
@@ -93,7 +99,7 @@ try {
     Assert-Command 'AboutButton' 0x1010
     Assert-Command 'SponsorButton' 0x1014
     Start-Sleep -Milliseconds 300
-    $actual = @(Get-Content -LiteralPath $log | Where-Object { $_ -ne '' })
+    $actual = @(Read-CommandLog)
     if (($actual -join ',') -ne ($expected -join ',')) { throw 'Unexpected trailing command' }
     Write-Host "Verified $($expected.Count) toolbar commands."
 } finally {

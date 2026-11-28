@@ -64,53 +64,53 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
-        winrt::handle(Mile::CreateThread([=]()
+        try
         {
-            try
+            if (!this->m_ConfigurationFilePath)
             {
-                if (!this->m_ConfigurationFilePath)
-                {
-                    return;
-                }
-
-                std::wstring FileTypeName = Mile::FormatWideString(
-                    L"%s (*.7b)",
-                    Mile::WinRT::GetLocalizedString(
-                        L"QuickStartPage/ConfigurationFileTypeName",
-                        L"[NanaBox Virtual Machine Configuration]").c_str());
-
-                COMDLG_FILTERSPEC SupportedFileTypes[] =
-                {
-                    {
-                        FileTypeName.c_str(),
-                        L"*.7b"
-                    }
-                };
-                LPWSTR RawFilePath = nullptr;
-                winrt::check_hresult(::ShowFileDialog(
-                    this->m_WindowHandle,
-                    FALSE,
-                    ARRAYSIZE(SupportedFileTypes),
-                    SupportedFileTypes,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    &RawFilePath));
-                auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
-                {
-                    ::CoTaskMemFree(RawFilePath);
-                });
-                *this->m_ConfigurationFilePath = RawFilePath;
-                if (!this->m_ConfigurationFilePath->empty())
-                {
-                    ::PostMessageW(this->m_WindowHandle, WM_CLOSE, 0, 0);
-                }
+                return;
             }
-            catch (...)
+
+            std::wstring FileTypeName = Mile::FormatWideString(
+                L"%s (*.7b)",
+                Mile::WinRT::GetLocalizedString(
+                    L"QuickStartPage/ConfigurationFileTypeName",
+                    L"[NanaBox Virtual Machine Configuration]").c_str());
+
+            COMDLG_FILTERSPEC SupportedFileTypes[] =
             {
-
+                {
+                    FileTypeName.c_str(),
+                    L"*.7b"
+                }
+            };
+            LPWSTR RawFilePath = nullptr;
+            HRESULT Result = ::ShowFileDialog(
+                this->m_WindowHandle,
+                FALSE,
+                ARRAYSIZE(SupportedFileTypes),
+                SupportedFileTypes,
+                nullptr,
+                nullptr,
+                nullptr,
+                &RawFilePath);
+            if (Result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+            winrt::check_hresult(Result);
+            if (!RawFilePath) throw winrt::hresult_error(E_UNEXPECTED);
+            auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
+            {
+                ::CoTaskMemFree(RawFilePath);
+            });
+            *this->m_ConfigurationFilePath = RawFilePath;
+            if (!this->m_ConfigurationFilePath->empty())
+            {
+                ::PostMessageW(this->m_WindowHandle, WM_CLOSE, 0, 0);
             }
-        }));
+        }
+        catch (...)
+        {
+            ::ShowErrorMessageDialog(this->m_WindowHandle, Mile::WinRT::ToHResultError());
+        }
     }
 
     void QuickStartPage::CreateVirtualMachineButtonClick(
@@ -130,54 +130,54 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
-        winrt::handle(Mile::CreateThread([=]()
+        try
         {
-            try
-            {
-                std::wstring FileTypeName = Mile::FormatWideString(
-                    L"%s (*.7b)",
-                    Mile::WinRT::GetLocalizedString(
-                        L"QuickStartPage/ConfigurationFileTypeName",
-                        L"[NanaBox Virtual Machine Configuration]").c_str());
+            std::wstring FileTypeName = Mile::FormatWideString(
+                L"%s (*.7b)",
+                Mile::WinRT::GetLocalizedString(
+                    L"QuickStartPage/ConfigurationFileTypeName",
+                    L"[NanaBox Virtual Machine Configuration]").c_str());
 
-                COMDLG_FILTERSPEC SupportedFileTypes[] =
+            COMDLG_FILTERSPEC SupportedFileTypes[] =
+            {
                 {
-                    {
-                        FileTypeName.c_str(),
-                        L"*.7b"
-                    }
-                };
-                LPWSTR RawFilePath = nullptr;
-                winrt::check_hresult(::ShowFileDialog(
-                    this->m_WindowHandle,
-                    FALSE,
-                    ARRAYSIZE(SupportedFileTypes),
-                    SupportedFileTypes,
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                    &RawFilePath));
-                auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
-                {
-                    ::CoTaskMemFree(RawFilePath);
-                });
-                std::wstring ConfigurationFilePath(RawFilePath);
-                if (!ConfigurationFilePath.empty())
-                {
-                    NanaBox::VirtualMachineConfiguration Configuration =
-                        NanaBox::DeserializeConfiguration(
-                            ::ReadAllTextFromUtf8TextFile(ConfigurationFilePath));
-                    ::ShowVirtualMachineSettingsWindow(
-                        this->m_WindowHandle,
-                        ConfigurationFilePath,
-                        Mile::ToWideString(CP_UTF8, Configuration.Name));
+                    FileTypeName.c_str(),
+                    L"*.7b"
                 }
-            }
-            catch (...)
+            };
+            LPWSTR RawFilePath = nullptr;
+            HRESULT Result = ::ShowFileDialog(
+                this->m_WindowHandle,
+                FALSE,
+                ARRAYSIZE(SupportedFileTypes),
+                SupportedFileTypes,
+                nullptr,
+                nullptr,
+                nullptr,
+                &RawFilePath);
+            if (Result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+            winrt::check_hresult(Result);
+            if (!RawFilePath) throw winrt::hresult_error(E_UNEXPECTED);
+            auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
             {
-
+                ::CoTaskMemFree(RawFilePath);
+            });
+            std::wstring ConfigurationFilePath(RawFilePath);
+            if (!ConfigurationFilePath.empty())
+            {
+                NanaBox::VirtualMachineConfiguration Configuration =
+                    NanaBox::DeserializeConfiguration(
+                        ::ReadAllTextFromUtf8TextFile(ConfigurationFilePath));
+                ::ShowVirtualMachineSettingsWindow(
+                    this->m_WindowHandle,
+                    ConfigurationFilePath,
+                    Mile::ToWideString(CP_UTF8, Configuration.Name));
             }
-        }));
+        }
+        catch (...)
+        {
+            ::ShowErrorMessageDialog(this->m_WindowHandle, Mile::WinRT::ToHResultError());
+        }
     }
 
     void QuickStartPage::CreateVirtualHardDiskButtonClick(

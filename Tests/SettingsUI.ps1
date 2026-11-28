@@ -95,7 +95,7 @@ function Select-ByName([string]$id,[string]$prefix,[switch]$Optional) {
     $e = Find-Control $id
     Scroll $e
     $p = Pattern $e ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
-    $p.Expand()
+    try { $p.Expand() } catch { if ($Optional) { return $false }; throw }
     $until = [DateTime]::UtcNow.AddSeconds(15)
     $type = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::ListItem)
     do {
@@ -240,11 +240,14 @@ try {
     $disk = Wait-Result 'DiskResultTextBox' { param($v) $v.Success -and $v.Operation -eq 'Inspect' }
     Assert-Equal $disk.VirtualSize (64MB) 'Inspected VHDX capacity'
     Remove-Item -LiteralPath $diskPath -Force
-    $null = Find-Control 'DiskBrowse'
+    $previousDiskPath = Get-Text 'DiskPathTextBox'
+    Invoke-ModalAction $process.Id 'DiskBrowse' { Invoke-Control '2' }
+    Assert-Equal (Get-Text 'DiskPathTextBox') $previousDiskPath 'Canceled disk selection'
     Invoke-Control 'AddScsiDeviceButton'
     Set-Text 'ScsiDevicePathLabel' 'test.vhdx'
     $null = Find-Control 'ScsiDeviceTypeLabel'
-    $null = Find-Control 'ScsiBrowse'
+    Invoke-ModalAction $process.Id 'ScsiBrowse' { Invoke-Control '2' }
+    Assert-Equal (Get-Text 'ScsiDevicePathLabel') 'test.vhdx' 'Canceled SCSI selection'
     Set-Text 'GuestStateFileTextBox' 'test.vmgs'
     Set-Text 'RuntimeStateFileTextBox' 'test.vmrs'
 
@@ -272,9 +275,9 @@ try {
         try {
             Set-Text 'ManagedSwitchNameTextBox' $name
             Invoke-Control 'AdapterListButton'
-            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Operation -eq 'AdapterList'}
             Invoke-Control 'SwitchListButton'
-            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Operation -eq 'SwitchList'}
             Invoke-Control 'SwitchCreateButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Name -eq $managed}
             if ($HostIntegration) {
@@ -286,12 +289,12 @@ try {
             }
             $null = Select-ByName 'ManagedSwitchesComboBox' ($managed+' (')
             Confirm-Change 'SwitchDeleteButton'
-            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and -not $v.Name}
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Operation -eq 'SwitchDelete'}
             if ($HostIntegration -and (Get-VMSwitch | Where-Object Name -eq $managed)) { throw 'Switch was not removed' }
             if (Select-ByName 'ManagedSwitchesComboBox' ($managed+' (') -Optional) { throw 'Deleted switch still displayed' }
 
             Invoke-Control 'CreatorListButton'
-            $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
+            $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Operation -eq 'CreatorList'}
             Set-Text 'FirewallCreatorNameTextBox' $name
             Invoke-Control 'CreatorRegisterButton'
             $registered = Wait-Result 'HostManagementResult' {param($v) $v.Name -eq $managed -and $v.Id}
@@ -340,7 +343,7 @@ try {
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Create'}
             $null = Select-ByName 'HostNetworksComboBox' ($managed+' (')
             Invoke-Control 'InspectNetwork'
-            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Name -eq $managed}
+            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Inspect' -and $v.Name -eq $managed}
             Confirm-Change 'DeleteNetwork'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
             Invoke-Control 'RefreshNetworks'

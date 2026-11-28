@@ -1157,26 +1157,20 @@ namespace winrt::NanaBox::implementation
     {
         UNREFERENCED_PARAMETER(Sender);
         UNREFERENCED_PARAMETER(Arguments);
-
-        winrt::handle(Mile::CreateThread([=]()
+        try
         {
-            winrt::hstring SettingsInstructionText =
-                Mile::WinRT::GetLocalizedString(
-                    L"VirtualMachineSettingsPage/SettingsInstructionText");
-            winrt::hstring SettingsContentText =
-                Mile::WinRT::GetLocalizedString(
-                    L"VirtualMachineSettingsPage/SettingsContentText");
-
-            ::ShowMessageDialog(
-                this->m_WindowHandle,
-                SettingsInstructionText.c_str(),
-                SettingsContentText.c_str());
-
+            auto Path = this->m_ConfigurationFilePath;
+            if (Path.empty()) return;
+            ::ShowMessageDialog(this->m_WindowHandle,
+                Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsInstructionText"),
+                Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsContentText"));
             OPENASINFO OpenAsInfo = {};
-            OpenAsInfo.pcszFile = this->m_ConfigurationFilePath.c_str();
+            OpenAsInfo.pcszFile = Path.c_str();
             OpenAsInfo.oaifInFlags = OAIF_EXEC;
-            ::SHOpenWithDialog(this->m_WindowHandle, &OpenAsInfo);
-        }));
+            HRESULT Result = ::SHOpenWithDialog(this->m_WindowHandle, &OpenAsInfo);
+            if (Result != HRESULT_FROM_WIN32(ERROR_CANCELLED)) winrt::check_hresult(Result);
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
     }
 
     void VirtualMachineSettingsPage::ReferenceButtonClick(
@@ -1546,7 +1540,9 @@ namespace winrt::NanaBox::implementation
         auto Lifetime = this->get_strong();
         winrt::apartment_context Foreground;
         this->m_GuestToolsRunning = true;
-        this->GuestToolsCommands().IsEnabled(false);
+        this->GuestHeartbeatControl().IsEnabled(false);
+        this->GuestInformationControl().IsEnabled(false);
+        this->GuestDiagnosticsControl().IsEnabled(false);
         this->GuestToolsResult().Text(::GetSettingsString(L"DiskOperationRunning"));
         std::string Result;
         try
@@ -1564,7 +1560,9 @@ namespace winrt::NanaBox::implementation
         {
             co_await Foreground;
             this->m_GuestToolsRunning = false;
-            this->GuestToolsCommands().IsEnabled(true);
+            this->GuestHeartbeatControl().IsEnabled(true);
+            this->GuestInformationControl().IsEnabled(true);
+            this->GuestDiagnosticsControl().IsEnabled(true);
             this->GuestToolsResult().Text(winrt::to_hstring(Result));
         }
         catch (...) {}
@@ -1691,8 +1689,12 @@ namespace winrt::NanaBox::implementation
         {
             co_await winrt::resume_background();
             if (Action == L"Inspect")
+            {
                 Result = Json::parse(winrt::to_string(this->m_HostOperations->QueryNetwork(
                     winrt::guid(winrt::to_string(Value))).Properties));
+                Result["Success"] = true;
+                Result["Operation"] = "Inspect";
+            }
             else
             {
                 if (Action == L"Create") this->m_HostOperations->CreateNetwork(Value, Firewall);
@@ -1701,7 +1703,8 @@ namespace winrt::NanaBox::implementation
                 Result = {{"Success", true}, {"Operation", winrt::to_string(Action)}, {"Count", Networks.size()}};
             }
         }
-        catch (...) { Result = {{"Success", false}, {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}; }
+        catch (...) { Result = {{"Success", false}, {"Operation", winrt::to_string(Action)},
+            {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}; }
         try
         {
             co_await Foreground;
@@ -1830,7 +1833,7 @@ namespace winrt::NanaBox::implementation
             this->m_HostManagementRunning = false;
             if (!ErrorText.empty())
             {
-                this->HostManagementResult().Text(winrt::to_hstring(Json{{"Success", false},
+                this->HostManagementResult().Text(winrt::to_hstring(Json{{"Success", false}, {"Operation", winrt::to_string(Action)},
                     {"Error", winrt::to_string(ErrorText)}}.dump(2)));
                 co_return;
             }
@@ -1869,6 +1872,10 @@ namespace winrt::NanaBox::implementation
                 Fill(this->FirewallRulesComboBox(), Details.at("Rules"), "Id", "");
                 Result = Details;
             }
+            if (Result.is_array())
+                Result = Json{{"Items", std::move(Result)}};
+            Result["Success"] = true;
+            Result["Operation"] = winrt::to_string(Action);
             this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
         }
         catch (...)
