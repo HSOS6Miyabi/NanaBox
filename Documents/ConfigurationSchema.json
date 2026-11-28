@@ -281,6 +281,11 @@
             "type": "object",
             "description": "Keyboard setting object of virtual machine. For more information about the default keyboard shortcut behavior, please read https://learn.microsoft.com/en-us/windows/win32/termserv/terminal-services-shortcut-keys.",
             "properties": {
+              "ClipboardWindowsUnicode": {
+                "type": "boolean",
+                "default": false,
+                "description": "Use the opt-in Windows GuestTool interactive Unicode input service for the clipboard typing button."
+              },
               "ClipboardGtkUnicode": {
                 "type": "boolean",
                 "default": false,

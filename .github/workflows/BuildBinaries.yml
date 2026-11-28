@@ -95,6 +95,8 @@ jobs:
       shell: pwsh
       run: |
         .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
+        & .\GuestTool\nanabox-guest-tool.exe --unicode-input-ui-test
+        if ($LASTEXITCODE -ne 0) { throw 'Windows Unicode input UI test failed.' }
         .\GuestTool\BuildWindowsGuestTool.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
     - name: Bundle the pinned Mile.Cirno release
       shell: pwsh

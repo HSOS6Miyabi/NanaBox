@@ -107,7 +107,7 @@ DWORD ActiveInputSession(bool enhanced)
         if (!WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, row.SessionId, WTSUserName, &name, &bytes))
             InputError("Query guest session user");
         Free freeName{name};
-        if (!name || bytes < sizeof(wchar_t) * 2 || !name[0]) continue;
+        bool loggedOn = name && bytes >= sizeof(wchar_t) * 2 && name[0];
         LPWSTR protocol = nullptr;
         bytes = 0;
         if (!WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, row.SessionId, WTSClientProtocolType, &protocol, &bytes))
@@ -116,6 +116,14 @@ DWORD ActiveInputSession(bool enhanced)
         if (bytes != sizeof(USHORT) || !protocol) GuestFail("Invalid guest session protocol");
         USHORT type = 0;
         std::memcpy(&type, protocol, sizeof(type));
+        // A connected login screen must not be mistaken for a different user's
+        // desktop in another active session.
+        if (!loggedOn)
+        {
+            if (enhanced ? type == 2 : row.SessionId == WTSGetActiveConsoleSessionId())
+                GuestFail("The selected guest session has not logged on");
+            continue;
+        }
         active.emplace_back(row.SessionId, type);
     }
     return ChooseInputSession(active, WTSGetActiveConsoleSessionId(), enhanced);
@@ -354,6 +362,7 @@ Json TypeInteractiveUnicode(std::string const& utf8, bool enhanced)
     HANDLE raw = nullptr;
     if (!WTSQueryUserToken(session, &raw)) InputError("Obtain logged-on guest user token");
     InputHandle user(raw);
+    auto logon = InputLogonSid(user.Get());
     LPVOID environment = nullptr;
     if (!CreateEnvironmentBlock(&environment, user.Get(), FALSE)) InputError("Create guest user environment");
     struct Environment { LPVOID Value; ~Environment() { DestroyEnvironmentBlock(Value); } } env{environment};
@@ -366,6 +375,10 @@ Json TypeInteractiveUnicode(std::string const& utf8, bool enhanced)
         }, [&]()
         {
             if (ActiveInputSession(enhanced) != session) GuestFail("Guest input session changed");
+            HANDLE current = nullptr;
+            if (!WTSQueryUserToken(session, &current)) InputError("Revalidate guest input user");
+            InputHandle currentUser(current);
+            if (InputLogonSid(currentUser.Get()) != logon) GuestFail("Guest input user changed");
         });
     return {{"Events",events.size()},{"Utf16Units",text.size()},{"SessionId",session}};
 }

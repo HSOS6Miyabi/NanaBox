@@ -495,6 +495,10 @@ The clipboard typing button uses physical keyboard scan codes. Select the layout
 
 Optional, default `false`. Enable for Linux guests when the focused application supports GTK numeric Unicode input. Characters not directly representable by the selected keyboard layout are entered using Ctrl+Shift+U, their hexadecimal Unicode code point and Enter. Supplementary-plane characters are decoded from UTF-16 surrogate pairs. This setting requires a compatible input method, such as GtkIMContextSimple; leave it disabled for firmware consoles, terminals without the input method, and other unsupported applications. See [GTK Unicode input](https://docs.gtk.org/gtk4/class.IMContextSimple.html).
 
+#### ClipboardWindowsUnicode
+
+Optional, default `false`. For Windows guests, install GuestTool with `InstallWindowsGuest.ps1 -EnableUnicodeInput` and enable this setting to use Windows Unicode keyboard input. The active console session is selected in basic mode; enhanced mode requires exactly one active Remote Desktop session. Input is sent to the focused application on the ordinary interactive desktop using the logged-on user's token. Locked sessions, secure desktops and applications that reject injected input are unsupported. The service does not use guest clipboard redirection. Leave this option disabled for pre-login and firmware input.
+
 #### RedirectKeyCombinations
 
 (Optional) Apply key combinations at the virtual machine if set it true, or
