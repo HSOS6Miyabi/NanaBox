@@ -73,7 +73,15 @@ function Set-Check([string]$id,[bool]$value) {
 function Select-Tab([string]$id) {
     $e = Find-Control $id
     Scroll $e
+    $expectedHeading = $e.Current.Name
     (Pattern $e ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
+    $until = [DateTime]::UtcNow.AddSeconds(8)
+    do {
+        $heading = Find-Control 'SectionHeading' -Optional
+        if ($null -ne $heading -and $heading.Current.Name -eq $expectedHeading) { return }
+        Start-Sleep -Milliseconds 80
+    } while ([DateTime]::UtcNow -lt $until)
+    throw "Selected settings section did not appear: $id"
 }
 function Select-Choice([string]$id,[string]$choice) {
     $e = Find-Control $id
@@ -147,6 +155,7 @@ function Save-Config {
     throw 'Configuration was not saved'
 }
 function Capture([string]$name) {
+    Start-Sleep -Milliseconds 300
     $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
     $bitmap = New-Object System.Drawing.Bitmap($bounds.Width,$bounds.Height)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -182,6 +191,10 @@ try {
         Capture $section
     }
     Select-Tab 'TabGeneral'
+    foreach ($id in @('ProcessorCountTextBox','MemorySizeTextBox')) {
+        $field = Find-Control $id
+        if ($field.Current.BoundingRectangle.Width -lt 96) { throw "Numeric field is too narrow: $id" }
+    }
     if (-not $HostIntegration) {
         Invoke-Control 'OpenButton'
         $opened = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'OpenConfiguration'}

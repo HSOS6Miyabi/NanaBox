@@ -235,9 +235,9 @@
                   x:Name="ProcessorCountTextBox"
                   x:Uid="/VirtualMachineSettingsPage/ProcessorCountTextBox"
                   Grid.Column="2"
-                  MinWidth="0"
-                  HorizontalAlignment="Left"
-                  AutomationProperties.HelpText="Choose how many virtual CPU cores are available to the guest."
+                  MinWidth="96"
+                  HorizontalAlignment="Stretch"
+                  InputScope="Number" AutomationProperties.HelpText="Choose how many virtual CPU cores are available to the guest."
                   AutomationProperties.Name="Virtual processors"
                   ToolTipService.ToolTip="Choose how many virtual CPU cores are available to the guest." AutomationProperties.AutomationId="ProcessorCountTextBox" />
               </Grid>
@@ -258,9 +258,9 @@
                 x:Name="MemorySizeTextBox"
                 x:Uid="/VirtualMachineSettingsPage/MemorySizeTextBox"
                 Grid.Column="2"
-                MinWidth="0"
-                HorizontalAlignment="Left"
-                AutomationProperties.HelpText="Choose how much memory is available to the guest, in MiB."
+                MinWidth="96"
+                HorizontalAlignment="Stretch"
+                InputScope="Number" AutomationProperties.HelpText="Choose how much memory is available to the guest, in MiB."
                 AutomationProperties.Name="Memory (MiB)"
                 ToolTipService.ToolTip="Choose how much memory is available to the guest, in MiB." AutomationProperties.AutomationId="MemorySizeTextBox" />
             </Grid>
@@ -1931,9 +1931,9 @@
                   x:Name="HorizontalResolutionTextBox"
                   x:Uid="/VirtualMachineSettingsPage/HorizontalResolutionTextBox"
                   Grid.Column="2"
-                  MinWidth="0"
-                  HorizontalAlignment="Left"
-                  AutomationProperties.HelpText="(Optional) The horizontal resolution of the video monitor of virtual machine."
+                  MinWidth="96"
+                  HorizontalAlignment="Stretch"
+                  InputScope="Number" AutomationProperties.HelpText="(Optional) The horizontal resolution of the video monitor of virtual machine."
                   AutomationProperties.Name="Horizontal Resolution"
                   ToolTipService.ToolTip="(Optional) The horizontal resolution of the video monitor of virtual machine." AutomationProperties.AutomationId="HorizontalResolutionTextBox" />
               </Grid>
@@ -1955,9 +1955,9 @@
                   x:Name="VerticalResolutionTextBox"
                   x:Uid="/VirtualMachineSettingsPage/VerticalResolutionTextBox"
                   Grid.Column="2"
-                  MinWidth="0"
-                  HorizontalAlignment="Left"
-                  AutomationProperties.HelpText="(Optional) The vertical resolution of the video monitor of virtual machine."
+                  MinWidth="96"
+                  HorizontalAlignment="Stretch"
+                  InputScope="Number" AutomationProperties.HelpText="(Optional) The vertical resolution of the video monitor of virtual machine."
                   AutomationProperties.Name="Vertical Resolution"
                   ToolTipService.ToolTip="(Optional) The vertical resolution of the video monitor of virtual machine." AutomationProperties.AutomationId="VerticalResolutionTextBox" />
               </Grid>
