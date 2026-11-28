@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$PythonPath,
     [switch]$EnableFileExchange,
-    [switch]$AllowClockSet
+    [switch]$AllowClockSet,
+    [switch]$EnableDnsTunnel
 )
 $ErrorActionPreference = 'Stop'
 $PythonPath = (Resolve-Path -LiteralPath $PythonPath).Path
@@ -55,6 +56,7 @@ if ($EnableFileExchange) {
     $arguments += ' --exchange-root "{0}"' -f $exchange
 }
 if ($AllowClockSet) { $arguments += ' --allow-clock-set' }
+if ($EnableDnsTunnel) { $arguments += ' --dns-tunnel' }
 
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($null -ne $task -and $task.State -eq 'Running') {

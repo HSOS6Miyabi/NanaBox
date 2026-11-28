@@ -3,10 +3,12 @@ set -eu
 if [ "$(id -u)" -ne 0 ]; then echo 'Run as root.' >&2; exit 1; fi
 exchange=0
 clock=0
+dns=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --enable-file-exchange) exchange=1 ;;
         --allow-clock-set) clock=1 ;;
+        --enable-dns-tunnel) dns=1 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -33,6 +35,18 @@ if [ "$clock" -eq 1 ]; then
     options="$options --allow-clock-set"
     caps="$caps CAP_SYS_TIME"
 fi
+resolver_dir=/etc/systemd/resolved.conf.d
+resolver_file=$resolver_dir/90-nanabox-dns-tunnel.conf
+marker='# Managed by NanaBox DNS Tunnel'
+if [ -L "$resolver_dir" ] || [ -L "$resolver_file" ]; then echo 'Unsafe resolver configuration path.' >&2; exit 1; fi
+if [ -e "$resolver_file" ] && ! grep -Fxq "$marker" "$resolver_file"; then
+    echo "Resolver configuration is owned by another application: $resolver_file" >&2; exit 1
+fi
+if [ "$dns" -eq 1 ]; then
+    if ! systemctl is-active --quiet systemd-resolved.service; then echo 'DNS tunneling requires active systemd-resolved.' >&2; exit 1; fi
+    options="$options --dns-tunnel"
+    caps="$caps CAP_NET_BIND_SERVICE"
+fi
 temporary=$(mktemp /etc/systemd/system/nanabox-gns.service.d/.options.XXXXXXXX)
 trap 'rm -f "$temporary"' EXIT HUP INT TERM
 printf '[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\n' "$options" "$caps" > "$temporary"
@@ -41,3 +55,18 @@ mv -f "$temporary" /etc/systemd/system/nanabox-gns.service.d/50-options.conf
 systemctl daemon-reload
 systemctl enable --now nanabox-gns.service
 systemctl is-active --quiet nanabox-gns.service
+if [ "$dns" -eq 1 ]; then
+    install -d -o root -g root -m 0755 "$resolver_dir"
+    resolver_tmp=$(mktemp "$resolver_dir/.nanabox-dns.XXXXXXXX")
+    printf '%s\n[Resolve]\nDNS=\nDNS=127.0.0.1\nDomains=~.\nFallbackDNS=\n' "$marker" > "$resolver_tmp"
+    chmod 0644 "$resolver_tmp"
+    mv -f "$resolver_tmp" "$resolver_file"
+    if ! systemctl restart systemd-resolved.service; then
+        rm -f "$resolver_file"
+        systemctl restart systemd-resolved.service || true
+        exit 1
+    fi
+elif [ -f "$resolver_file" ]; then
+    rm -f "$resolver_file"
+    systemctl restart systemd-resolved.service
+fi

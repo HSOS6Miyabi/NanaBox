@@ -12,6 +12,9 @@ import pathlib
 import platform
 import re
 import socket
+import socketserver
+import queue
+import threading
 import struct
 import secrets
 import stat
@@ -20,6 +23,8 @@ import subprocess
 import sys
 
 PORT = 27453
+DNS_PORT = 27454
+DNS_SERVICE = f'{DNS_PORT:08x}-facb-11e6-bd58-64006a7986d3'
 SERVICE = f'{PORT:08x}-facb-11e6-bd58-64006a7986d3'
 LIMIT = 256 * 1024
 STARTED = time.monotonic()
@@ -118,8 +123,12 @@ def normalize(request):
         discover = settings.get('DiscoverPorts', False)
         if type(discover) is not bool:
             raise ValueError('DiscoverPorts must be Boolean')
+        dns_tunnel = settings.get('DnsTunnel', False)
+        if type(dns_tunnel) is not bool:
+            raise ValueError('DnsTunnel must be Boolean')
         return target, resource, action, {
             'DiscoverPorts': discover,
+            'DnsTunnel': dns_tunnel,
             'Interface': interface,
             'Addresses': addresses,
             'Routes': sorted(routes, key=route_order),
@@ -1097,7 +1106,277 @@ def guest_information(tools=None):
     }
 
 
-def handle(sock, backend, tools=None):
+def dns_question_end(packet):
+    """Accept a standard DNS query with exactly one uncompressed question."""
+    if not 17 <= len(packet) <= 65535:
+        raise ValueError('Invalid DNS message size')
+    if packet[2] & 0xf8 or packet[4:6] != b'\x00\x01' or packet[6:10] != b'\x00' * 4:
+        raise ValueError('Invalid DNS query header')
+    offset = 12
+    while offset < len(packet) and offset < 267:
+        length = packet[offset]
+        offset += 1
+        if not length:
+            if offset + 4 <= len(packet):
+                return offset + 4
+            break
+        if length > 63 or offset + length >= len(packet):
+            break
+        offset += length
+    raise ValueError('Invalid DNS question')
+
+
+def dns_failure(packet):
+    end = dns_question_end(packet)
+    # Preserve transaction ID, recursion desired and the complete question.
+    return (packet[:2] + bytes((0x80 | (packet[2] & 1), 0x82))
+            + b'\x00\x01' + b'\x00' * 6 + packet[12:end])
+
+
+class DnsJob:
+    def __init__(self, packet, tcp, timeout):
+        self.packet = packet
+        self.tcp = tcp
+        self.deadline = time.monotonic() + timeout
+        self.done = threading.Event()
+        self.response = None
+
+
+class LimitedDnsServer(socketserver.ThreadingMixIn):
+    daemon_threads = True
+    block_on_close = False
+
+    def __init__(self, *args):
+        self.slots = threading.BoundedSemaphore(32)
+        super().__init__(*args)
+
+    def server_bind(self):
+        if platform.system() == 'Windows':
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+    def process_request(self, request, address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, address):
+        try:
+            super().process_request_thread(request, address)
+        finally:
+            self.slots.release()
+
+
+class LocalDnsUdp(LimitedDnsServer, socketserver.UDPServer):
+    pass
+
+
+class LocalDnsTcp(LimitedDnsServer, socketserver.TCPServer):
+    pass
+
+
+class DnsUdpHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        packet, connection = self.request
+        try:
+            response = self.server.tunnel.resolve(packet, False)
+            connection.sendto(response, self.client_address)
+        except (ValueError, OSError):
+            pass
+
+
+class DnsTcpHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        self.request.settimeout(20)
+        try:
+            while not self.server.tunnel.stopping.is_set():
+                size = struct.unpack('!H', read_exact(self.request, 2))[0]
+                packet = read_exact(self.request, size)
+                response = self.server.tunnel.resolve(packet, True)
+                self.request.sendall(struct.pack('!H', len(response)) + response)
+        except (ValueError, OSError, EOFError):
+            pass
+
+
+class DnsTunnel:
+    """Bounded local DNS proxy; only the parent partition resolves queries."""
+
+    def __init__(self, port=53, timeout=18):
+        self.timeout = timeout
+        self.jobs = queue.Queue(maxsize=64)
+        self.stopping = threading.Event()
+        self.lock = threading.Lock()
+        self.active = 0
+        self.host_slots = threading.BoundedSemaphore(4)
+        self.host_connections = set()
+        self.servers = []
+        self.threads = []
+        self.listener = None
+        try:
+            tcp = LocalDnsTcp(('127.0.0.1', port), DnsTcpHandler)
+            self.servers.append(tcp)
+            self.port = tcp.server_address[1]
+            self.servers.append(LocalDnsUdp(('127.0.0.1', self.port), DnsUdpHandler))
+            for server in self.servers:
+                server.tunnel = self
+                thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.2}, daemon=True)
+                thread.start()
+                self.threads.append(thread)
+        except BaseException:
+            self.close()
+            raise
+
+    def resolve(self, packet, tcp):
+        dns_question_end(packet)
+        job = DnsJob(packet, tcp, self.timeout)
+        with self.lock:
+            if not self.active or self.stopping.is_set():
+                return dns_failure(packet)
+            try:
+                self.jobs.put_nowait(job)
+            except queue.Full:
+                return dns_failure(packet)
+        job.done.wait(self.timeout)
+        return job.response if job.response is not None else dns_failure(packet)
+
+    def host_channel(self, connection):
+        with self.lock:
+            if self.stopping.is_set():
+                connection.close()
+                return
+            self.host_connections.add(connection)
+            self.active += 1
+        try:
+            with connection:
+                connection.settimeout(20)
+                while not self.stopping.is_set():
+                    try:
+                        job = self.jobs.get(timeout=1)
+                    except queue.Empty:
+                        connection.sendall(b'\x00' * 4)
+                        continue
+                    try:
+                        if time.monotonic() >= job.deadline:
+                            continue
+                        frame = bytes((int(job.tcp),)) + job.packet
+                        connection.sendall(struct.pack('!I', len(frame)) + frame)
+                        size = struct.unpack('!I', read_exact(connection, 4))[0]
+                        if size > 65535:
+                            raise ValueError('Invalid DNS response length')
+                        if size:
+                            response = read_exact(connection, size)
+                            if len(response) < 12 or response[:2] != job.packet[:2] or not response[2] & 0x80:
+                                raise ValueError('Invalid DNS response')
+                            job.response = response
+                    finally:
+                        job.done.set()
+        except (OSError, EOFError, ValueError):
+            pass
+        finally:
+            with self.lock:
+                self.active -= 1
+                self.host_connections.discard(connection)
+                if not self.active:
+                    while True:
+                        try:
+                            self.jobs.get_nowait().done.set()
+                        except queue.Empty:
+                            break
+
+    def start_host_listener(self, windows):
+        if windows:
+            listener = socket.socket(socket.AF_HYPERV, socket.SOCK_STREAM, socket.HV_PROTOCOL_RAW)
+            address = (socket.HV_GUID_PARENT, DNS_SERVICE)
+        else:
+            listener = socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)
+            address = (socket.VMADDR_CID_ANY, DNS_PORT)
+        try:
+            listener.bind(address)
+            listener.listen(4)
+            listener.settimeout(1)
+        except BaseException:
+            listener.close()
+            raise
+        self.listener = listener
+
+        def accept_host():
+            while not self.stopping.is_set():
+                try:
+                    connection, peer = listener.accept()
+                except TimeoutError:
+                    continue
+                except OSError:
+                    break
+                if (not windows and peer[0] != socket.VMADDR_CID_HOST) or not self.host_slots.acquire(blocking=False):
+                    connection.close()
+                    continue
+
+                def serve_host(conn):
+                    try:
+                        self.host_channel(conn)
+                    finally:
+                        self.host_slots.release()
+
+                try:
+                    threading.Thread(target=serve_host, args=(connection,), daemon=True).start()
+                except BaseException:
+                    self.host_slots.release()
+                    connection.close()
+                    raise
+
+        thread = threading.Thread(target=accept_host, daemon=True)
+        thread.start()
+        self.threads.append(thread)
+
+    def close(self):
+        self.stopping.set()
+        if self.listener is not None:
+            self.listener.close()
+        with self.lock:
+            for connection in self.host_connections:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            while True:
+                try:
+                    self.jobs.get_nowait().done.set()
+                except queue.Empty:
+                    break
+        for server, thread in zip(self.servers, self.threads):
+            if thread.is_alive():
+                server.shutdown()
+        for server in self.servers:
+            server.server_close()
+        for thread in self.threads:
+            thread.join(timeout=2)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
+def prepare_tunnel_snapshot(settings, tunnel, windows):
+    if not settings['DnsTunnel']:
+        return settings
+    if tunnel is None or tunnel.stopping.is_set():
+        raise RuntimeError('Install and start the guest service with DNS tunneling enabled')
+    settings = dict(settings)
+    settings['DNS'] = dict(settings['DNS'])
+    # Linux uses the global systemd-resolved loopback stub configured by
+    # the installer. Windows can use the local resolver on each adapter.
+    settings['DNS']['Servers'] = ['127.0.0.1'] if windows and settings['Interface']['Connected'] else []
+    return settings
+
+
+def handle(sock, backend, tools=None, dns_tunnel=None):
     try:
         request = receive(sock)
         target, resource, action, settings = normalize(request)
@@ -1115,7 +1394,10 @@ def handle(sock, backend, tools=None):
             with socket.create_connection((settings['Address'], settings['Port']), timeout=5) as connection:
                 response['Data'] = {'LocalAddress': connection.getsockname()[0], 'RemoteAddress': settings['Address'], 'Port': settings['Port']}
         elif resource == 'Reconcile':
-            response['Data'] = backend.reconcile(target, settings)
+            snapshot = prepare_tunnel_snapshot(settings, dns_tunnel, platform.system() == 'Windows')
+            response['Data'] = backend.reconcile(target, snapshot)
+            if settings['DnsTunnel']:
+                response['Data']['DnsTunnel'] = True
         else:
             backend.apply(target, resource, action, settings)
     except Exception as exc:
@@ -1130,11 +1412,22 @@ def handle(sock, backend, tools=None):
         send(sock, {'Version': 1, 'Success': False, 'Error': 'Guest response cannot be encoded or exceeds the message limit'})
 
 
-def serve(exchange_root=None, allow_clock_set=False):
+def serve(exchange_root=None, allow_clock_set=False, enable_dns_tunnel=False):
     exchange = FileExchange(exchange_root) if exchange_root is not None else None
     tools = GuestTools(exchange, allow_clock_set)
     windows = platform.system() == 'Windows'
     backend = WindowsBackend() if windows else LinuxBackend()
+    tunnel = DnsTunnel() if enable_dns_tunnel else None
+    try:
+        if tunnel is not None:
+            tunnel.start_host_listener(windows)
+        serve_network(backend, tools, windows, tunnel)
+    finally:
+        if tunnel is not None:
+            tunnel.close()
+
+
+def serve_network(backend, tools, windows, tunnel):
     if windows:
         listener = socket.socket(socket.AF_HYPERV, socket.SOCK_STREAM, socket.HV_PROTOCOL_RAW)
         address = (socket.HV_GUID_PARENT, SERVICE)
@@ -1151,7 +1444,7 @@ def serve(exchange_root=None, allow_clock_set=False):
                     continue
                 conn.settimeout(90)
                 try:
-                    handle(conn, backend, tools)
+                    handle(conn, backend, tools, tunnel)
                 except (OSError, EOFError, ValueError) as exc:
                     print(f'GNS connection: {exc}', file=sys.stderr)
 
@@ -1171,6 +1464,7 @@ def main():
     server = commands.add_parser('serve')
     server.add_argument('--exchange-root', type=pathlib.Path, help='Enable file exchange in this protected directory')
     server.add_argument('--allow-clock-set', action='store_true', help='Allow the parent partition to synchronize the guest clock')
+    server.add_argument('--dns-tunnel', action='store_true', help='Enable the loopback DNS proxy on port 53')
     host = commands.add_parser('send')
     host.add_argument('vm_id', help='HCS runtime VM ID')
     host.add_argument('request', type=pathlib.Path, help='JSON request')
@@ -1179,7 +1473,7 @@ def main():
     query.add_argument('resource', choices=QUERY_CAPABILITIES[:3])
     options = cli.parse_args()
     if options.command == 'serve':
-        serve(options.exchange_root, options.allow_clock_set)
+        serve(options.exchange_root, options.allow_clock_set, options.dns_tunnel)
     else:
         import uuid
         request = ({'Version': 1, 'ResourceType': options.resource, 'RequestType': 'Query', 'Settings': {}}
