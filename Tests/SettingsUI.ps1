@@ -59,6 +59,19 @@ function Set-Text([string]$id,[string]$value) {
 function Get-Text([string]$id) {
     return (Pattern (Find-Control $id) ([System.Windows.Automation.ValuePattern]::Pattern)).Current.Value
 }
+function Set-Range([string]$id,[double]$value) {
+    $control = Find-Control ($id+'Slider')
+    Scroll $control
+    $range = Pattern $control ([System.Windows.Automation.RangeValuePattern]::Pattern)
+    $range.SetValue($value)
+    $until = [DateTime]::UtcNow.AddSeconds(3)
+    do {
+        $actual = Get-Text ($id+'TextBox')
+        if ([math]::Abs([double]$actual - $value) -lt 0.00001) { return }
+        Start-Sleep -Milliseconds 50
+    } while ([DateTime]::UtcNow -lt $until)
+    throw "Slider and numeric field did not synchronize: $id"
+}
 function Set-Check([string]$id,[bool]$value) {
     $p = Pattern (Find-Control $id) ([System.Windows.Automation.TogglePattern]::Pattern)
     for ($n=0; $n -lt 3; $n++) {
@@ -263,10 +276,14 @@ try {
     Select-Tab 'TabGeneral'
     Select-Choice 'GuestTypeComboBox' 'GuestLinux'
     Set-Text 'NameTextBox' 'UI automation saved'
-    Set-Text 'ProcessorCountTextBox' '4'
-    Set-Text 'MemorySizeTextBox' '4096'
-    Set-Text 'ProcessorLimitTextBox' '75'
-    Set-Text 'ProcessorWeightTextBox' '250'
+    Set-Range 'ProcessorCount' 4
+    Set-Range 'MemorySize' 4096
+    Set-Range 'ProcessorLimit' 75
+    Set-Text 'ProcessorLimitTextBox' '75.125'
+    $cpuRange = Pattern (Find-Control 'ProcessorLimitSlider') ([System.Windows.Automation.RangeValuePattern]::Pattern)
+    if ([math]::Abs($cpuRange.Current.Value - 75.125) -gt 0.00001) { throw 'Precise CPU limit did not update the slider' }
+    Set-Range 'ProcessorLimit' 75
+    Set-Range 'ProcessorWeight' 250
     Set-Check 'MemoryOvercommitCheckBox' $true
     Set-Check 'DeferredCommitCheckBox' $true
     Set-Text 'StorageIopsMaximumTextBox' '1000'
@@ -777,8 +794,8 @@ try {
         Set-Text 'VmmsMinimumMemoryTextBox' '512'
         Set-Text 'VmmsMemoryTextBox' '1024'
         Set-Text 'VmmsMaximumMemoryTextBox' '4096'
-        Set-Text 'VmmsMemoryBufferTextBox' '25'
-        Set-Text 'VmmsMemoryPriorityTextBox' '80'
+        Set-Range 'VmmsMemoryBuffer' 25
+        Set-Range 'VmmsMemoryPriority' 80
         $result = Invoke-Vmms 'VmmsDynamicMemory'
         Assert-Equal $result.Details.VM.DynamicMemoryEnabled $true 'Dynamic memory'
         Assert-Equal $result.Details.VM.MinimumMiB 512 'Minimum memory'
@@ -790,8 +807,8 @@ try {
         Select-Choice 'VmmsActionComboBox' 'VmmsReplicationEnable'
         Set-Text 'VmmsRemoteHostTextBox' 'replica.example.test'
         Set-Text 'VmmsReplicaPortTextBox' '443'
-        Set-Text 'VmmsReplicaFrequencyTextBox' '300'
-        Set-Text 'VmmsReplicaHistoryTextBox' '4'
+        Select-Choice 'VmmsReplicaFrequencyComboBox' 'VmmsReplicaFrequency300'
+        Set-Range 'VmmsReplicaHistory' 4
         Select-Choice 'VmmsReplicaAuthComboBox' 'VmmsReplicaCertificate'
         Set-Text 'VmmsReplicaCertificateTextBox' ('A' * 40)
         Set-Check 'VmmsReplicaCompressionCheckBox' $false
@@ -810,9 +827,9 @@ try {
         $result = Invoke-Vmms 'VmmsReplicationRemove'
         if ($result.Details.VM.Replication) { throw 'Replication relationship still exists' }
         Select-Choice 'VmmsActionComboBox' 'VmmsCpuPolicy'
-        Set-Text 'VmmsCpuReserveTextBox' '10'
-        Set-Text 'VmmsCpuMaximumTextBox' '75'
-        Set-Text 'VmmsCpuWeightTextBox' '200'
+        Set-Range 'VmmsCpuReserve' 10
+        Set-Range 'VmmsCpuMaximum' 75
+        Set-Range 'VmmsCpuWeight' 200
         Set-Check 'VmmsCpuNestedCheckBox' $true
         $result = Invoke-Vmms 'VmmsCpuPolicy'
         Assert-Equal $result.Details.VM.CpuPolicy.Maximum 75 'CPU limit'
@@ -1046,7 +1063,7 @@ try {
     Set-Text 'VerticalResolutionTextBox' '720'
     Set-Check 'DisableDpiScalingCheckBox' $true
     Set-Check 'DpiOverrideCheckBox' $true
-    Set-Text 'DpiScaleTextBox' '175'
+    Set-Range 'DpiScale' 175
     Set-Check 'ContentResizingCheckBox' $false
     Set-Check 'ConnectionBarCheckBox' $false
     Set-Text 'PoliciesTextBox' 'test-policy'

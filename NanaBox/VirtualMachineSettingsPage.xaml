@@ -231,15 +231,17 @@
                   VerticalAlignment="Center"
                   Text="Virtual processors"
                   TextWrapping="Wrap" />
-                <TextBox
+                <StackPanel x:Name="ProcessorCountRangePanel" Grid.Column="2" Spacing="4">
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="ProcessorCountSlider" Minimum="1" Maximum="16" StepFrequency="1" SmallChange="1" LargeChange="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="ProcessorCountSlider" />
+                  <TextBox
                   x:Name="ProcessorCountTextBox"
-                  x:Uid="/VirtualMachineSettingsPage/ProcessorCountTextBox"
-                  Grid.Column="2"
-                  MinWidth="96"
-                  HorizontalAlignment="Stretch"
                   InputScope="Number" AutomationProperties.HelpText="Choose how many virtual CPU cores are available to the guest."
                   AutomationProperties.Name="Virtual processors"
-                  ToolTipService.ToolTip="Choose how many virtual CPU cores are available to the guest." AutomationProperties.AutomationId="ProcessorCountTextBox" />
+                  ToolTipService.ToolTip="Choose how many virtual CPU cores are available to the guest." AutomationProperties.AutomationId="ProcessorCountTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
               </Grid>
             </StackPanel>
             <Grid>
@@ -254,20 +256,36 @@
                 VerticalAlignment="Center"
                 Text="Memory (MiB)"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel x:Name="MemorySizeRangePanel" Grid.Column="2" Spacing="4">
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="MemorySizeSlider" Minimum="1" Maximum="16384" StepFrequency="1" SmallChange="128" LargeChange="1024" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="MemorySizeSlider" />
+                  <TextBox
                 x:Name="MemorySizeTextBox"
-                x:Uid="/VirtualMachineSettingsPage/MemorySizeTextBox"
-                Grid.Column="2"
-                MinWidth="96"
-                HorizontalAlignment="Stretch"
                 InputScope="Number" AutomationProperties.HelpText="Choose how much memory is available to the guest, in MiB."
                 AutomationProperties.Name="Memory (MiB)"
-                ToolTipService.ToolTip="Choose how much memory is available to the guest, in MiB." AutomationProperties.AutomationId="MemorySizeTextBox" />
+                ToolTipService.ToolTip="Choose how much memory is available to the guest, in MiB." AutomationProperties.AutomationId="MemorySizeTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
             </Grid>
             <StackPanel x:Name="ResourceAllocationPanel" Spacing="8">
               <TextBlock x:Name="SettingsLabel11" x:Uid="/VirtualMachineSettingsPage/ResourceAllocationHeading" Text="Resource allocation" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <TextBox x:Name="ProcessorLimitTextBox" x:Uid="/VirtualMachineSettingsPage/ProcessorLimitTextBox" Header="CPU usage limit (%) — 0 = automatic" AutomationProperties.Name="CPU usage limit (%) — 0 = automatic" AutomationProperties.AutomationId="ProcessorLimitTextBox" />
-              <TextBox x:Name="ProcessorWeightTextBox" x:Uid="/VirtualMachineSettingsPage/ProcessorWeightTextBox" Header="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.Name="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.AutomationId="ProcessorWeightTextBox" />
+              <StackPanel x:Name="ProcessorLimitRangePanel" Spacing="4">
+                <TextBlock x:Name="ProcessorLimitRangeLabel" Text="CPU usage limit (%) — 0 = automatic" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="ProcessorLimitSlider" Minimum="0" Maximum="100" StepFrequency="0.001" SmallChange="1" LargeChange="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="ProcessorLimitSlider" />
+                  <TextBox x:Name="ProcessorLimitTextBox" AutomationProperties.Name="CPU usage limit (%) — 0 = automatic" AutomationProperties.AutomationId="ProcessorLimitTextBox"  InputScope="Number"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+              <StackPanel x:Name="ProcessorWeightRangePanel" Spacing="4">
+                <TextBlock x:Name="ProcessorWeightRangeLabel" Text="CPU scheduling weight (0 = default; 1–10000)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="ProcessorWeightSlider" Minimum="0" Maximum="10000" StepFrequency="1" SmallChange="100" LargeChange="1000" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="ProcessorWeightSlider" />
+                  <TextBox x:Name="ProcessorWeightTextBox" AutomationProperties.Name="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.AutomationId="ProcessorWeightTextBox"  InputScope="Number"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
               <CheckBox x:Name="MemoryOvercommitCheckBox" x:Uid="/VirtualMachineSettingsPage/MemoryOvercommitCheckBox" Content="Allow pagefile-backed virtual machine memory" AutomationProperties.Name="Allow pagefile-backed virtual machine memory" AutomationProperties.AutomationId="MemoryOvercommitCheckBox" />
               <CheckBox x:Name="DeferredCommitCheckBox" x:Uid="/VirtualMachineSettingsPage/DeferredCommitCheckBox" Content="Defer memory commit until first access" AutomationProperties.Name="Defer memory commit until first access" AutomationProperties.AutomationId="DeferredCommitCheckBox" />
               <TextBox x:Name="StorageIopsMaximumTextBox" x:Uid="/VirtualMachineSettingsPage/StorageIopsMaximumTextBox" Header="Storage IOPS limit (0 = default)" AutomationProperties.Name="Storage IOPS limit (0 = default)" AutomationProperties.AutomationId="StorageIopsMaximumTextBox" />
@@ -1498,23 +1516,76 @@
                 <TextBlock x:Name="SettingsLabel205" x:Uid="/VirtualMachineSettingsPage/VmmsFieldsNote" Text="Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints." TextWrapping="Wrap" Opacity="0.75" />
                 <TextBox x:Name="VmmsNameTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsNameTextBox" Header="VM or new checkpoint name" AutomationProperties.AutomationId="VmmsNameTextBox" />
                 <ComboBox x:Name="VmmsGenerationComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGenerationComboBox" Header="Generation (creation)" SelectedIndex="1" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGenerationComboBox"><ComboBoxItem Content="1" AutomationProperties.AutomationId="VmmsGeneration1" /><ComboBoxItem Content="2" AutomationProperties.AutomationId="VmmsGeneration2" /></ComboBox>
-                <TextBox x:Name="VmmsMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryTextBox" Header="Startup memory (MiB)" Text="2048" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryTextBox" />
-                <TextBox x:Name="VmmsProcessorTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsProcessorTextBox" Header="Virtual processor count" Text="2" InputScope="Number" AutomationProperties.AutomationId="VmmsProcessorTextBox" />
+                <StackPanel x:Name="VmmsMemoryRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsMemoryRangeLabel" Text="Startup memory (MiB)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsMemorySlider" Minimum="32" Maximum="16384" StepFrequency="1" SmallChange="128" LargeChange="1024" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsMemorySlider" />
+                  <TextBox x:Name="VmmsMemoryTextBox" Text="2048" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsProcessorRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsProcessorRangeLabel" Text="Virtual processor count" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsProcessorSlider" Minimum="1" Maximum="16" StepFrequency="1" SmallChange="1" LargeChange="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsProcessorSlider" />
+                  <TextBox x:Name="VmmsProcessorTextBox" Text="2" InputScope="Number" AutomationProperties.AutomationId="VmmsProcessorTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <ComboBox x:Name="VmmsCheckpointsComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointsComboBox" Header="Checkpoint" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsCheckpointsComboBox" />
                 <TextBox x:Name="VmmsPathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsPathTextBox" Header="Configuration file or existing directory" AutomationProperties.AutomationId="VmmsPathTextBox" />
                 <TextBox x:Name="VmmsDestinationTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDestinationTextBox" Header="Empty destination directory (import copy)" AutomationProperties.AutomationId="VmmsDestinationTextBox" />
                 <TextBlock x:Name="SettingsLabel206" x:Uid="/VirtualMachineSettingsPage/VmmsDynamicMemoryTitle" Text="Dynamic memory" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <TextBox x:Name="VmmsMinimumMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMinimumMemoryTextBox" Header="Minimum memory (MiB)" Text="512" InputScope="Number" AutomationProperties.AutomationId="VmmsMinimumMemoryTextBox" />
-                <TextBox x:Name="VmmsMaximumMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMaximumMemoryTextBox" Header="Maximum memory (MiB)" Text="4096" InputScope="Number" AutomationProperties.AutomationId="VmmsMaximumMemoryTextBox" />
-                <TextBox x:Name="VmmsMemoryBufferTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryBufferTextBox" Header="Memory buffer (%)" Text="20" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryBufferTextBox" />
-                <TextBox x:Name="VmmsMemoryPriorityTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryPriorityTextBox" Header="Memory priority (0–100)" Text="50" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryPriorityTextBox" />
+                <StackPanel x:Name="VmmsMinimumMemoryRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsMinimumMemoryRangeLabel" Text="Minimum memory (MiB)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsMinimumMemorySlider" Minimum="32" Maximum="16384" StepFrequency="1" SmallChange="128" LargeChange="1024" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsMinimumMemorySlider" />
+                  <TextBox x:Name="VmmsMinimumMemoryTextBox" Text="512" InputScope="Number" AutomationProperties.AutomationId="VmmsMinimumMemoryTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsMaximumMemoryRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsMaximumMemoryRangeLabel" Text="Maximum memory (MiB)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsMaximumMemorySlider" Minimum="32" Maximum="16384" StepFrequency="1" SmallChange="128" LargeChange="1024" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsMaximumMemorySlider" />
+                  <TextBox x:Name="VmmsMaximumMemoryTextBox" Text="4096" InputScope="Number" AutomationProperties.AutomationId="VmmsMaximumMemoryTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsMemoryBufferRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsMemoryBufferRangeLabel" Text="Memory buffer (%)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsMemoryBufferSlider" Minimum="5" Maximum="2000" StepFrequency="1" SmallChange="5" LargeChange="50" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsMemoryBufferSlider" />
+                  <TextBox x:Name="VmmsMemoryBufferTextBox" Text="20" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryBufferTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsMemoryPriorityRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsMemoryPriorityRangeLabel" Text="Memory priority (0–100)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsMemoryPrioritySlider" Minimum="0" Maximum="100" StepFrequency="1" SmallChange="5" LargeChange="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsMemoryPrioritySlider" />
+                  <TextBox x:Name="VmmsMemoryPriorityTextBox" Text="50" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryPriorityTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <TextBlock x:Name="SettingsLabel207" x:Uid="/VirtualMachineSettingsPage/VmmsRemoteTitle" Text="Migration and replication" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="SettingsLabel208" x:Uid="/VirtualMachineSettingsPage/VmmsRemoteNote" Text="Configure migration or Replica on both hosts first. Use an absolute path on the destination host, or leave it empty for shared storage." TextWrapping="Wrap" Opacity="0.75" />
                 <TextBox x:Name="VmmsRemoteHostTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsRemoteHostTextBox" Header="Destination host / replica server" AutomationProperties.AutomationId="VmmsRemoteHostTextBox" />
                 <TextBox x:Name="VmmsRemotePathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsRemotePathTextBox" Header="Destination storage path (optional)" AutomationProperties.AutomationId="VmmsRemotePathTextBox" />
                 <TextBox x:Name="VmmsReplicaPortTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaPortTextBox" Header="Replica server port" Text="80" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaPortTextBox" />
-                <TextBox x:Name="VmmsReplicaFrequencyTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequencyTextBox" Header="Replication interval (30, 300 or 900 seconds)" Text="300" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaFrequencyTextBox" />
-                <TextBox x:Name="VmmsReplicaHistoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaHistoryTextBox" Header="Additional recovery points (0–24)" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaHistoryTextBox" />
+                <ComboBox x:Name="VmmsReplicaFrequencyComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequencyChoice" Header="Replication interval" SelectedIndex="1" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsReplicaFrequencyComboBox">
+                  <ComboBoxItem x:Name="VmmsReplicaFrequency30" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequency30" Content="30 seconds" Tag="30" AutomationProperties.AutomationId="VmmsReplicaFrequency30" />
+                  <ComboBoxItem x:Name="VmmsReplicaFrequency300" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequency300" Content="5 minutes" Tag="300" AutomationProperties.AutomationId="VmmsReplicaFrequency300" />
+                  <ComboBoxItem x:Name="VmmsReplicaFrequency900" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequency900" Content="15 minutes" Tag="900" AutomationProperties.AutomationId="VmmsReplicaFrequency900" />
+                </ComboBox>
+                <StackPanel x:Name="VmmsReplicaHistoryRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsReplicaHistoryRangeLabel" Text="Additional recovery points (0–24)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsReplicaHistorySlider" Minimum="0" Maximum="24" StepFrequency="1" SmallChange="1" LargeChange="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsReplicaHistorySlider" />
+                  <TextBox x:Name="VmmsReplicaHistoryTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaHistoryTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <TextBox x:Name="VmmsReplicaCertificateTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCertificateTextBox" Header="Certificate thumbprint" AutomationProperties.AutomationId="VmmsReplicaCertificateTextBox" />
                 <ComboBox x:Name="VmmsReplicaAuthComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaAuthComboBox" Header="Replica authentication" SelectedIndex="0" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsReplicaAuthComboBox">
                   <ComboBoxItem Tag="Kerberos" Content="Kerberos" AutomationProperties.AutomationId="VmmsReplicaKerberos" />
@@ -1523,9 +1594,30 @@
                 <CheckBox x:Name="VmmsReplicaCompressionCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCompressionCheckBox" Content="Compress replication traffic" IsChecked="True" AutomationProperties.AutomationId="VmmsReplicaCompressionCheckBox" />
                 <TextBlock x:Name="SettingsLabel210" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceTitle" Text="CPU, devices and integration services" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="SettingsLabel211" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceNote" Text="Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected." TextWrapping="Wrap" Opacity="0.75" />
-                <TextBox x:Name="VmmsCpuReserveTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuReserveTextBox" Header="CPU reserve (%)" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuReserveTextBox" />
-                <TextBox x:Name="VmmsCpuMaximumTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuMaximumTextBox" Header="CPU maximum (%)" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuMaximumTextBox" />
-                <TextBox x:Name="VmmsCpuWeightTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuWeightTextBox" Header="CPU relative weight" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuWeightTextBox" />
+                <StackPanel x:Name="VmmsCpuReserveRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsCpuReserveRangeLabel" Text="CPU reserve (%)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsCpuReserveSlider" Minimum="0" Maximum="100" StepFrequency="1" SmallChange="5" LargeChange="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsCpuReserveSlider" />
+                  <TextBox x:Name="VmmsCpuReserveTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuReserveTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsCpuMaximumRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsCpuMaximumRangeLabel" Text="CPU maximum (%)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsCpuMaximumSlider" Minimum="0" Maximum="100" StepFrequency="1" SmallChange="5" LargeChange="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsCpuMaximumSlider" />
+                  <TextBox x:Name="VmmsCpuMaximumTextBox" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuMaximumTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsCpuWeightRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsCpuWeightRangeLabel" Text="CPU relative weight" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsCpuWeightSlider" Minimum="1" Maximum="10000" StepFrequency="1" SmallChange="100" LargeChange="1000" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsCpuWeightSlider" />
+                  <TextBox x:Name="VmmsCpuWeightTextBox" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuWeightTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <CheckBox x:Name="VmmsCpuNestedCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuNestedCheckBox" Content="Expose virtualization extensions" AutomationProperties.AutomationId="VmmsCpuNestedCheckBox" />
                 <ComboBox x:Name="VmmsDevicesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicesComboBox" Header="Selected device or integration service" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsDevicesComboBox"></ComboBox>
                 <ComboBox x:Name="VmmsGpuSourceComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuSourceComboBox" Header="Physical GPU for new partition" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGpuSourceComboBox" />
@@ -1574,12 +1666,33 @@
                 <TextBox x:Name="VmmsDeviceNameTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceNameTextBox" Header="New network adapter name" AutomationProperties.AutomationId="VmmsDeviceNameTextBox" />
                 <TextBox x:Name="VmmsDevicePathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicePathTextBox" Header="VHD/VHDX or ISO path (empty to eject DVD)" AutomationProperties.AutomationId="VmmsDevicePathTextBox" />
                 <ComboBox x:Name="VmmsControllerTypeComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsControllerTypeComboBox" Header="Hard disk controller type" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsControllerTypeComboBox"><ComboBoxItem Tag="SCSI" Content="SCSI" AutomationProperties.AutomationId="VmmsSCSI" /><ComboBoxItem Tag="IDE" Content="IDE" AutomationProperties.AutomationId="VmmsIDE" /></ComboBox>
-                <TextBox x:Name="VmmsControllerNumberTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsControllerNumberTextBox" Header="Controller number" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsControllerNumberTextBox" />
-                <TextBox x:Name="VmmsControllerLocationTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsControllerLocationTextBox" Header="Controller location" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsControllerLocationTextBox" />
+                <StackPanel x:Name="VmmsControllerNumberRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsControllerNumberRangeLabel" Text="Controller number" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsControllerNumberSlider" Minimum="0" Maximum="3" StepFrequency="1" SmallChange="1" LargeChange="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsControllerNumberSlider" />
+                  <TextBox x:Name="VmmsControllerNumberTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsControllerNumberTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+                <StackPanel x:Name="VmmsControllerLocationRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsControllerLocationRangeLabel" Text="Controller location" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsControllerLocationSlider" Minimum="0" Maximum="63" StepFrequency="1" SmallChange="1" LargeChange="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsControllerLocationSlider" />
+                  <TextBox x:Name="VmmsControllerLocationTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsControllerLocationTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <TextBox x:Name="VmmsDiskMinIopsTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDiskMinIopsTextBox" Header="Minimum IOPS" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsDiskMinIopsTextBox" />
                 <TextBox x:Name="VmmsDiskMaxIopsTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDiskMaxIopsTextBox" Header="Maximum IOPS (0 = unlimited)" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsDiskMaxIopsTextBox" />
                 <TextBox x:Name="VmmsNicMacTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicMacTextBox" Header="Static MAC address (empty = dynamic)" AutomationProperties.AutomationId="VmmsNicMacTextBox" />
-                <TextBox x:Name="VmmsNicVlanTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicVlanTextBox" Header="Access VLAN ID (0 = untagged)" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsNicVlanTextBox" />
+                <StackPanel x:Name="VmmsNicVlanRangePanel" Spacing="4">
+                <TextBlock x:Name="VmmsNicVlanRangeLabel" Text="Access VLAN ID (0 = untagged)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="VmmsNicVlanSlider" Minimum="0" Maximum="4094" StepFrequency="1" SmallChange="1" LargeChange="100" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="VmmsNicVlanSlider" />
+                  <TextBox x:Name="VmmsNicVlanTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsNicVlanTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
                 <CheckBox x:Name="VmmsNicDhcpGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicDhcpGuardCheckBox" Content="DHCP guard" AutomationProperties.AutomationId="VmmsNicDhcpGuardCheckBox" />
                 <CheckBox x:Name="VmmsNicRouterGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicRouterGuardCheckBox" Content="Router guard" AutomationProperties.AutomationId="VmmsNicRouterGuardCheckBox" />
                 <CheckBox x:Name="VmmsNicSpoofCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicSpoofCheckBox" Content="Allow MAC address spoofing" AutomationProperties.AutomationId="VmmsNicSpoofCheckBox" />
@@ -1994,7 +2107,14 @@
                 ToolTipService.ToolTip="(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true." AutomationProperties.AutomationId="DisableDpiScalingCheckBox" />
             </Grid>
             <CheckBox x:Name="DpiOverrideCheckBox" x:Uid="/VirtualMachineSettingsPage/DpiOverride" Content="Override display scaling" AutomationProperties.AutomationId="DpiOverrideCheckBox" />
-            <TextBox x:Name="DpiScaleTextBox" x:Uid="/VirtualMachineSettingsPage/DpiScale" Header="Display scaling (100–500%)" AutomationProperties.AutomationId="DpiScaleTextBox" AutomationProperties.Name="Display scaling" InputScope="Number" />
+            <StackPanel x:Name="DpiScaleRangePanel" Spacing="4">
+                <TextBlock x:Name="DpiScaleRangeLabel" Text="Display scaling (100–500%)" TextWrapping="Wrap" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Slider x:Name="DpiScaleSlider" Minimum="100" Maximum="500" StepFrequency="1" SmallChange="25" LargeChange="50" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.AutomationId="DpiScaleSlider" />
+                  <TextBox x:Name="DpiScaleTextBox" AutomationProperties.AutomationId="DpiScaleTextBox" AutomationProperties.Name="Display scaling" InputScope="Number"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
             <CheckBox x:Name="ContentResizingCheckBox" x:Uid="/VirtualMachineSettingsPage/ContentResizing" Content="Resize the enhanced-session desktop with the window" AutomationProperties.AutomationId="ContentResizingCheckBox" />
             <CheckBox x:Name="ConnectionBarCheckBox" x:Uid="/VirtualMachineSettingsPage/ConnectionBar" Content="Show connection bar in full screen" AutomationProperties.AutomationId="ConnectionBarCheckBox" />
             <StackPanel x:Name="PoliciesSection" Spacing="4">

@@ -996,4 +996,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="PropertyDevices" xml:space="preserve"><value>设备</value></data>
   <data name="PropertyCheckpoints" xml:space="preserve"><value>检查点</value></data>
   <data name="PropertyFrontendAddresses" xml:space="preserve"><value>前端地址</value></data>
+  <data name="VmmsReplicaFrequencyChoice.Header" xml:space="preserve"><value>复制间隔</value></data>
+  <data name="VmmsReplicaFrequency30.Content" xml:space="preserve"><value>30 秒</value></data>
+  <data name="VmmsReplicaFrequency300.Content" xml:space="preserve"><value>5 分钟</value></data>
+  <data name="VmmsReplicaFrequency900.Content" xml:space="preserve"><value>15 分钟</value></data>
 </root>

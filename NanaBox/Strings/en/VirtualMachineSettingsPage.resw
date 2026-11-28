@@ -996,4 +996,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="PropertyDevices" xml:space="preserve"><value>Devices</value></data>
   <data name="PropertyCheckpoints" xml:space="preserve"><value>Checkpoints</value></data>
   <data name="PropertyFrontendAddresses" xml:space="preserve"><value>Frontend addresses</value></data>
+  <data name="VmmsReplicaFrequencyChoice.Header" xml:space="preserve"><value>Replication interval</value></data>
+  <data name="VmmsReplicaFrequency30.Content" xml:space="preserve"><value>30 seconds</value></data>
+  <data name="VmmsReplicaFrequency300.Content" xml:space="preserve"><value>5 minutes</value></data>
+  <data name="VmmsReplicaFrequency900.Content" xml:space="preserve"><value>15 minutes</value></data>
 </root>

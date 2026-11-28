@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cwchar>
 #include <map>
 #include <sstream>
@@ -69,14 +70,14 @@ namespace
     VmmsFieldMap const& VmmsActionFields()
     {
         static const VmmsFieldMap Fields = {
-            {L"VmmsCreate", {L"VmmsNameTextBox", L"VmmsGenerationComboBox", L"VmmsMemoryTextBox", L"VmmsPathTextBox"}},
+            {L"VmmsCreate", {L"VmmsNameTextBox", L"VmmsGenerationComboBox", L"VmmsMemoryRangePanel", L"VmmsPathTextBox"}},
             {L"VmmsRename", {L"VmmsNameTextBox"}},
             {L"VmmsCheckpointCreate", {L"VmmsNameTextBox"}},
             {L"VmmsCheckpointRename", {L"VmmsNameTextBox", L"VmmsCheckpointsComboBox"}},
-            {L"VmmsSetMemory", {L"VmmsMemoryTextBox"}},
-            {L"VmmsDynamicMemory", {L"VmmsMemoryTextBox", L"SettingsLabel206", L"VmmsMinimumMemoryTextBox", L"VmmsMaximumMemoryTextBox", L"VmmsMemoryBufferTextBox", L"VmmsMemoryPriorityTextBox"}},
-            {L"VmmsStaticMemory", {L"VmmsMemoryTextBox"}},
-            {L"VmmsSetProcessor", {L"VmmsProcessorTextBox"}},
+            {L"VmmsSetMemory", {L"VmmsMemoryRangePanel"}},
+            {L"VmmsDynamicMemory", {L"VmmsMemoryRangePanel", L"SettingsLabel206", L"VmmsMinimumMemoryRangePanel", L"VmmsMaximumMemoryRangePanel", L"VmmsMemoryBufferRangePanel", L"VmmsMemoryPriorityRangePanel"}},
+            {L"VmmsStaticMemory", {L"VmmsMemoryRangePanel"}},
+            {L"VmmsSetProcessor", {L"VmmsProcessorRangePanel"}},
             {L"VmmsCheckpointRestore", {L"VmmsCheckpointsComboBox"}},
             {L"VmmsCheckpointRemove", {L"VmmsCheckpointsComboBox"}},
             {L"VmmsCheckpointExport", {L"VmmsCheckpointsComboBox", L"VmmsPathTextBox"}},
@@ -85,15 +86,15 @@ namespace
             {L"VmmsExport", {L"VmmsPathTextBox"}},
             {L"VmmsMoveStorage", {L"VmmsPathTextBox"}},
             {L"VmmsMigrate", {L"SettingsLabel207", L"SettingsLabel208", L"VmmsRemoteHostTextBox", L"VmmsRemotePathTextBox"}},
-            {L"VmmsReplicationEnable", {L"SettingsLabel207", L"SettingsLabel208", L"VmmsRemoteHostTextBox", L"VmmsReplicaPortTextBox", L"VmmsReplicaFrequencyTextBox", L"VmmsReplicaHistoryTextBox", L"VmmsReplicaCertificateTextBox", L"VmmsReplicaAuthComboBox", L"VmmsReplicaCompressionCheckBox"}},
-            {L"VmmsCpuPolicy", {L"VmmsCpuReserveTextBox", L"VmmsCpuMaximumTextBox", L"VmmsCpuWeightTextBox", L"VmmsCpuNestedCheckBox"}},
+            {L"VmmsReplicationEnable", {L"SettingsLabel207", L"SettingsLabel208", L"VmmsRemoteHostTextBox", L"VmmsReplicaPortTextBox", L"VmmsReplicaFrequencyComboBox", L"VmmsReplicaHistoryRangePanel", L"VmmsReplicaCertificateTextBox", L"VmmsReplicaAuthComboBox", L"VmmsReplicaCompressionCheckBox"}},
+            {L"VmmsCpuPolicy", {L"VmmsCpuReserveRangePanel", L"VmmsCpuMaximumRangePanel", L"VmmsCpuWeightRangePanel", L"VmmsCpuNestedCheckBox"}},
             {L"VmmsGpuAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsGpuSourceComboBox", L"SettingsLabel212", L"VmmsGpuVRAMGrid", L"VmmsGpuEncodeGrid", L"VmmsGpuDecodeGrid", L"VmmsGpuComputeGrid"}},
             {L"VmmsGpuRemove", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
             {L"VmmsGpuQuotas", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"SettingsLabel212", L"VmmsGpuVRAMGrid", L"VmmsGpuEncodeGrid", L"VmmsGpuDecodeGrid", L"VmmsGpuComputeGrid"}},
-            {L"VmmsDiskAttach", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberTextBox", L"VmmsControllerLocationTextBox"}},
+            {L"VmmsDiskAttach", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberRangePanel", L"VmmsControllerLocationRangePanel"}},
             {L"VmmsDiskDetach", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
             {L"VmmsDiskQoS", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDiskMinIopsTextBox", L"VmmsDiskMaxIopsTextBox"}},
-            {L"VmmsDvdAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberTextBox", L"VmmsControllerLocationTextBox"}},
+            {L"VmmsDvdAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberRangePanel", L"VmmsControllerLocationRangePanel"}},
             {L"VmmsDvdMount", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDevicePathTextBox"}},
             {L"VmmsDvdRemove", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
             {L"VmmsNicAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDeviceNameTextBox"}},
@@ -101,7 +102,7 @@ namespace
             {L"VmmsNicConnect", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDeviceSwitchComboBox"}},
             {L"VmmsNicDisconnect", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
             {L"VmmsNicMac", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicMacTextBox"}},
-            {L"VmmsNicVlan", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicVlanTextBox"}},
+            {L"VmmsNicVlan", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicVlanRangePanel"}},
             {L"VmmsNicGuard", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicDhcpGuardCheckBox", L"VmmsNicRouterGuardCheckBox", L"VmmsNicSpoofCheckBox"}},
             {L"VmmsIntegration", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsIntegrationEnabledCheckBox"}},
             {L"VmmsSecureBoot", {L"VmmsSecureBootCheckBox", L"VmmsSecureBootTemplateComboBox"}},
@@ -141,10 +142,15 @@ namespace
             if (!Label.empty() && !Value.empty())
                 Result += L"\n" + std::wstring(Label.c_str()) + L": " + Value.c_str();
         };
-        auto Describe = [&](winrt::FrameworkElement const& Control)
+        std::function<void(winrt::FrameworkElement const&)> Describe;
+        Describe = [&](winrt::FrameworkElement const& Control)
         {
             if (auto Input = Control.try_as<TextBox>())
-                Add(winrt::unbox_value_or<winrt::hstring>(Input.Header(), winrt::hstring()), Input.Text());
+            {
+                auto Label = winrt::unbox_value_or<winrt::hstring>(Input.Header(), winrt::hstring());
+                if (Label.empty()) Label = winrt::AutomationProperties::GetName(Input);
+                Add(Label, Input.Text());
+            }
             else if (auto Choice = Control.try_as<ComboBox>())
             {
                 if (auto Selected = Choice.SelectedItem().try_as<ComboBoxItem>())
@@ -154,6 +160,9 @@ namespace
             else if (auto Check = Control.try_as<CheckBox>())
                 Add(winrt::unbox_value_or<winrt::hstring>(Check.Content(), winrt::hstring()),
                     ::GetSettingsString(Check.IsChecked().Value() ? L"ResultYes" : L"ResultNo"));
+            else if (auto Group = Control.try_as<Panel>())
+                for (auto const& Child : Group.Children())
+                    if (auto Field = Child.try_as<winrt::FrameworkElement>()) Describe(Field);
         };
         for (auto Name : Current->second)
             if (auto Control = Root->FindName(Name).template try_as<winrt::FrameworkElement>())
@@ -174,6 +183,70 @@ namespace
         ::ShowErrorMessageDialog(WindowHandle, Mile::WinRT::ToHResultError());
     }
 
+
+
+    void BindRange(winrt::Windows::UI::Xaml::Controls::Slider const& Slider,
+        winrt::TextBox const& Input, winrt::hstring const& Label,
+        bool GrowMaximum, double AbsoluteMaximum, int DecimalPlaces)
+    {
+        winrt::AutomationProperties::SetName(Slider, Label);
+        winrt::AutomationProperties::SetName(Input, Label);
+        auto Updating = std::make_shared<bool>(false);
+        auto SyncSlider = [Weak = winrt::make_weak(Slider), Updating, GrowMaximum, AbsoluteMaximum](
+            winrt::IInspectable const& Sender, winrt::Windows::UI::Xaml::Controls::TextChangedEventArgs const&)
+        {
+            if (*Updating) return;
+            auto Text = winrt::to_string(Sender.as<winrt::TextBox>().Text());
+            double Value = 0;
+            auto Parsed = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
+            if (Text.empty() || Parsed.ec != std::errc() || Parsed.ptr != Text.data() + Text.size() || !std::isfinite(Value)) return;
+            if (auto Control = Weak.get())
+            {
+                if (Value < Control.Minimum() || Value > AbsoluteMaximum) return;
+                *Updating = true;
+                if (GrowMaximum && Value > Control.Maximum()) Control.Maximum(Value);
+                if (Value <= Control.Maximum()) Control.Value(Value);
+                *Updating = false;
+            }
+        };
+        auto SyncInput = [Weak = winrt::make_weak(Input), Updating, DecimalPlaces](
+            winrt::IInspectable const&, winrt::Windows::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& Args)
+        {
+            if (*Updating) return;
+            if (auto Control = Weak.get())
+            {
+                char Buffer[64];
+                auto Converted = std::to_chars(Buffer, Buffer + sizeof(Buffer), Args.NewValue(), std::chars_format::fixed, DecimalPlaces);
+                if (Converted.ec != std::errc()) return;
+                std::string Value(Buffer, Converted.ptr);
+                if (DecimalPlaces > 0)
+                {
+                    while (!Value.empty() && Value.back() == '0') Value.pop_back();
+                    if (!Value.empty() && Value.back() == '.') Value.pop_back();
+                }
+                *Updating = true;
+                Control.Text(winrt::to_hstring(Value));
+                *Updating = false;
+            }
+        };
+        Input.TextChanged(SyncSlider);
+        Slider.ValueChanged(SyncInput);
+        SyncSlider(Input, nullptr);
+    }
+
+    double RecommendedProcessorMaximum()
+    {
+        auto Count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+        return (std::max)(4.0, static_cast<double>(Count));
+    }
+
+    double RecommendedMemoryMaximum()
+    {
+        MEMORYSTATUSEX Status{};
+        Status.dwLength = sizeof(Status);
+        if (!::GlobalMemoryStatusEx(&Status)) return 16384;
+        return (std::max)(4096.0, static_cast<double>(Status.ullTotalPhys / (1024 * 1024)));
+    }
 
     void BindVisibility(winrt::CheckBox const& Toggle, winrt::FrameworkElement const& Element)
     {
@@ -1278,6 +1351,30 @@ namespace winrt::NanaBox::implementation
                     Sections[i].Visibility(i == Index ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
             }
         });
+        this->ProcessorCountSlider().Maximum((std::min)(::RecommendedProcessorMaximum(), 4294967295.0));
+        ::BindRange(this->ProcessorCountSlider(), this->ProcessorCountTextBox(), ::GetSettingsString(L"ProcessorCountLabel.Text"), true, 4294967295.0, 0);
+        this->MemorySizeSlider().Maximum((std::min)(::RecommendedMemoryMaximum(), 9007199254740991.0));
+        ::BindRange(this->MemorySizeSlider(), this->MemorySizeTextBox(), ::GetSettingsString(L"MemorySizeLabel.Text"), true, 9007199254740991.0, 0);
+        ::BindRange(this->ProcessorLimitSlider(), this->ProcessorLimitTextBox(), ::GetSettingsString(L"ProcessorLimitTextBox.Header"), false, 100.0, 3);
+        ::BindRange(this->ProcessorWeightSlider(), this->ProcessorWeightTextBox(), ::GetSettingsString(L"ProcessorWeightTextBox.Header"), false, 10000.0, 0);
+        ::BindRange(this->DpiScaleSlider(), this->DpiScaleTextBox(), ::GetSettingsString(L"DpiScale.Header"), false, 500.0, 0);
+        this->VmmsMemorySlider().Maximum((std::min)(::RecommendedMemoryMaximum(), 16777216.0));
+        ::BindRange(this->VmmsMemorySlider(), this->VmmsMemoryTextBox(), ::GetSettingsString(L"VmmsMemoryTextBox.Header"), true, 16777216.0, 0);
+        this->VmmsProcessorSlider().Maximum((std::min)(::RecommendedProcessorMaximum(), 2048.0));
+        ::BindRange(this->VmmsProcessorSlider(), this->VmmsProcessorTextBox(), ::GetSettingsString(L"VmmsProcessorTextBox.Header"), true, 2048.0, 0);
+        this->VmmsMinimumMemorySlider().Maximum((std::min)(::RecommendedMemoryMaximum(), 16777216.0));
+        ::BindRange(this->VmmsMinimumMemorySlider(), this->VmmsMinimumMemoryTextBox(), ::GetSettingsString(L"VmmsMinimumMemoryTextBox.Header"), true, 16777216.0, 0);
+        this->VmmsMaximumMemorySlider().Maximum((std::min)(::RecommendedMemoryMaximum(), 16777216.0));
+        ::BindRange(this->VmmsMaximumMemorySlider(), this->VmmsMaximumMemoryTextBox(), ::GetSettingsString(L"VmmsMaximumMemoryTextBox.Header"), true, 16777216.0, 0);
+        ::BindRange(this->VmmsMemoryBufferSlider(), this->VmmsMemoryBufferTextBox(), ::GetSettingsString(L"VmmsMemoryBufferTextBox.Header"), false, 2000.0, 0);
+        ::BindRange(this->VmmsMemoryPrioritySlider(), this->VmmsMemoryPriorityTextBox(), ::GetSettingsString(L"VmmsMemoryPriorityTextBox.Header"), false, 100.0, 0);
+        ::BindRange(this->VmmsCpuReserveSlider(), this->VmmsCpuReserveTextBox(), ::GetSettingsString(L"VmmsCpuReserveTextBox.Header"), false, 100.0, 0);
+        ::BindRange(this->VmmsCpuMaximumSlider(), this->VmmsCpuMaximumTextBox(), ::GetSettingsString(L"VmmsCpuMaximumTextBox.Header"), false, 100.0, 0);
+        ::BindRange(this->VmmsCpuWeightSlider(), this->VmmsCpuWeightTextBox(), ::GetSettingsString(L"VmmsCpuWeightTextBox.Header"), false, 10000.0, 0);
+        ::BindRange(this->VmmsReplicaHistorySlider(), this->VmmsReplicaHistoryTextBox(), ::GetSettingsString(L"VmmsReplicaHistoryTextBox.Header"), false, 24.0, 0);
+        ::BindRange(this->VmmsNicVlanSlider(), this->VmmsNicVlanTextBox(), ::GetSettingsString(L"VmmsNicVlanTextBox.Header"), false, 4094.0, 0);
+        ::BindRange(this->VmmsControllerNumberSlider(), this->VmmsControllerNumberTextBox(), ::GetSettingsString(L"VmmsControllerNumberTextBox.Header"), false, 3.0, 0);
+        ::BindRange(this->VmmsControllerLocationSlider(), this->VmmsControllerLocationTextBox(), ::GetSettingsString(L"VmmsControllerLocationTextBox.Header"), false, 63.0, 0);
         this->SettingsNavigation().SelectedIndex(0);
         this->VmmsActionComboBox().SelectionChanged([Weak = this->get_weak()](
             winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
@@ -3459,7 +3556,7 @@ namespace winrt::NanaBox::implementation
                         else
                         {
                             Data["Port"] = Number(this->VmmsReplicaPortTextBox(), 1, 65535);
-                            Data["Frequency"] = Number(this->VmmsReplicaFrequencyTextBox(), 30, 900);
+                            Data["Frequency"] = std::stoul(Selected(this->VmmsReplicaFrequencyComboBox()));
                             if (Data["Frequency"] != 30 && Data["Frequency"] != 300 && Data["Frequency"] != 900)
                                 throw winrt::hresult_invalid_argument(L"Replication interval must be 30, 300 or 900 seconds.");
                             Data["RecoveryHistory"] = Number(this->VmmsReplicaHistoryTextBox(), 0, 24);
