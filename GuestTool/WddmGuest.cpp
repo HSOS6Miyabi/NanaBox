@@ -6,6 +6,10 @@
 #include <windows.h>
 #include <hvsocket.h>
 #include <sfc.h>
+#include <setupapi.h>
+#include <cfgmgr32.h>
+#include <cfg.h>
+#include <functional>
 #include <nlohmann/json.hpp>
 #include "WddmMapping.h"
 #include <atomic>
@@ -27,6 +31,8 @@
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "sfc.lib")
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "cfgmgr32.lib")
 
 namespace
 {
@@ -42,6 +48,7 @@ namespace
     std::atomic<bool> Stop{false};
     SERVICE_STATUS_HANDLE ServiceHandle = nullptr;
     std::wstring CirnoPath;
+    bool AutomaticRestart = true;
 
     [[noreturn]] void Error(char const* message)
     {
@@ -402,9 +409,162 @@ namespace
         return fs::last_write_time(source) > fs::last_write_time(target);
     }
 
+    // Compare canonical inventories, ignoring enumeration order.
+    std::string DriverGeneration(Json const& inventory)
+    {
+        Json canonical = Json::object();
+        for (auto name : {"Packages", "Files", "ExtraFiles", "DriverVersions"})
+        {
+            std::vector<std::string> entries;
+            for (auto const& value : inventory.value(name, Json::array()))
+                entries.push_back(value.dump());
+            std::sort(entries.begin(), entries.end());
+            entries.erase(std::unique(entries.begin(), entries.end()), entries.end());
+            canonical[name] = entries;
+        }
+        return canonical.dump();
+    }
+
+    struct RenderDevice
+    {
+        std::wstring Instance;
+        bool Disabled = false;
+    };
+
+    template<class Visitor>
+    void VisitVirtualRenderDevices(Visitor visit)
+    {
+        constexpr GUID display{0x4d36e968, 0xe325, 0x11ce, {0xbf,0xc1,0x08,0x00,0x2b,0xe1,0x03,0x18}};
+        HDEVINFO set = SetupDiGetClassDevsW(&display, nullptr, nullptr, DIGCF_PRESENT);
+        if (set == INVALID_HANDLE_VALUE) Error("Enumerate virtual render devices");
+        struct Close { HDEVINFO Set; ~Close() { SetupDiDestroyDeviceInfoList(Set); } } close{set};
+        for (DWORD index = 0;; ++index)
+        {
+            SP_DEVINFO_DATA device{}; device.cbSize = sizeof(device);
+            if (!SetupDiEnumDeviceInfo(set, index, &device))
+            {
+                if (GetLastError() != ERROR_NO_MORE_ITEMS) Error("Enumerate display devices");
+                break;
+            }
+            wchar_t id[4096]{}, service[256]{}, instance[4096]{};
+            DWORD type = 0, size = 0;
+            if (!SetupDiGetDeviceRegistryPropertyW(set, &device, SPDRP_HARDWAREID, &type,
+                reinterpret_cast<PBYTE>(id), sizeof(id), &size) || type != REG_MULTI_SZ ||
+                size > sizeof(id) || size < 2 * sizeof(wchar_t)) continue;
+            if (!SetupDiGetDeviceRegistryPropertyW(set, &device, SPDRP_SERVICE, &type,
+                reinterpret_cast<PBYTE>(service), sizeof(service), nullptr) || type != REG_SZ) continue;
+            service[255] = 0;
+            bool match = false;
+            auto end = id + size / sizeof(wchar_t);
+            for (auto value = id; value < end && *value;)
+            {
+                auto last = std::find(value, end, L'\0');
+                if (last == end) break;
+                if (Wddm::IsVirtualRenderDevice(std::wstring_view(value, last - value), service)) match = true;
+                value = last + 1;
+            }
+            if (!match || !SetupDiGetDeviceInstanceIdW(set, &device, instance,
+                static_cast<DWORD>(std::size(instance)), nullptr)) continue;
+            ULONG status = 0, problem = 0;
+            if (CM_Get_DevNode_Status(&status, &problem, device.DevInst, 0) != CR_SUCCESS)
+                throw std::runtime_error("Cannot query virtual render device state");
+            visit(set, device, RenderDevice{instance, (status & DN_HAS_PROBLEM) && problem == CM_PROB_DISABLED});
+        }
+    }
+
+    std::vector<RenderDevice> VirtualRenderDevices()
+    {
+        std::vector<RenderDevice> devices;
+        VisitVirtualRenderDevices([&](HDEVINFO, SP_DEVINFO_DATA&, RenderDevice const& device)
+            { devices.push_back(device); });
+        return devices;
+    }
+
+    bool RestartVirtualRenderDevice(std::wstring const& instance)
+    {
+        bool found = false, reboot = false;
+        VisitVirtualRenderDevices([&](HDEVINFO set, SP_DEVINFO_DATA& device, RenderDevice const& candidate)
+        {
+            if (!Equal(instance, candidate.Instance)) return;
+            found = true;
+            if (candidate.Disabled) throw std::runtime_error("Virtual render device is disabled");
+            SP_PROPCHANGE_PARAMS change{};
+            change.ClassInstallHeader.cbSize = sizeof(SP_CLASSINSTALL_HEADER);
+            change.ClassInstallHeader.InstallFunction = DIF_PROPERTYCHANGE;
+            change.StateChange = DICS_PROPCHANGE;
+            change.Scope = DICS_FLAG_GLOBAL;
+            if (!SetupDiSetClassInstallParamsW(set, &device, &change.ClassInstallHeader, sizeof(change)) ||
+                !SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, set, &device))
+                Error("Restart virtual render device");
+            SP_DEVINSTALL_PARAMS_W params{}; params.cbSize = sizeof(params);
+            if (!SetupDiGetDeviceInstallParamsW(set, &device, &params))
+                Error("Query virtual render device restart result");
+            reboot = (params.Flags & (DI_NEEDREBOOT | DI_NEEDRESTART)) != 0;
+            if (!reboot)
+            {
+                ULONG status = 0, problem = 0;
+                if (CM_Get_DevNode_Status(&status, &problem, device.DevInst, 0) != CR_SUCCESS ||
+                    !(status & DN_STARTED) || (status & DN_HAS_PROBLEM))
+                    throw std::runtime_error("Virtual render device did not return to the started state");
+            }
+        });
+        if (!found) throw std::runtime_error("Virtual render device is no longer present");
+        return reboot;
+    }
+
+    class RestartTracker
+    {
+        struct Entry
+        {
+            std::string Generation;
+            std::chrono::steady_clock::time_point Retry{};
+            std::string State, Error;
+        };
+        std::map<std::wstring, Entry> Devices;
+    public:
+        Json Update(std::string const& generation, std::vector<RenderDevice> const& devices,
+            std::function<bool(std::wstring const&)> const& restart,
+            std::chrono::steady_clock::time_point now)
+        {
+            std::set<std::wstring> present;
+            Json result = Json::array();
+            for (auto const& device : devices)
+            {
+                auto id = Wddm::Fold(device.Instance);
+                present.insert(id);
+                auto& entry = Devices[id];
+                if (entry.Generation != generation) entry = Entry{generation, {}, {}, {}};
+                if (device.Disabled)
+                {
+                    // Respect administrator-disabled devices and retry only after they are enabled.
+                    entry = Entry{generation, {}, "Disabled", {}};
+                }
+                else if (entry.State != "Restarted" && entry.State != "RebootRequired" && now >= entry.Retry)
+                {
+                    try
+                    {
+                        entry.State = restart(device.Instance) ? "RebootRequired" : "Restarted";
+                        entry.Error.clear();
+                    }
+                    catch (std::exception const& error)
+                    {
+                        entry.State = "RetryPending";
+                        entry.Error = error.what();
+                        entry.Retry = now + std::chrono::minutes(1);
+                    }
+                }
+                result.push_back({{"InstanceId", Utf8(device.Instance)}, {"State", entry.State}, {"Error", entry.Error}});
+            }
+            for (auto it = Devices.begin(); it != Devices.end();)
+                if (!present.count(it->first)) it = Devices.erase(it); else ++it;
+            return result;
+        }
+    };
+
     class Manager
     {
         DriverMount Mount;
+        RestartTracker Restart;
         std::map<std::string, std::unique_ptr<DriverMount>> ExtraMounts;
         Json Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", Json::array()}};
         Links ReadLinks(Key const& key, wchar_t const* name = L"Links")
@@ -524,7 +684,9 @@ namespace
                 if (!Wddm::SafeComponent(package)) throw std::runtime_error("Invalid GPU package");
                 packages.insert(Wddm::Fold(package));
                 auto folder = Mount.Root() / package;
-                if (fs::is_directory(folder) && !Contains(directories, folder.wstring()))
+                if (!fs::is_directory(folder))
+                    Last["Errors"].push_back("GPU package directory is unavailable: " + Utf8(package));
+                else if (!Contains(directories, folder.wstring()))
                     directories.push_back(folder.wstring());
             }
             struct Item { fs::path Source; bool Newer; };
@@ -677,6 +839,21 @@ namespace
             DWORD_PTR ignored = 0;
             SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
                 reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
+            Last["AutomaticRestart"] = AutomaticRestart;
+            Last["Devices"] = Json::array();
+            if (AutomaticRestart && complete && !packages.empty())
+            {
+                try
+                {
+                    Last["Devices"] = Restart.Update(DriverGeneration(wddm), VirtualRenderDevices(),
+                        RestartVirtualRenderDevice, std::chrono::steady_clock::now());
+                    if (Last["Devices"].empty()) Last["RestartStatus"] = "WaitingForVirtualRenderDevice";
+                    for (auto const& device : Last["Devices"])
+                        if (device.at("State") == "RetryPending")
+                            Last["Errors"].push_back(device.at("Error"));
+                }
+                catch (std::exception const& error) { Last["Errors"].push_back(error.what()); }
+            }
             return Last;
         }
         void Cleanup()
@@ -814,6 +991,7 @@ namespace
         {
             Key key(StateKey, KEY_READ);
             CirnoPath = key.Read(L"CirnoPath");
+            AutomaticRestart = key.Read(L"AutomaticRestart") != L"0";
             if (CirnoPath.empty() || !fs::path(CirnoPath).is_absolute())
                 throw std::runtime_error("Mile.Cirno path is not configured");
             Serve();
@@ -824,6 +1002,39 @@ namespace
 
     int SelfTest()
     {
+        if (!Wddm::IsVirtualRenderDevice(L"PCI\\VEN_1414&DEV_008E&SUBSYS_00000000", L"VirtualRender") ||
+            Wddm::IsVirtualRenderDevice(L"PCI\\VEN_1414&DEV_008E0", L"VirtualRender") ||
+            Wddm::IsVirtualRenderDevice(L"PCI\\VEN_10DE&DEV_008E", L"VirtualRender") ||
+            Wddm::IsVirtualRenderDevice(L"PCI\\VEN_1414&DEV_008E", L"BasicDisplay")) return 15;
+        {
+            Json a = {{"Packages", Json::array({"a", "b"})}, {"DriverVersions", Json::array({"1"})}};
+            Json b = {{"Packages", Json::array({"b", "a"})}, {"DriverVersions", Json::array({"1"})}};
+            if (DriverGeneration(a) != DriverGeneration(b)) return 16;
+            b["DriverVersions"] = Json::array({"2"});
+            if (DriverGeneration(a) == DriverGeneration(b)) return 17;
+            RestartTracker tracker;
+            auto now = std::chrono::steady_clock::now();
+            unsigned calls = 0;
+            auto restart = [&](std::wstring const&) { ++calls; return false; };
+            std::vector<RenderDevice> devices = {{L"GPU-A", false}, {L"GPU-B", true}};
+            auto result = tracker.Update("v1", devices, restart, now);
+            if (calls != 1 || result[0]["State"] != "Restarted" || result[1]["State"] != "Disabled") return 18;
+            tracker.Update("v1", devices, restart, now);
+            if (calls != 1) return 19;
+            tracker.Update("v2", devices, restart, now);
+            if (calls != 2) return 20;
+            devices[1].Disabled = false;
+            auto fail = [&](std::wstring const&) -> bool { ++calls; throw std::runtime_error("restart failed"); };
+            result = tracker.Update("v2", devices, fail, now);
+            if (calls != 3 || result[1]["State"] != "RetryPending") return 21;
+            tracker.Update("v2", devices, restart, now);
+            if (calls != 3) return 22;
+            result = tracker.Update("v2", devices, [&](std::wstring const&) { ++calls; return true; },
+                now + std::chrono::minutes(1));
+            if (calls != 4 || result[1]["State"] != "RebootRequired") return 23;
+            tracker.Update("v2", devices, restart, now + std::chrono::minutes(2));
+            if (calls != 4) return 24;
+        }
         auto m = Wddm::MakeMapping(L"gpu.inf_amd64_test", {L"sub\\source.dll", L"target.dll"}, true, true);
         if (!m || m->Source != L"gpu.inf_amd64_test\\sub\\source.dll" ||
             m->Destination != L"target.dll" || m->Directory != L"SysWOW64" || !m->WhenNewer) return 1;

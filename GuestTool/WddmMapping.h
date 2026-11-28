@@ -91,6 +91,14 @@ namespace NanaBox::Wddm
         return value;
     }
 
+    inline bool IsVirtualRenderDevice(std::wstring_view hardwareId, std::wstring_view service)
+    {
+        auto id = Fold(hardwareId);
+        constexpr std::wstring_view prefix = L"pci\\ven_1414&dev_008e";
+        return (id == prefix || (id.rfind(prefix, 0) == 0 && id.size() > prefix.size() && id[prefix.size()] == L'&')) &&
+            Fold(service) == L"virtualrender";
+    }
+
     struct Mapping
     {
         std::wstring Source;

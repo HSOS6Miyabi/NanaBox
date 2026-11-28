@@ -849,7 +849,7 @@ winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> cons
 {
     using Json = nlohmann::json;
     Json Result = {{"Packages", Json::array()}, {"Files", Json::array()}, {"Errors", Json::array()},
-        {"ExtraShares", Json::array()}};
+        {"ExtraShares", Json::array()}, {"DriverVersions", Json::array()}};
     if (!All && Selected.empty()) return winrt::to_hstring(Result.dump());
     std::set<std::wstring> Packages;
     std::map<std::wstring, std::set<std::wstring>> Extras;
@@ -876,6 +876,9 @@ winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> cons
         }
         if (Packages.insert(Wddm::Fold(Package)).second)
             Result["Packages"].push_back(winrt::to_string(Package));
+        Result["DriverVersions"].push_back({{"Device", winrt::to_string(Path)},
+            {"Package", winrt::to_string(Package)}, {"Version", winrt::to_string(RegistryText(Key.Value, L"DriverVersion"))},
+            {"Date", winrt::to_string(RegistryText(Key.Value, L"DriverDate"))}});
         ReadCopyRules(Key.Value, Package, Result);
         if (Wmi)
         {

@@ -1,7 +1,8 @@
 # Run in a Windows guest as administrator after installing the Mile.Cirno Dokany driver.
 param(
     [Parameter(Mandatory=$true)][string]$CirnoDirectory,
-    [string]$Executable
+    [string]$Executable,
+    [switch]$DisableAutomaticGpuRestart
 )
 $ErrorActionPreference = 'Stop'
 if (-not [Environment]::Is64BitProcess) { throw 'Use native 64-bit PowerShell.' }
@@ -64,6 +65,7 @@ Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe
 $key = 'HKLM:\SOFTWARE\NanaBox\GuestTool\Gpu'
 New-Item -Path $key -Force | Out-Null
 New-ItemProperty -Path $key -Name CirnoPath -Value (Join-Path $client 'Mile.Cirno.exe') -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $key -Name AutomaticRestart -Value $(if ($DisableAutomaticGpuRestart) {'0'} else {'1'}) -PropertyType String -Force | Out-Null
 $image = '"' + $destination + '"'
 if ($service) {
     & sc.exe config $name binPath= $image start= auto
