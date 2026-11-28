@@ -1633,6 +1633,10 @@
                 Opacity="0.75"
                 Text="[The Virtual SMB shares setting object array of virtual machine.]"
                 TextWrapping="Wrap" />
+              <TextBlock x:Name="VirtualSmbLiveNote"
+                x:Uid="/VirtualMachineSettingsPage/VirtualSmbLiveNote"
+                Visibility="Collapsed" FontSize="12" Opacity="0.75" TextWrapping="Wrap"
+                Text="Add exports to an existing VSMB device or change automatic mounting while Windows is running. Shut down the VM to remove or replace exports." />
               <StackPanel x:Name="VirtualSmbSharePanel" Spacing="4" />
               <Button
                 x:Name="AddVirtualSmbShareButton"

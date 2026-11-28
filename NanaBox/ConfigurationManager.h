@@ -40,6 +40,12 @@ namespace NanaBox
     nlohmann::json MakeHcsPlan9Modification(Plan9ShareConfiguration const& Share, bool Add);
     void ComputeSystemModifyPlan9Share(winrt::com_ptr<ComputeSystem> const& Instance,
         Plan9ShareConfiguration const& Share, bool Add);
+    nlohmann::json MakeHcsVirtualSmbShare(VirtualSmbShareConfiguration const& Share);
+    nlohmann::json MakeHcsVirtualSmbAddition(VirtualSmbShareConfiguration const& Share);
+    bool EqualVirtualSmbShareName(VirtualSmbShareConfiguration const& Left, VirtualSmbShareConfiguration const& Right);
+    void ValidateVirtualSmbHostDirectory(VirtualSmbShareConfiguration const& Share);
+    void ComputeSystemAddVirtualSmbShare(winrt::com_ptr<ComputeSystem> const& Instance,
+        VirtualSmbShareConfiguration const& Share);
     nlohmann::json MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
         nlohmann::json const& HcsConfiguration);
 

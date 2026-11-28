@@ -333,6 +333,33 @@ int WINAPI wWinMain(
                         Adds != (Mode == 3 ? 3u : (Mode ? 1u : 2u)) || Reports != (Mode ? 1u : 0u)) return 44;
                 }
             }
+            {
+                NanaBox::VirtualSmbShareConfiguration Old, Changed, Added, Removed;
+                Old.Name = "Projects"; Old.Path = "C:\\Projects";
+                Changed = Old; Changed.AutoMount = false;
+                Added.Name = "Extra"; Added.Path = "C:\\Extra";
+                Removed.Name = "Retained"; Removed.Path = "C:\\Retained";
+                auto Same = [](auto const& A, auto const& B)
+                { return NanaBox::MakeHcsVirtualSmbShare(A) == NanaBox::MakeHcsVirtualSmbShare(B); };
+                auto Request = NanaBox::MakeHcsVirtualSmbAddition(Added);
+                if (Request.at("ResourcePath") != "VirtualMachine/Devices/VirtualSmb/Shares" ||
+                    Request.at("RequestType") != "Add" || Request["Settings"].contains("AutoMount")) return 53;
+                for (unsigned Mode = 0; Mode < 3; ++Mode)
+                {
+                    auto New = Changed;
+                    if (Mode == 2) New.ReadOnly = true;
+                    unsigned Adds = 0, Reports = 0;
+                    auto Actual = NanaBox::ReconcileVirtualSmbAdditions(
+                        std::vector<NanaBox::VirtualSmbShareConfiguration>{Old, Removed},
+                        std::vector<NanaBox::VirtualSmbShareConfiguration>{New, Added},
+                        NanaBox::EqualVirtualSmbShareName, Same,
+                        [&](auto const&) { ++Adds; if (Mode == 1) throw std::runtime_error("add failed"); },
+                        [&](auto const&, char const*) { ++Reports; });
+                    if (Actual.size() != (Mode == 1 ? 2u : 3u) || Adds != 1 ||
+                        Reports != (Mode ? 2u : 1u) || Actual[0].AutoMount != (Mode == 2) ||
+                        Actual[0].ReadOnly || Actual[1].Name != Removed.Name) return 53;
+                }
+            }
             Config.ProcessorLimit = 75000;
             Config.ProcessorWeight = 250;
             Config.EnableDeferredCommit = true;

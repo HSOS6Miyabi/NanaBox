@@ -1591,4 +1591,5 @@
   <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>Opt-in: HCS can acquire the backup privilege when opening files. Enable only for trusted guests and exports.</value></data>
   <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>Support cloud files</value></data>
   <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>Enable the HCS cloud file compatibility option.</value></data>
+  <data name="VirtualSmbLiveNote.Text" xml:space="preserve"><value>Add exports to an existing VSMB device or change automatic mounting while Windows is running. Shut down the VM to remove or replace exports.</value></data>
 </root>

@@ -318,6 +318,38 @@ void NanaBox::ComputeSystemModifyPlan9Share(winrt::com_ptr<ComputeSystem> const&
     Instance->Modify(winrt::to_hstring(MakeHcsPlan9Modification(Share, Add).dump()));
 }
 
+nlohmann::json NanaBox::MakeHcsVirtualSmbShare(VirtualSmbShareConfiguration const& Share)
+{
+    return {{"Name", Share.Name}, {"Path", ::GetAbsoluteUtf8Path(Share.Path)},
+        {"Options", MakeVirtualSmbOptions(Share)}};
+}
+
+nlohmann::json NanaBox::MakeHcsVirtualSmbAddition(VirtualSmbShareConfiguration const& Share)
+{
+    return {{"ResourcePath", "VirtualMachine/Devices/VirtualSmb/Shares"},
+        {"RequestType", "Add"}, {"Settings", MakeHcsVirtualSmbShare(Share)}};
+}
+
+bool NanaBox::EqualVirtualSmbShareName(VirtualSmbShareConfiguration const& Left, VirtualSmbShareConfiguration const& Right)
+{
+    return SamePlan9Name(Left.Name, Right.Name);
+}
+
+void NanaBox::ValidateVirtualSmbHostDirectory(VirtualSmbShareConfiguration const& Share)
+{
+    auto Path = winrt::to_hstring(::GetAbsoluteUtf8Path(Share.Path));
+    auto Attributes = ::GetFileAttributesW(Path.c_str());
+    if (Attributes == INVALID_FILE_ATTRIBUTES || !(Attributes & FILE_ATTRIBUTE_DIRECTORY))
+        throw winrt::hresult_invalid_argument(winrt::to_hstring("VSMB share directory does not exist: " + Share.Path));
+}
+
+void NanaBox::ComputeSystemAddVirtualSmbShare(winrt::com_ptr<ComputeSystem> const& Instance,
+    VirtualSmbShareConfiguration const& Share)
+{
+    ValidateVirtualSmbHostDirectory(Share);
+    Instance->Modify(winrt::to_hstring(MakeHcsVirtualSmbAddition(Share).dump()));
+}
+
 nlohmann::json NanaBox::MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
     nlohmann::json const& HcsConfiguration)
 {
@@ -735,11 +767,7 @@ std::string NanaBox::MakeHcsConfiguration(
             for (NanaBox::VirtualSmbShareConfiguration const& VirtualSmbShare
                 : Configuration.VirtualSmbShares)
             {
-                nlohmann::json Current;
-                Current["Name"] = VirtualSmbShare.Name;
-                Current["Path"] = ::GetAbsoluteUtf8Path(VirtualSmbShare.Path);
-                Current["Options"] = MakeVirtualSmbOptions(VirtualSmbShare);
-                VirtualSmbShares.push_back(Current);
+                VirtualSmbShares.push_back(NanaBox::MakeHcsVirtualSmbShare(VirtualSmbShare));
             }
             if (!VirtualSmbShares.empty())
             {

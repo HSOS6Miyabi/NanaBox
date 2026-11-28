@@ -1146,6 +1146,8 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
                 throw winrt::hresult_invalid_argument(L"Each Plan 9 share must refer to an existing host directory.");
         }
     }
+    for (auto const& Share : this->m_Configuration.VirtualSmbShares)
+        NanaBox::ValidateVirtualSmbHostDirectory(Share);
     this->m_VirtualMachine = winrt::make_self<NanaBox::ComputeSystem>(
         HcsVmId, winrt::to_hstring(HcsConfiguration));
 
@@ -1525,6 +1527,57 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
             }
             try { this->PublishPlan9Inventory(); }
             catch (...) { Report(L"Publish Plan9 inventory"); }
+        }
+    }
+
+    {
+        auto const& Current = this->m_Configuration.VirtualSmbShares;
+        auto const& Desired = Configuration.VirtualSmbShares;
+        auto SameProvider = [](auto const& Left, auto const& Right)
+        {
+            return NanaBox::MakeHcsVirtualSmbShare(Left) == NanaBox::MakeHcsVirtualSmbShare(Right);
+        };
+        bool Changed = Current.size() != Desired.size() ||
+            !std::equal(Current.begin(), Current.end(), Desired.begin(), Desired.end(),
+                [&](auto const& Left, auto const& Right)
+                { return Left.AutoMount == Right.AutoMount && SameProvider(Left, Right); });
+        if (Changed)
+        {
+            try
+            {
+                if (this->m_Configuration.GuestType != NanaBox::GuestType::Windows || this->m_VirtualMachinePaused)
+                    throw winrt::hresult_invalid_argument(L"Live VSMB changes require a running Windows guest.");
+                NanaBox::ValidatePlan9Shares(Configuration);
+                this->m_Configuration.VirtualSmbShares = NanaBox::ReconcileVirtualSmbAdditions(
+                    Current, Desired, NanaBox::EqualVirtualSmbShareName, SameProvider,
+                    [&](auto const& Share)
+                    {
+                        if (this->m_VirtualSmbManifest.empty())
+                            throw winrt::hresult_invalid_argument(L"Configure the first VSMB export while the VM is off.");
+                        // Prepare the inventory entry before invoking HCS. Publish it only on success.
+                        auto Entry = nlohmann::json{{"Name", Share.Name}, {"AutoMount", Share.AutoMount},
+                            {"ReadOnly", Share.ReadOnly}, {"NoDirectmap", Share.NoDirectmap}};
+                        auto Inventory = this->m_VirtualSmbManifest;
+                        Inventory.push_back(std::move(Entry));
+                        NanaBox::ComputeSystemAddVirtualSmbShare(this->m_VirtualMachine, Share);
+                        this->m_VirtualSmbManifest = std::move(Inventory);
+                    },
+                    [&](auto const& Share, char const* Action)
+                    {
+                        auto Label = winrt::to_hstring(std::string(Action) + " VSMB share " + Share.Name);
+                        if (std::string_view(Action) == "Add") Report(Label.c_str());
+                        else Errors += std::wstring(Label.c_str()) + L": Shut down the VM before removing or replacing a VSMB export.\n";
+                    });
+                for (auto& Entry : this->m_VirtualSmbManifest)
+                    for (auto const& Share : this->m_Configuration.VirtualSmbShares)
+                        if (Entry.at("Name") == Share.Name) Entry["AutoMount"] = Share.AutoMount;
+            }
+            catch (...)
+            {
+                Report(L"VSMB shares");
+            }
+            try { this->PublishPlan9Inventory(); }
+            catch (...) { Report(L"Publish VSMB inventory"); }
         }
     }
 

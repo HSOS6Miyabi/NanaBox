@@ -1591,4 +1591,5 @@
   <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>启用后，HCS 打开文件时可取得备份特权。仅对受信任的客户机和共享目录启用。</value></data>
   <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>支持云文件</value></data>
   <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>启用 HCS 云文件兼容选项。</value></data>
+  <data name="VirtualSmbLiveNote.Text" xml:space="preserve"><value>Windows 客户机运行期间，可向已启用的 VSMB 设备添加共享或修改自动挂载设置。删除或替换宿主机共享需要先关闭虚拟机。</value></data>
 </root>

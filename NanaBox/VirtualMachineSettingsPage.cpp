@@ -721,18 +721,22 @@ namespace winrt::NanaBox::implementation
         }
 
         {
-            this->VirtualSmbShareSection().Visibility(this->m_MainWindow
-                ? winrt::Visibility::Collapsed
-                : winrt::Visibility::Visible);
+            bool CanEdit = !this->m_MainWindow ||
+                this->m_Configuration.GuestType == NanaBox::GuestType::Windows;
+            this->VirtualSmbShareSection().Visibility(CanEdit
+                ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+            this->VirtualSmbLiveNote().Visibility(this->m_MainWindow
+                ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
             this->VirtualSmbSharePanel().Children().Clear();
             this->m_VirtualSmbShareSettings.clear();
-            this->AddVirtualSmbShareButton().IsEnabled(!this->m_MainWindow);
-            if (!this->m_MainWindow)
+            this->AddVirtualSmbShareButton().IsEnabled(CanEdit && (!this->m_MainWindow ||
+                !this->m_Configuration.VirtualSmbShares.empty() || this->m_Configuration.Gpu.EnableHostDriverStore));
+            if (CanEdit)
             {
                 for (auto const& Configuration :
                     this->m_Configuration.VirtualSmbShares)
                 {
-                    this->AddVirtualSmbShare(Configuration);
+                    this->AddVirtualSmbShare(Configuration, this->m_MainWindow != nullptr);
                 }
             }
         }
@@ -1161,7 +1165,7 @@ namespace winrt::NanaBox::implementation
         }
 
         {
-            if (!this->m_MainWindow)
+            if (!this->m_MainWindow || Result.GuestType == NanaBox::GuestType::Windows)
             {
                 Result.VirtualSmbShares.clear();
                 for (VirtualSmbShareSettings const& Row :
@@ -3181,7 +3185,7 @@ namespace winrt::NanaBox::implementation
     }
 
     void VirtualMachineSettingsPage::AddVirtualSmbShare(
-        NanaBox::VirtualSmbShareConfiguration const& Configuration)
+        NanaBox::VirtualSmbShareConfiguration const& Configuration, bool Existing)
     {
         VirtualSmbShareSettings Row;
         Row.Container = winrt::StackPanel();
@@ -3247,8 +3251,14 @@ namespace winrt::NanaBox::implementation
             Row.Options.emplace(Key, Choice);
         }
         Row.Container.Children().Append(Advanced);
+        Row.ReadOnly.IsEnabled(!Existing);
+        Row.NoDirectmap.IsEnabled(!Existing);
+        Row.Path.IsEnabled(!Existing);
+        Row.Name.IsEnabled(!Existing);
+        for (auto const& [Key, Control] : Row.Options) Control.IsEnabled(!Existing);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
+        RemoveButton.IsEnabled(!Existing);
         winrt::AutomationProperties::SetAutomationId(RemoveButton, L"SmbRemove");
         RemoveButton.Content(winrt::box_value(
             ::GetSettingsString(L"Remove")));

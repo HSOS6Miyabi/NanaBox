@@ -251,7 +251,7 @@ namespace winrt::NanaBox::implementation
             NanaBox::Plan9ShareConfiguration const& Configuration);
 
         void AddVirtualSmbShare(
-            NanaBox::VirtualSmbShareConfiguration const& Configuration);
+            NanaBox::VirtualSmbShareConfiguration const& Configuration, bool Existing = false);
     };
 }
 

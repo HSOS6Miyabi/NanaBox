@@ -141,6 +141,34 @@ function Test-WindowsPlan9([string]$runtimeId,$cfg) {
         Write-Host "Windows HCS 9P share lifecycle verified: $($share.Name)"
     }
 }
+function Test-WindowsVsmb([string]$runtimeId,$cfg) {
+    foreach ($share in @($cfg.VirtualSmbShares | Where-Object {$_})) {
+        $name = $share.Name
+        $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$name} 'VsmbMount'
+        $row = @($result.VirtualSmbShares | Where-Object {$_.Name -ceq $name -and $_.Available})
+        if ($row.Count -ne 1 -or -not $row[0].Mounted -or $row[0].Suppressed) {
+            throw "Windows VSMB mount failed: $name"
+        }
+        $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$name} 'VsmbUnmount'
+        $row = @($result.VirtualSmbShares | Where-Object {$_.Name -ceq $name -and $_.Available})
+        if ($row.Count -ne 1 -or $row[0].Mounted -or -not $row[0].Suppressed -or -not $result.NativeTransportActive) {
+            throw "Windows VSMB unmount failed: $name"
+        }
+        Start-Sleep -Seconds 6
+        $result = Guest-Request $runtimeId 'Plan9Shares' @{}
+        $row = @($result.VirtualSmbShares | Where-Object {$_.Name -ceq $name -and $_.Available})
+        if ($row.Count -ne 1 -or $row[0].Mounted -or -not $row[0].Suppressed) {
+            throw "Windows VSMB automatic mounting suppression failed: $name"
+        }
+        if ($share.AutoMount -ne $false) {
+            $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$name} 'VsmbMount'
+            if (-not @($result.VirtualSmbShares | Where-Object {$_.Name -ceq $name -and $_.Mounted}).Count) {
+                throw "Windows VSMB remount failed: $name"
+            }
+        }
+        Write-Host "Windows HCS VSMB mount lifecycle verified: $name"
+    }
+}
 function Wait-GpuShares([string]$runtimeId,[string]$guestType,$cfg) {
     $until = [DateTime]::UtcNow.AddMinutes(4)
     $last = 'Guest share service has not responded.'
@@ -153,7 +181,11 @@ function Wait-GpuShares([string]$runtimeId,[string]$guestType,$cfg) {
                 $missing = @($expected | Where-Object {
                     $share = $_
                     -not @($status.VirtualSmbShares | Where-Object {
-                        $_.Name -ceq $share.Name -and $_.Mounted -and [bool]$_.ReadOnly -eq [bool]$share.ReadOnly
+                        $_.Name -ceq $share.Name -and $_.Available -and
+                        ($share.AutoMount -eq $false -or $_.Mounted) -and
+                        [bool]$_.ReadOnly -eq [bool]$share.ReadOnly -and
+                        [bool]$_.AutoMount -eq ($share.AutoMount -ne $false) -and
+                        [bool]$_.NoDirectmap -eq [bool]$share.NoDirectmap
                     }).Count
                 })
                 if ($status.Backend -eq 'VirtualSmb' -and $status.NativeTransportActive -and
@@ -194,7 +226,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
-        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg; Test-WindowsVsmb $vm.RuntimeId $cfg }
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if ($guest.OperatingSystem -ne $guestType) { throw "Expected guest OS $guestType" }
         $gpu = $guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8
@@ -220,7 +252,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-NewRuntime $cfg.Name $vm.RuntimeId $process
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
-        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg; Test-WindowsVsmb $vm.RuntimeId $cfg }
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
         if ($connection.LocalAddress -notin $hostAddresses) { throw 'Mirrored connectivity failed after restart' }
 
@@ -239,7 +271,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
-        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg; Test-WindowsVsmb $vm.RuntimeId $cfg }
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if (($guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8) -notmatch $gpuPattern) { throw 'GPU was not restored' }
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
