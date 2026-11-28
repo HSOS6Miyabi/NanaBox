@@ -1539,4 +1539,22 @@
     <value>Selected HCS system properties</value>
   </data>
   <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB shares are mounted automatically under ProgramData. GPU driver mappings and restart status are included in the mount report.</value></data>
+  <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>Add GPU partition adapter</value></data>
+  <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>Remove selected GPU partition adapter</value></data>
+  <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>Set selected GPU partition quotas</value></data>
+  <data name="VmmsGpuSourceComboBox.Header" xml:space="preserve"><value>Physical GPU for new partition</value></data>
+  <data name="VmmsGpuQuotaNote.Text" xml:space="preserve"><value>GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions.</value></data>
+  <data name="VmmsGpuAutomatic" xml:space="preserve"><value>Automatic GPU selection</value></data>
+  <data name="VmmsGpuMinVRAMTextBox.Header" xml:space="preserve"><value>Minimum VRAM (bytes)</value></data>
+  <data name="VmmsGpuOptimalVRAMTextBox.Header" xml:space="preserve"><value>Optimal VRAM (bytes)</value></data>
+  <data name="VmmsGpuMaxVRAMTextBox.Header" xml:space="preserve"><value>Maximum VRAM (bytes)</value></data>
+  <data name="VmmsGpuMinEncodeTextBox.Header" xml:space="preserve"><value>Minimum video encode</value></data>
+  <data name="VmmsGpuOptimalEncodeTextBox.Header" xml:space="preserve"><value>Optimal video encode</value></data>
+  <data name="VmmsGpuMaxEncodeTextBox.Header" xml:space="preserve"><value>Maximum video encode</value></data>
+  <data name="VmmsGpuMinDecodeTextBox.Header" xml:space="preserve"><value>Minimum video decode</value></data>
+  <data name="VmmsGpuOptimalDecodeTextBox.Header" xml:space="preserve"><value>Optimal video decode</value></data>
+  <data name="VmmsGpuMaxDecodeTextBox.Header" xml:space="preserve"><value>Maximum video decode</value></data>
+  <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>Minimum compute</value></data>
+  <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>Optimal compute</value></data>
+  <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>Maximum compute</value></data>
 </root>

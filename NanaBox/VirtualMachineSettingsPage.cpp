@@ -2180,6 +2180,7 @@ namespace winrt::NanaBox::implementation
         if (auto Box = this->VmmsCheckpointsComboBox()) Box.Items().Clear();
         if (auto Box = this->VmmsDevicesComboBox()) Box.Items().Clear();
         if (auto Box = this->VmmsDeviceSwitchComboBox()) Box.Items().Clear();
+        if (auto Box = this->VmmsGpuSourceComboBox()) Box.Items().Clear();
     }
 
     void VirtualMachineSettingsPage::VmmsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
@@ -2320,6 +2321,35 @@ namespace winrt::NanaBox::implementation
                         Data["Weight"] = Number(this->VmmsCpuWeightTextBox(), 1, 10000);
                         Data["Nested"] = this->VmmsCpuNestedCheckBox().IsChecked().Value();
                         if (Data["Reserve"] > Data["Maximum"]) throw winrt::hresult_invalid_argument(L"CPU reserve exceeds maximum.");
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsGpuAdd" || Action == L"VmmsGpuRemove" || Action == L"VmmsGpuQuotas")
+                    {
+                        if (Action == L"VmmsGpuAdd") Data["GpuId"] = Selected(this->VmmsGpuSourceComboBox());
+                        else Data["DeviceId"] = Selected(this->VmmsDevicesComboBox());
+                        if (Action != L"VmmsGpuRemove")
+                        {
+                            Json Quotas = Json::object();
+                            auto SetQuota = [&](char const* Key, winrt::TextBox const& Box)
+                            {
+                                if (!Box.Text().empty()) Quotas[Key] = std::to_string(Number(Box, 1, UINT64_MAX));
+                            };
+                            SetQuota("MinPartitionVRAM", this->VmmsGpuMinVRAMTextBox());
+                            SetQuota("OptimalPartitionVRAM", this->VmmsGpuOptimalVRAMTextBox());
+                            SetQuota("MaxPartitionVRAM", this->VmmsGpuMaxVRAMTextBox());
+                            SetQuota("MinPartitionEncode", this->VmmsGpuMinEncodeTextBox());
+                            SetQuota("OptimalPartitionEncode", this->VmmsGpuOptimalEncodeTextBox());
+                            SetQuota("MaxPartitionEncode", this->VmmsGpuMaxEncodeTextBox());
+                            SetQuota("MinPartitionDecode", this->VmmsGpuMinDecodeTextBox());
+                            SetQuota("OptimalPartitionDecode", this->VmmsGpuOptimalDecodeTextBox());
+                            SetQuota("MaxPartitionDecode", this->VmmsGpuMaxDecodeTextBox());
+                            SetQuota("MinPartitionCompute", this->VmmsGpuMinComputeTextBox());
+                            SetQuota("OptimalPartitionCompute", this->VmmsGpuOptimalComputeTextBox());
+                            SetQuota("MaxPartitionCompute", this->VmmsGpuMaxComputeTextBox());
+                            if (Action == L"VmmsGpuQuotas" && Quotas.empty())
+                                throw winrt::hresult_invalid_argument(L"Specify at least one GPU quota to change.");
+                            Data["Quotas"] = std::move(Quotas);
+                        }
                         Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
                     }
                     else if (Action == L"VmmsDiskAttach" || Action == L"VmmsDvdAdd" || Action == L"VmmsNicAdd" || Action == L"VmmsSecureBoot")
@@ -2477,6 +2507,10 @@ namespace winrt::NanaBox::implementation
                     auto Devices = Details.value("Devices", Json::array());
                     Fill(this->VmmsDevicesComboBox(), Devices, "");
                     Fill(this->VmmsDeviceSwitchComboBox(), Details.value("Switches", Json::array()), "");
+                    auto Sources = Details.value("PartitionableGpus", Json::array());
+                    for (auto& Source : Sources)
+                        if (Source.at("Id") == "auto") Source["Name"] = winrt::to_string(::GetSettingsString(L"VmmsGpuAutomatic"));
+                    Fill(this->VmmsGpuSourceComboBox(), Sources, "auto");
                 }
             }
             if (!Result.contains("Success")) Result["Success"] = true;

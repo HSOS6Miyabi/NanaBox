@@ -303,6 +303,30 @@ namespace NanaBox
                             Machine["TpmEnabled"] = Action == "VmmsTpmEnable";
                         }
                     }
+                    else if (Action == "VmmsGpuAdd" || Action == "VmmsGpuRemove" || Action == "VmmsGpuQuotas")
+                    {
+                        if (Machine.at("State") != "Off") throw winrt::hresult_invalid_argument();
+                        auto& Devices = Machine.at("Devices");
+                        if (Action == "VmmsGpuAdd")
+                        {
+                            auto Source = Text("GpuId");
+                            if (Source != "auto" && Source != "mock-gpu-path") throw winrt::hresult_invalid_argument();
+                            Devices.push_back(Json{{"Id", "Gpu:" + NewId()}, {"Name", "GPU partition adapter"},
+                                {"Kind", "Gpu"}, {"InstancePath", Source == "auto" ? "mock-gpu-path" : Source},
+                                {"Quotas", A.at("Quotas")}});
+                        }
+                        else
+                        {
+                            auto Device = Find(Devices, Text("DeviceId"));
+                            if (Device->at("Kind") != "Gpu") throw winrt::hresult_invalid_argument();
+                            if (Action == "VmmsGpuRemove") Devices.erase(Device);
+                            else
+                            {
+                                if (A.at("Quotas").empty()) throw winrt::hresult_invalid_argument();
+                                (*Device)["Quotas"].update(A.at("Quotas"));
+                            }
+                        }
+                    }
                     else if (Action == "VmmsDiskAttach" || Action == "VmmsDvdAdd" || Action == "VmmsNicAdd")
                     {
                         auto& Devices = Machine.at("Devices");
@@ -384,7 +408,9 @@ namespace NanaBox
                 Result["SelectedId"] = Selected.empty() ? Json() : Json(Selected);
                 Result["Details"] = Selected.empty() ? Json() : Json{{"VM", *Find(Data->Machines, Selected)},
                     {"Checkpoints", Data->Checkpoints.at(Selected)}, {"Devices", Find(Data->Machines, Selected)->at("Devices")},
-                    {"Switches", Json::array({Json{{"Id", "8ef4654f-3c3e-46a3-a05d-002c3e702d72"}, {"Name", "Test switch"}}})}};
+                    {"Switches", Json::array({Json{{"Id", "8ef4654f-3c3e-46a3-a05d-002c3e702d72"}, {"Name", "Test switch"}}})},
+                    {"PartitionableGpus", Json::array({Json{{"Id", "auto"}, {"Name", "Automatic GPU selection"}},
+                        Json{{"Id", "mock-gpu-path"}, {"Name", "Mock partitionable GPU"}}})}};
             }
             else if (Action == "SwitchList") Result = Data->Switches;
             else if (Action == "AdapterList")

@@ -1743,6 +1743,9 @@
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationResume" Tag="VmmsReplicationResume" Content="Resume replication" AutomationProperties.AutomationId="VmmsReplicationResume" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationRemove" Tag="VmmsReplicationRemove" Content="Remove replication relationship" AutomationProperties.AutomationId="VmmsReplicationRemove" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsCpuPolicy" Tag="VmmsCpuPolicy" Content="Set CPU allocation and nested virtualization" AutomationProperties.AutomationId="VmmsCpuPolicy" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsGpuAdd" Tag="VmmsGpuAdd" Content="Add GPU partition adapter" AutomationProperties.AutomationId="VmmsGpuAdd" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsGpuRemove" Tag="VmmsGpuRemove" Content="Remove selected GPU partition adapter" AutomationProperties.AutomationId="VmmsGpuRemove" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsGpuQuotas" Tag="VmmsGpuQuotas" Content="Set selected GPU partition quotas" AutomationProperties.AutomationId="VmmsGpuQuotas" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsDiskAttach" Tag="VmmsDiskAttach" Content="Attach virtual hard disk" AutomationProperties.AutomationId="VmmsDiskAttach" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsDiskDetach" Tag="VmmsDiskDetach" Content="Detach selected hard disk" AutomationProperties.AutomationId="VmmsDiskDetach" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsDiskQoS" Tag="VmmsDiskQoS" Content="Set selected disk IOPS limits" AutomationProperties.AutomationId="VmmsDiskQoS" />
@@ -1800,6 +1803,48 @@
                 <TextBox x:Name="VmmsCpuWeightTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuWeightTextBox" Header="CPU relative weight" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuWeightTextBox" />
                 <CheckBox x:Name="VmmsCpuNestedCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuNestedCheckBox" Content="Expose virtualization extensions" AutomationProperties.AutomationId="VmmsCpuNestedCheckBox" />
                 <ComboBox x:Name="VmmsDevicesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicesComboBox" Header="Selected device or integration service" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsDevicesComboBox"></ComboBox>
+                <ComboBox x:Name="VmmsGpuSourceComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuSourceComboBox" Header="Physical GPU for new partition" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGpuSourceComboBox" />
+                <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsGpuQuotaNote" TextWrapping="Wrap" Opacity="0.75" Text="GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions." />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBox Grid.Column="0" x:Name="VmmsGpuMinVRAMTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMinVRAMTextBox" Header="Minimum VRAM (bytes)" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMinVRAMTextBox" />
+                  <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalVRAMTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalVRAMTextBox" Header="Optimal VRAM (bytes)" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalVRAMTextBox" />
+                  <TextBox Grid.Column="2" x:Name="VmmsGpuMaxVRAMTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxVRAMTextBox" Header="Maximum VRAM (bytes)" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxVRAMTextBox" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBox Grid.Column="0" x:Name="VmmsGpuMinEncodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMinEncodeTextBox" Header="Minimum video encode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMinEncodeTextBox" />
+                  <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalEncodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalEncodeTextBox" Header="Optimal video encode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalEncodeTextBox" />
+                  <TextBox Grid.Column="2" x:Name="VmmsGpuMaxEncodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxEncodeTextBox" Header="Maximum video encode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxEncodeTextBox" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBox Grid.Column="0" x:Name="VmmsGpuMinDecodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMinDecodeTextBox" Header="Minimum video decode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMinDecodeTextBox" />
+                  <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalDecodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalDecodeTextBox" Header="Optimal video decode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalDecodeTextBox" />
+                  <TextBox Grid.Column="2" x:Name="VmmsGpuMaxDecodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxDecodeTextBox" Header="Maximum video decode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxDecodeTextBox" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBox Grid.Column="0" x:Name="VmmsGpuMinComputeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMinComputeTextBox" Header="Minimum compute" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMinComputeTextBox" />
+                  <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalComputeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalComputeTextBox" Header="Optimal compute" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalComputeTextBox" />
+                  <TextBox Grid.Column="2" x:Name="VmmsGpuMaxComputeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxComputeTextBox" Header="Maximum compute" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxComputeTextBox" />
+                </Grid>
                 <ComboBox x:Name="VmmsDeviceSwitchComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceSwitchComboBox" Header="Destination virtual switch" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsDeviceSwitchComboBox"></ComboBox>
                 <TextBox x:Name="VmmsDeviceNameTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceNameTextBox" Header="New network adapter name" AutomationProperties.AutomationId="VmmsDeviceNameTextBox" />
                 <TextBox x:Name="VmmsDevicePathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicePathTextBox" Header="VHD/VHDX or ISO path (empty to eject DVD)" AutomationProperties.AutomationId="VmmsDevicePathTextBox" />

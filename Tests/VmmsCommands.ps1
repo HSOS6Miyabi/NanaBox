@@ -27,9 +27,10 @@ function Record-Call($Name,$Arguments) {
     $record = @{Name=$Name;Parameters=@{}}
     foreach ($key in $Arguments.Keys) {
         $value = $Arguments[$key]
-        if ($key -in @('VM','VMSnapshot','VMHardDiskDrive','VMDvdDrive','VMNetworkAdapter','VMSwitch')) { $value = [string]$value.Id }
+        if ($key -in @('VM','VMSnapshot','VMHardDiskDrive','VMDvdDrive','VMNetworkAdapter','VMSwitch','VMGpuPartitionAdapter')) { $value = [string]$value.Id }
         elseif ($key -eq 'VMIntegrationService') { $value = [string]$value.Name }
         elseif ($value -is [System.Management.Automation.SwitchParameter]) { $value = $value.IsPresent }
+        if ($key -match '^(Min|Optimal|Max)Partition(VRAM|Encode|Decode|Compute)$') { $value = [string]$value }
         $record.Parameters[$key] = $value
     }
     Add-Content -LiteralPath $CallPath -Value (ConvertTo-Json -InputObject $record -Depth 8 -Compress) -Encoding UTF8
@@ -45,6 +46,11 @@ function Get-VMSnapshot { param($VM) $script:checkpoint }
 function Get-VMHardDiskDrive { param($VM) [pscustomobject]@{Id='disk1';ControllerType='SCSI';ControllerNumber=0;ControllerLocation=0;Path='C:\test.vhdx';MinimumIOPS=0;MaximumIOPS=0} }
 function Get-VMDvdDrive { param($VM) [pscustomobject]@{Id='dvd1';ControllerType='SCSI';ControllerNumber=0;ControllerLocation=1;Path='C:\test.iso'} }
 function Get-VMNetworkAdapter { param($VM) [pscustomobject]@{Id='nic1';Name='NIC';SwitchName='Test switch';MacAddress='00155D123456'} }
+function Get-VMHostPartitionableGpu { if (!$a.MockNoGpu) { [pscustomobject]@{Name='mock-gpu-path';PartitionCount=4;ValidPartitionCounts=@(1,2,4)} } }
+function Get-VMGpuPartitionAdapter { [CmdletBinding()] param($VM) [pscustomobject]@{Id='gpu1';InstancePath='mock-gpu-path';MinPartitionVRAM=100;OptimalPartitionVRAM=200;MaxPartitionVRAM=300} }
+function Add-VMGpuPartitionAdapter { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$InstancePath,[uint64]$MinPartitionVRAM,[uint64]$OptimalPartitionVRAM,[uint64]$MaxPartitionVRAM,[uint64]$MinPartitionEncode,[uint64]$OptimalPartitionEncode,[uint64]$MaxPartitionEncode,[uint64]$MinPartitionDecode,[uint64]$OptimalPartitionDecode,[uint64]$MaxPartitionDecode,[uint64]$MinPartitionCompute,[uint64]$OptimalPartitionCompute,[uint64]$MaxPartitionCompute) Record-Call 'Add-VMGpuPartitionAdapter' $PSBoundParameters }
+function Set-VMGpuPartitionAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMGpuPartitionAdapter,[uint64]$MinPartitionVRAM,[uint64]$OptimalPartitionVRAM,[uint64]$MaxPartitionVRAM,[uint64]$MinPartitionEncode,[uint64]$OptimalPartitionEncode,[uint64]$MaxPartitionEncode,[uint64]$MinPartitionDecode,[uint64]$OptimalPartitionDecode,[uint64]$MaxPartitionDecode,[uint64]$MinPartitionCompute,[uint64]$OptimalPartitionCompute,[uint64]$MaxPartitionCompute) Record-Call 'Set-VMGpuPartitionAdapter' $PSBoundParameters }
+function Remove-VMGpuPartitionAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMGpuPartitionAdapter) Record-Call 'Remove-VMGpuPartitionAdapter' $PSBoundParameters }
 function Get-VMIntegrationService { param($VM) [pscustomobject]@{Name='Heartbeat';Enabled=$true;PrimaryStatusDescription='OK'} }
 function Get-VMSwitch { param([guid]$Id) $switch=[pscustomobject]@{Id=[guid]'8ef4654f-3c3e-46a3-a05d-002c3e702d72';Name='Test switch';SwitchType='Private'}; if (!$PSBoundParameters.ContainsKey('Id') -or $Id -eq $switch.Id) {$switch} }
 function Add-VMHardDiskDrive { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$ControllerType,[int]$ControllerNumber,[int]$ControllerLocation,[string]$Path) Record-Call 'Add-VMHardDiskDrive' $PSBoundParameters }
@@ -193,6 +199,20 @@ try {
     $disk = Join-Path $temp 'test.vhdx'; [IO.File]::WriteAllText($disk,'test')
     $iso = Join-Path $temp 'test.iso'; [IO.File]::WriteAllText($iso,'test')
     Test-Command 'VmmsCpuPolicy' @{Reserve=10;Maximum=75;Weight=200;Nested=$true} 'Set-VMProcessor' @{VM=$vm;Reserve=10;Maximum=75;RelativeWeight=200;ExposeVirtualizationExtensions=$true}
+    Test-Command 'VmmsGpuAdd' @{GpuId='auto';Quotas=@{}} 'Add-VMGpuPartitionAdapter' @{VM=$vm;Confirm=$false}
+    Test-Command 'VmmsGpuAdd' @{GpuId='mock-gpu-path';Quotas=@{MinPartitionVRAM='100';OptimalPartitionVRAM='200';MaxPartitionVRAM='300';MinPartitionCompute='18446744073709551615'}} 'Add-VMGpuPartitionAdapter' @{VM=$vm;InstancePath='mock-gpu-path';MinPartitionVRAM='100';OptimalPartitionVRAM='200';MaxPartitionVRAM='300';MinPartitionCompute='18446744073709551615'}
+    Test-Command 'VmmsGpuQuotas' @{DeviceId='Gpu:gpu1';Quotas=@{OptimalPartitionVRAM='250'}} 'Set-VMGpuPartitionAdapter' @{VMGpuPartitionAdapter='gpu1';OptimalPartitionVRAM='250';Confirm=$false}
+    Test-Command 'VmmsGpuRemove' @{DeviceId='Gpu:gpu1'} 'Remove-VMGpuPartitionAdapter' @{VMGpuPartitionAdapter='gpu1';Confirm=$false}
+    Test-Command 'VmmsGpuAdd' @{GpuId='missing';Quotas=@{}} '' @{} $true
+    Test-Command 'VmmsGpuAdd' @{GpuId='mock-gpu-path';MockNoGpu=$true;Quotas=@{}} '' @{} $true
+    Test-Command 'VmmsGpuAdd' @{GpuId='auto';Quotas=@{MinPartitionVRAM='0'}} '' @{} $true
+    Test-Command 'VmmsGpuAdd' @{GpuId='auto';Quotas=@{MinPartitionVRAM='300';MaxPartitionVRAM='200'}} '' @{} $true
+    Test-Command 'VmmsGpuAdd' @{GpuId='auto';Quotas=@{Invalid='100'}} '' @{} $true
+    Test-Command 'VmmsGpuAdd' @{GpuId='auto';Quotas=@{MinPartitionVRAM='18446744073709551616'}} '' @{} $true
+    Test-Command 'VmmsGpuQuotas' @{DeviceId='Gpu:gpu1';Quotas=@{OptimalPartitionVRAM='400'}} '' @{} $true
+    Test-Command 'VmmsGpuQuotas' @{DeviceId='Gpu:gpu1';Quotas=@{}} '' @{} $true
+    Test-Command 'VmmsGpuRemove' @{DeviceId='Disk:disk1'} '' @{} $true
+    Test-Command 'VmmsGpuRemove' @{DeviceId='Gpu:gpu1';MockState='Running'} '' @{} $true
     Test-Command 'VmmsDiskAttach' @{ControllerType='SCSI';ControllerNumber=0;ControllerLocation=2;Path=$disk} 'Add-VMHardDiskDrive' @{VM=$vm;ControllerType='SCSI';ControllerNumber=0;ControllerLocation=2;Path=$disk}
     Test-Command 'VmmsDiskDetach' @{DeviceId='Disk:disk1'} 'Remove-VMHardDiskDrive' @{VMHardDiskDrive='disk1'}
     Test-Command 'VmmsDiskQoS' @{DeviceId='Disk:disk1';MinimumIOPS=100;MaximumIOPS=1000} 'Set-VMHardDiskDrive' @{VMHardDiskDrive='disk1';MinimumIOPS=100;MaximumIOPS=1000}

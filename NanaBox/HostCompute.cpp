@@ -1249,6 +1249,45 @@ function Select-Device($items, $id, $kind) {
     if ($matches.Count -ne 1) { throw 'The selected device is no longer available.' }
     return $matches[0]
 }
+$gpuQuotaKeys = @('MinPartitionVRAM','OptimalPartitionVRAM','MaxPartitionVRAM','MinPartitionEncode','OptimalPartitionEncode','MaxPartitionEncode','MinPartitionDecode','OptimalPartitionDecode','MaxPartitionDecode','MinPartitionCompute','OptimalPartitionCompute','MaxPartitionCompute')
+function Get-PartitionableGpuSources {
+    if (Get-Command Get-VMHostPartitionableGpu -ErrorAction SilentlyContinue) {
+        Get-VMHostPartitionableGpu -ErrorAction Stop
+    } elseif (Get-Command Get-VMPartitionableGpu -ErrorAction SilentlyContinue) {
+        Get-VMPartitionableGpu -ErrorAction Stop
+    } else { throw 'This Hyper-V version cannot enumerate partitionable GPUs.' }
+}
+function Get-GpuQuotaParameters($quotas, $current) {
+    if ($null -eq $quotas -or $quotas -isnot [pscustomobject]) { throw 'Invalid GPU quota object.' }
+    $parameters = @{}
+    foreach ($property in $quotas.PSObject.Properties) {
+        if ($property.Name -cnotin $gpuQuotaKeys -or $property.Value -isnot [string]) { throw 'Invalid GPU quota field.' }
+        $value = [uint64]0
+        if ($property.Value -notmatch '^[0-9]+$' -or -not [uint64]::TryParse($property.Value, [ref]$value) -or $value -eq 0) { throw 'GPU quotas must be positive UInt64 values.' }
+        $parameters[$property.Name] = $value
+    }
+    foreach ($resource in @('VRAM','Encode','Decode','Compute')) {
+        $last = $null
+        foreach ($limit in @('Min','Optimal','Max')) {
+            $key = $limit + 'Partition' + $resource
+            $value = $null
+            if ($parameters.ContainsKey($key)) { $value = $parameters[$key] }
+            elseif ($null -ne $current -and $null -ne $current.PSObject.Properties[$key] -and [uint64]$current.$key -gt 0) { $value = [uint64]$current.$key }
+            if ($null -ne $value) {
+                if ($null -ne $last -and $last -gt $value) { throw ('GPU quota must satisfy minimum <= optimal <= maximum for ' + $resource + '.') }
+                $last = $value
+            }
+        }
+    }
+    return $parameters
+}
+function Describe-GpuAdapter($gpu) {
+    $quotas = @{}
+    foreach ($key in $gpuQuotaKeys) {
+        if ($null -ne $gpu.PSObject.Properties[$key] -and $null -ne $gpu.$key) { $quotas[$key] = [string]$gpu.$key }
+    }
+    [pscustomobject]@{Id=('Gpu:'+[string]$gpu.Id);Name='GPU partition adapter';Kind='Gpu';InstancePath=[string]$gpu.InstancePath;Quotas=$quotas}
+}
 function Describe-Devices($vm) {
     foreach ($disk in @(Get-VMHardDiskDrive -VM $vm)) {
         [pscustomobject]@{Id=('Disk:'+[string]$disk.Id);Name=($disk.ControllerType.ToString()+':'+$disk.ControllerNumber+':'+$disk.ControllerLocation+' '+$disk.Path);Kind='Disk';Path=$disk.Path;ControllerType=[string]$disk.ControllerType;ControllerNumber=$disk.ControllerNumber;ControllerLocation=$disk.ControllerLocation;MinimumIOPS=$disk.MinimumIOPS;MaximumIOPS=$disk.MaximumIOPS}
@@ -1273,10 +1312,25 @@ function VmDetails($vm) {
             $security = @{TpmEnabled=$settings.TpmEnabled; Shielded=$settings.Shielded; EncryptStateAndVmMigrationTraffic=$settings.EncryptStateAndVmMigrationTraffic; HasKeyProtector=(([byte[]](Get-VMKeyProtector -VM $vm)).Length -gt 0)}
         } catch { $security = @{Error=$_.Exception.Message} }
     }
+    $gpuAdapters = @(); $gpuSources = @(); $gpuErrors = @()
+    if (Get-Command Get-VMGpuPartitionAdapter -ErrorAction SilentlyContinue) {
+        try { $gpuAdapters = @(Get-VMGpuPartitionAdapter -VM $vm -ErrorAction Stop | ForEach-Object { Describe-GpuAdapter $_ }) }
+        catch { $gpuErrors += $_.Exception.Message }
+    } else { $gpuErrors += 'GPU partition adapter management is unavailable on this Hyper-V version.' }
+    if (Get-Command Add-VMGpuPartitionAdapter -ErrorAction SilentlyContinue) {
+        $gpuSources += [pscustomobject]@{Id='auto';Name='Automatic GPU selection'}
+        try {
+            $gpuSources += @(Get-PartitionableGpuSources | Where-Object { $_.Name } | ForEach-Object {
+                [pscustomobject]@{Id=[string]$_.Name;Name=[string]$_.Name;PartitionCount=$_.PartitionCount;ValidPartitionCounts=@($_.ValidPartitionCounts)}
+            })
+        } catch { $gpuErrors += $_.Exception.Message }
+    }
     @{
         Security=$security
         VM=(VmInfo $vm)
-        Devices=@(Describe-Devices $vm)
+        Devices=@(Describe-Devices $vm) + $gpuAdapters
+        PartitionableGpus=$gpuSources
+        GpuInventoryErrors=$gpuErrors
         Switches=@(Get-VMSwitch | ForEach-Object { [pscustomobject]@{Id=[string]$_.Id;Name=$_.Name;State=[string]$_.SwitchType} })
         Processor=@{Count=$cpu.Count; Maximum=$cpu.Maximum; Reserve=$cpu.Reserve; RelativeWeight=$cpu.RelativeWeight; ExposeVirtualizationExtensions=$cpu.ExposeVirtualizationExtensions}
         Memory=@{Startup=$memory.Startup; Minimum=$memory.Minimum; Maximum=$memory.Maximum; DynamicMemoryEnabled=$memory.DynamicMemoryEnabled; Buffer=$memory.Buffer; Priority=$memory.Priority}
@@ -1420,6 +1474,34 @@ try {
                 $reserve = [int]$a.Reserve; $maximum = [int]$a.Maximum; $weight = [int]$a.Weight
                 if ($reserve -lt 0 -or $maximum -gt 100 -or $maximum -lt $reserve -or $weight -lt 1 -or $weight -gt 10000) { throw 'Invalid processor allocation.' }
                 Set-VMProcessor -VM $vm -Reserve $reserve -Maximum $maximum -RelativeWeight $weight -ExposeVirtualizationExtensions ([bool]$a.Nested) -Confirm:$false | Out-Null
+            }
+            'VmmsGpuAdd' {
+                if ([string]$vm.State -ne 'Off') { throw 'Shut down the virtual machine before adding a GPU partition adapter.' }
+                $command = Get-Command Add-VMGpuPartitionAdapter -ErrorAction Stop
+                $parameters = Get-GpuQuotaParameters $a.Quotas $null
+                $parameters.VM = $vm
+                $parameters.Confirm = $false
+                if ($a.GpuId -ne 'auto') {
+                    if (!$command.Parameters.ContainsKey('InstancePath')) { throw 'This Hyper-V version does not support selecting a physical GPU.' }
+                    $source = @(Get-PartitionableGpuSources | Where-Object { $_.Name -eq [string]$a.GpuId })
+                    if ($source.Count -ne 1) { throw 'The selected partitionable GPU is no longer available.' }
+                    $parameters.InstancePath = [string]$source[0].Name
+                }
+                Add-VMGpuPartitionAdapter @parameters | Out-Null
+            }
+            'VmmsGpuRemove' {
+                if ([string]$vm.State -ne 'Off') { throw 'Shut down the virtual machine before removing a GPU partition adapter.' }
+                $gpu = Select-Device @(Get-VMGpuPartitionAdapter -VM $vm) $a.DeviceId Gpu
+                Remove-VMGpuPartitionAdapter -VMGpuPartitionAdapter $gpu -Confirm:$false | Out-Null
+            }
+            'VmmsGpuQuotas' {
+                if ([string]$vm.State -ne 'Off') { throw 'Shut down the virtual machine before changing GPU quotas.' }
+                $gpu = Select-Device @(Get-VMGpuPartitionAdapter -VM $vm) $a.DeviceId Gpu
+                $parameters = Get-GpuQuotaParameters $a.Quotas $gpu
+                if (!$parameters.Count) { throw 'Specify at least one GPU quota to change.' }
+                $parameters.VMGpuPartitionAdapter = $gpu
+                $parameters.Confirm = $false
+                Set-VMGpuPartitionAdapter @parameters | Out-Null
             }
             'VmmsDiskAttach' {
                 RequireSlot $vm $a.ControllerType ([int]$a.ControllerNumber) ([int]$a.ControllerLocation)

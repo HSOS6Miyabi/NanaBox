@@ -1539,4 +1539,22 @@
     <value>查询所选 HCS 计算系统属性</value>
   </data>
   <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB 共享目录自动挂载至 ProgramData 下。挂载报告同时显示 GPU 驱动映射及设备重启状态。</value></data>
+  <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>添加 GPU 分区适配器</value></data>
+  <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>移除所选 GPU 分区适配器</value></data>
+  <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>设置所选 GPU 分区的资源配额</value></data>
+  <data name="VmmsGpuSourceComboBox.Header" xml:space="preserve"><value>新分区的物理显卡</value></data>
+  <data name="VmmsGpuQuotaNote.Text" xml:space="preserve"><value>GPU-PV：选择物理显卡或自动分配。留空的配额在添加时使用驱动程序默认值，在修改时保留原有值。编解码与计算资源单位由显卡驱动程序定义。修改 GPU 分区前须关闭虚拟机。</value></data>
+  <data name="VmmsGpuAutomatic" xml:space="preserve"><value>自动分配显卡</value></data>
+  <data name="VmmsGpuMinVRAMTextBox.Header" xml:space="preserve"><value>最小显存（字节）</value></data>
+  <data name="VmmsGpuOptimalVRAMTextBox.Header" xml:space="preserve"><value>最优显存（字节）</value></data>
+  <data name="VmmsGpuMaxVRAMTextBox.Header" xml:space="preserve"><value>最大显存（字节）</value></data>
+  <data name="VmmsGpuMinEncodeTextBox.Header" xml:space="preserve"><value>最小视频编码</value></data>
+  <data name="VmmsGpuOptimalEncodeTextBox.Header" xml:space="preserve"><value>最优视频编码</value></data>
+  <data name="VmmsGpuMaxEncodeTextBox.Header" xml:space="preserve"><value>最大视频编码</value></data>
+  <data name="VmmsGpuMinDecodeTextBox.Header" xml:space="preserve"><value>最小视频解码</value></data>
+  <data name="VmmsGpuOptimalDecodeTextBox.Header" xml:space="preserve"><value>最优视频解码</value></data>
+  <data name="VmmsGpuMaxDecodeTextBox.Header" xml:space="preserve"><value>最大视频解码</value></data>
+  <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>最小计算</value></data>
+  <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>最优计算</value></data>
+  <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>最大计算</value></data>
 </root>
