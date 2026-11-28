@@ -1,4 +1,4 @@
-# NanaBox Guest Network Service
+# NanaBox GuestTool
 
 NanaBox GuestTool provides guest networking, diagnostics, file exchange and shared-folder management for Windows and Linux virtual machines. It accepts versioned network configuration requests from the Hyper-V parent partition over Hyper-V sockets (Linux VSOCK port 27453). It identifies a hardware network adapter by its MAC address and applies IPv4/IPv6 addresses, routes, DNS servers and interface state/MTU. It does not accept executable commands.
 
@@ -126,3 +126,18 @@ Use `sudo nanabox-plan9 list` to view the available shares, mount points and err
 ### Linux GPU driver integration
 
 Select Linux as the guest operating system and enable Share Host Driver Store in the VM GPU settings. The read-only driver repository and host lxss libraries are mounted at `/usr/lib/wsl/drivers` and `/usr/lib/wsl/lib`. The native mount service manages its own loader configuration and login-shell PATH, LD_LIBRARY_PATH and LIBRARY_PATH entries while the library share is mounted. Existing unrelated configuration files are preserved. Linux packages include the native executable; building from source requires a C++17 compiler and Boost.JSON headers. Applications that already loaded GPU libraries may need restarting after a host driver update. A compatible guest dxgkrnl driver and GPU-PV support remain required.
+
+
+## Windows GPU-PV driver integration
+
+Select Windows as the guest operating system and enable Share host GPU driver store in the VM configuration. Install the native x64 GPU component from the Windows GuestTool package inside the guest. The Windows 9P filesystem uses [Mile.Cirno](https://github.com/ProjectMile/Mile.Cirno); install its included Dokany driver according to its documentation, then run:
+
+```powershell
+.\InstallWindowsGpuTool.ps1 -CirnoDirectory 'C:\Mile.Cirno'
+```
+
+The service mounts the host's read-only FileRepository share at %SystemRoot%\System32\HostDriverStore\FileRepository. It reads the WDDM file mappings supplied by the host, including renamed files and WOW64 destinations. The host discovers installed GPU packages using SetupAPI and the four CopyToVm registry subkeys, with selected-device filtering for List assignment. Mapped supplemental files are symbolic links to the mounted repository. GuestTool tracks its own links and never replaces unrelated guest files; for WhenNewer rules, an equal or newer existing guest file is retained. Conflicting mappings and missing files are reported in Guest tools. Package and dependency directories are appended to the machine PATH and LIB variables when reconciliation succeeds. Existing processes may need to be restarted to inherit the environment.
+
+Use Device Manager to restart the GPU-PV devices after the mount is available; disable those devices before dismounting the filesystem or uninstalling the GPU service. Use UninstallWindowsGpuTool.ps1 to remove GuestTool-owned links and environment entries after dismounting. The service does not force-unmount a filesystem while the GPU may be using it.
+
+The Windows filesystem client requires the matching Dokany kernel driver, and GPU-PV requires a compatible guest display stack. The build tests run without a physical GPU; physical GPU and driver-update integration testing requires a Hyper-V GPU-PV environment. The ordinary networking component is installed separately.
