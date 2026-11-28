@@ -183,7 +183,7 @@ bool DefaultDesktop(HDESK desktop)
 enum class InputExit : DWORD { Success = 0, Invalid = 10, Desktop = 11, Focus = 12,
     Modifiers = 13, Injection = 14, Session = 15, Pipe = 16 };
 
-InputExit InjectUnicode(std::vector<INPUT>& events, DWORD session)
+InputExit InjectUnicode(std::vector<INPUT>& events, DWORD session, DWORD expectedProcess = 0)
 {
     DWORD actual = 0;
     if (!ProcessIdToSessionId(GetCurrentProcessId(), &actual) || actual != session || !actual)
@@ -197,6 +197,7 @@ InputExit InjectUnicode(std::vector<INPUT>& events, DWORD session)
     GUITHREADINFO info{};
     info.cbSize = sizeof(info);
     if (!foreground || !GetWindowThreadProcessId(foreground, &process) ||
+        (expectedProcess && process != expectedProcess) ||
         !ProcessIdToSessionId(process, &foregroundSession) || foregroundSession != session ||
         !GetGUIThreadInfo(0, &info) || !info.hwndFocus)
         return InputExit::Focus;
@@ -237,11 +238,13 @@ int UnicodeInputChild(std::wstring_view nonce, std::wstring_view sessionText)
         if (!pipe) return static_cast<int>(InputExit::Pipe);
         std::uint32_t size = 0;
         ReadInputPipe(pipe.Get(), &size, sizeof(size));
+        DWORD expectedProcess = 0;
+        ReadInputPipe(pipe.Get(), &expectedProcess, sizeof(expectedProcess));
         if (size > 4096) return static_cast<int>(InputExit::Invalid);
         std::wstring text(size, L'\0');
         if (size) ReadInputPipe(pipe.Get(), text.data(), static_cast<DWORD>(size * sizeof(wchar_t)));
         auto events = UnicodeInputEvents(text);
-        return static_cast<int>(InjectUnicode(events, current));
+        return static_cast<int>(InjectUnicode(events, current, expectedProcess));
     }
     catch (...) { return static_cast<int>(InputExit::Invalid); }
 }
@@ -268,7 +271,7 @@ void WaitInputIo(HANDLE pipe, OVERLAPPED& operation, HANDLE process, DWORD& byte
 }
 
 template<class Launch, class Check>
-void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool sameUser, Launch launch, Check check)
+void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool sameUser, Launch launch, Check check, DWORD expectedProcess = 0)
 {
     auto random = Token();
     std::wstring nonce(random.begin(), random.end());
@@ -322,10 +325,11 @@ void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool s
         GuestFail("Unexpected Unicode input pipe client");
     check();
     if (Stop) GuestFail("Guest service is stopping");
-    std::vector<BYTE> payload(sizeof(std::uint32_t) + text.size() * sizeof(wchar_t));
+    std::vector<BYTE> payload(sizeof(std::uint32_t) + sizeof(expectedProcess) + text.size() * sizeof(wchar_t));
     auto size = static_cast<std::uint32_t>(text.size());
     std::memcpy(payload.data(), &size, sizeof(size));
-    if (size) std::memcpy(payload.data() + sizeof(size), text.data(), text.size() * sizeof(wchar_t));
+    std::memcpy(payload.data() + sizeof(size), &expectedProcess, sizeof(expectedProcess));
+    if (size) std::memcpy(payload.data() + sizeof(size) + sizeof(expectedProcess), text.data(), text.size() * sizeof(wchar_t));
     ResetEvent(event.Get());
     operation = OVERLAPPED{};
     operation.hEvent = event.Get();
@@ -353,12 +357,14 @@ void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool s
     }
 }
 
-Json TypeInteractiveUnicode(std::string const& utf8, bool enhanced)
+Json TypeInteractiveUnicode(std::string const& utf8, bool enhanced,
+    DWORD expectedSession = 0, DWORD expectedProcess = 0)
 {
     auto text = InputText(utf8);
     auto events = UnicodeInputEvents(text);
     if (events.empty()) return {{"Events",0},{"Utf16Units",0}};
     auto session = ActiveInputSession(enhanced);
+    if (expectedSession && session != expectedSession) GuestFail("Unexpected input session");
     HANDLE raw = nullptr;
     if (!WTSQueryUserToken(session, &raw)) InputError("Obtain logged-on guest user token");
     InputHandle user(raw);
@@ -379,7 +385,7 @@ Json TypeInteractiveUnicode(std::string const& utf8, bool enhanced)
             if (!WTSQueryUserToken(session, &current)) InputError("Revalidate guest input user");
             InputHandle currentUser(current);
             if (InputLogonSid(currentUser.Get()) != logon) GuestFail("Guest input user changed");
-        });
+        }, expectedProcess);
     return {{"Events",events.size()},{"Utf16Units",text.size()},{"SessionId",session}};
 }
 
@@ -413,6 +419,157 @@ void UnicodeInputSelfTest()
         if (!rejected) GuestFail("Ambiguous or absent input session accepted");
     }
     std::cout << "Unicode input encoding and session selection tests passed.\n";
+}
+
+
+constexpr wchar_t InputTestServicePrefix[] = L"NanaBoxUnicodeInputTest-";
+std::wstring InputTestServiceName;
+DWORD InputTestSession = 0, InputTestProcess = 0;
+bool InputTestEnhanced = false;
+SERVICE_STATUS_HANDLE InputTestStatus = nullptr;
+
+void ReportInputTestService(DWORD state, DWORD code = 0)
+{
+    SERVICE_STATUS status{};
+    status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    status.dwCurrentState = state;
+    status.dwControlsAccepted = state == SERVICE_RUNNING ? SERVICE_ACCEPT_STOP : 0;
+    status.dwWin32ExitCode = code ? ERROR_SERVICE_SPECIFIC_ERROR : NO_ERROR;
+    status.dwServiceSpecificExitCode = code;
+    if (state == SERVICE_STOP_PENDING)
+    {
+        status.dwCheckPoint = 1;
+        status.dwWaitHint = 5000;
+    }
+    SetServiceStatus(InputTestStatus, &status);
+}
+
+void WINAPI InputTestServiceControl(DWORD control)
+{
+    if (control == SERVICE_CONTROL_STOP)
+    {
+        Stop = true;
+        ReportInputTestService(SERVICE_STOP_PENDING);
+    }
+}
+
+void WINAPI InputTestServiceMain(DWORD, LPWSTR*)
+{
+    InputTestStatus = RegisterServiceCtrlHandlerW(InputTestServiceName.c_str(), InputTestServiceControl);
+    if (!InputTestStatus) return;
+    ReportInputTestService(SERVICE_RUNNING);
+    DWORD stage = 1;
+    try
+    {
+        DWORD session = MAXDWORD;
+        if (!ProcessIdToSessionId(GetCurrentProcessId(), &session) || session != 0)
+            GuestFail("Input service test must run in session zero");
+        stage = 2;
+        auto response = TypeInteractiveUnicode(Utf8(InputTestText), InputTestEnhanced,
+            InputTestSession, InputTestProcess);
+        if (response.at("SessionId") != InputTestSession) GuestFail("Incorrect guest input session");
+        ReportInputTestService(SERVICE_STOPPED);
+    }
+    catch (std::exception const& error)
+    {
+        // The temporary test service has no console, so record the error for the
+        // parent's CI diagnostics without writing the input payload to disk.
+        auto detail = std::string("NanaBox Unicode input service test: ") + error.what();
+        OutputDebugStringA(detail.c_str());
+        ReportInputTestService(SERVICE_STOPPED, stage);
+    }
+    catch (...) { ReportInputTestService(SERVICE_STOPPED, stage); }
+}
+
+DWORD ParseInputTestId(std::wstring_view value)
+{
+    if (value.empty() || value.size() > 10 ||
+        !std::all_of(value.begin(), value.end(), [](wchar_t ch) { return ch >= L'0' && ch <= L'9'; }))
+        GuestFail("Invalid input service test identifier");
+    auto number = std::stoull(std::wstring(value));
+    if (!number || number >= MAXDWORD) GuestFail("Invalid input service test identifier");
+    return static_cast<DWORD>(number);
+}
+
+int RunInputTestService(std::wstring_view name, std::wstring_view session,
+    std::wstring_view process, std::wstring_view mode)
+{
+    const std::wstring_view prefix(InputTestServicePrefix);
+    if (name.size() != prefix.size() + 32 || name.substr(0, prefix.size()) != prefix)
+        GuestFail("Invalid input test service name");
+    (void)InputPipeName(name.substr(prefix.size()));
+    InputTestServiceName = name;
+    InputTestSession = ParseInputTestId(session);
+    InputTestProcess = ParseInputTestId(process);
+    if (mode != L"Console" && mode != L"Enhanced") GuestFail("Invalid test session mode");
+    InputTestEnhanced = mode == L"Enhanced";
+    SERVICE_TABLE_ENTRYW table[] = {{InputTestServiceName.data(), InputTestServiceMain}, {nullptr, nullptr}};
+    if (!StartServiceCtrlDispatcherW(table)) InputError("Connect Unicode input test service to SCM");
+    return 0;
+}
+
+class InputServiceHandle
+{
+    SC_HANDLE Value;
+public:
+    explicit InputServiceHandle(SC_HANDLE value) : Value(value) {}
+    ~InputServiceHandle() { if (Value) CloseServiceHandle(Value); }
+    InputServiceHandle(InputServiceHandle const&) = delete;
+    SC_HANDLE Get() const { return Value; }
+    explicit operator bool() const { return Value != nullptr; }
+};
+
+void TestInputFromService(DWORD session)
+{
+    LPWSTR protocol = nullptr;
+    DWORD bytes = 0;
+    if (!WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, session, WTSClientProtocolType, &protocol, &bytes))
+        InputError("Read test session protocol");
+    struct Free { PVOID Value; ~Free() { if (Value) WTSFreeMemory(Value); } } freeProtocol{protocol};
+    if (!protocol || bytes != sizeof(USHORT)) GuestFail("Invalid test session protocol");
+    USHORT type = 0;
+    std::memcpy(&type, protocol, sizeof(type));
+    if (type != 0 && type != 2) GuestFail("Unsupported test session protocol");
+    const auto random = Token();
+    const auto name = std::wstring(InputTestServicePrefix) + std::wstring(random.begin(), random.end());
+    auto command = L"\"" + InputExecutable() + L"\" --unicode-input-service-test " + name + L" " +
+        std::to_wstring(session) + L" " + std::to_wstring(GetCurrentProcessId()) +
+        (type == 2 ? L" Enhanced" : L" Console");
+    InputServiceHandle manager(OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CREATE_SERVICE));
+    if (!manager) InputError("Open SCM for Unicode input integration test");
+    InputServiceHandle service(CreateServiceW(manager.Get(), name.c_str(), name.c_str(),
+        SERVICE_START | SERVICE_QUERY_STATUS | SERVICE_STOP | DELETE, SERVICE_WIN32_OWN_PROCESS,
+        SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, command.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr));
+    if (!service) InputError("Create temporary LocalSystem input test service");
+    struct Cleanup
+    {
+        SC_HANDLE Service;
+        ~Cleanup()
+        {
+            SERVICE_STATUS status{};
+            ControlService(Service, SERVICE_CONTROL_STOP, &status);
+            DeleteService(Service);
+        }
+    } cleanup{service.Get()};
+    if (!StartServiceW(service.Get(), 0, nullptr)) InputError("Start Unicode input test service");
+    auto deadline = Mono::now() + std::chrono::seconds(25);
+    while (Mono::now() < deadline)
+    {
+        SERVICE_STATUS_PROCESS status{};
+        DWORD needed = 0;
+        if (!QueryServiceStatusEx(service.Get(), SC_STATUS_PROCESS_INFO,
+            reinterpret_cast<LPBYTE>(&status), sizeof(status), &needed))
+            InputError("Query Unicode input test service");
+        if (status.dwCurrentState == SERVICE_STOPPED)
+        {
+            if (status.dwWin32ExitCode != NO_ERROR)
+                throw std::runtime_error("Unicode input service failed: Win32 " + std::to_string(status.dwWin32ExitCode) +
+                    ", stage " + std::to_string(status.dwServiceSpecificExitCode));
+            return;
+        }
+        Sleep(50);
+    }
+    GuestFail("Unicode input test service timed out");
 }
 
 void UnicodeInputUiTest()
@@ -451,18 +608,25 @@ void UnicodeInputUiTest()
     SendInputFrame(InputTestText, session, token.Get(), true,
         [](std::wstring const& exe, std::wstring& cmd, STARTUPINFOW& startup, PROCESS_INFORMATION& child)
         { return CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
-            nullptr, nullptr, &startup, &child); }, [](){});
-    for (int attempt = 0; attempt < 100; ++attempt)
+            nullptr, nullptr, &startup, &child); }, [](){}, GetCurrentProcessId());
+    auto verify = [&]()
     {
-        pump();
-        wchar_t actual[256]{};
-        GetWindowTextW(edit, actual, static_cast<int>(std::size(actual)));
-        if (std::wstring_view(actual) == InputTestText)
+        for (int attempt = 0; attempt < 100; ++attempt)
         {
-            std::cout << "Private input pipe, child process and Windows native edit Unicode input passed.\n";
-            return;
+            pump();
+            wchar_t actual[256]{};
+            GetWindowTextW(edit, actual, static_cast<int>(std::size(actual)));
+            if (std::wstring_view(actual) == InputTestText) return;
+            Sleep(20);
         }
-        Sleep(20);
-    }
-    GuestFail("Native edit control did not receive the expected Unicode text");
+        GuestFail("Native edit control did not receive the expected Unicode text");
+    };
+    verify();
+    std::cout << "Private input pipe, child process and Windows native edit Unicode input passed.\n";
+    if (!SetWindowTextW(edit, L"")) InputError("Reset test edit control");
+    if (GetForegroundWindow() != window || GetFocus() != edit)
+        GuestFail("Test input control lost focus");
+    TestInputFromService(session);
+    verify();
+    std::cout << "LocalSystem service, WTS user token and interactive Unicode input passed.\n";
 }

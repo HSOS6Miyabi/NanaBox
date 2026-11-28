@@ -1174,6 +1174,8 @@ int main(int argc, char** argv)
     try
     {
 #ifdef _WIN32
+        if (argc == 6 && std::wstring_view(argv[1]) == L"--unicode-input-service-test")
+            return RunInputTestService(argv[2], argv[3], argv[4], argv[5]);
         if (argc == 4 && std::wstring_view(argv[1]) == L"--unicode-input-child")
             return UnicodeInputChild(argv[2], argv[3]);
         if (argc == 2 && std::wstring_view(argv[1]) == L"--unicode-input-ui-test")
