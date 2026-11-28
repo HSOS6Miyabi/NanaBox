@@ -21,6 +21,7 @@ namespace NanaBox
             Json Switches = Json::array();
             Json Creators = Json::array();
             Json Machines = Json::array();
+            std::map<std::string, Json> HcnObjects;
             std::map<std::string, Json> Checkpoints;
             std::map<std::string, Json> Firewall;
             std::map<std::string, std::vector<char>> GuestFiles;
@@ -147,7 +148,38 @@ namespace NanaBox
                 return "NanaBox.Managed." + Value;
             };
             auto Result = Json{{"Success", true}};
-            if (Action == "HcsInventory")
+            if (Action.starts_with("Hcn"))
+            {
+                auto Kind = Text("Kind");
+                auto& Objects = Data->HcnObjects[Kind];
+                if (Objects.is_null())
+                    Objects = Json::array({Json{{"Id", NewId()}, {"Kind", Kind}, {"Name", "System resource [read-only]"},
+                        {"Managed", false}, {"Properties", Json::object()}}});
+                if (Action == "HcnList")
+                    Result = {{"Items", Objects}};
+                else if (Action == "HcnCreate")
+                {
+                    auto Id = NewId();
+                    auto Name = Kind == "Network" ? Text("Name") : Kind;
+                    Objects.push_back({{"Id", Id}, {"Kind", Kind}, {"Name", Name + " [managed]"},
+                        {"Managed", true}, {"Properties", A.at("Settings")}});
+                    Result = {{"Id", Id}, {"Kind", Kind}};
+                }
+                else
+                {
+                    auto Object = Find(Objects, Text("Id"));
+                    if (Action == "HcnInspect") Result = *Object;
+                    else
+                    {
+                        if (!Object->value("Managed", false)) throw winrt::hresult_error(E_ACCESSDENIED, L"Resource is read-only.");
+                        if (Action == "HcnDelete") Objects.erase(Object);
+                        else if (Action == "HcnModify" && Kind != "Route") (*Object)["Properties"] = A.at("Settings");
+                        else throw winrt::hresult_invalid_argument();
+                        Result = {{"Id", Text("Id")}, {"Kind", Kind}};
+                    }
+                }
+            }
+            else if (Action == "HcsInventory")
                 Result = Json{{"Items", Json::array({Json{{"Id", "mock-hcs"}, {"SystemType", "VirtualMachine"}, {"State", "Running"}}})}};
             else if (Action.starts_with("Vmms"))
             {

@@ -102,6 +102,8 @@ namespace winrt::NanaBox::implementation
         void DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void InspectNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void HostManagementButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void HcnResourceButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        void HcnKindChanged(winrt::IInspectable const&, winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&);
         void VmmsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         void VmmsSelectionChanged(winrt::IInspectable const&, winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&);
         void DiskManagerButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
@@ -181,6 +183,8 @@ namespace winrt::NanaBox::implementation
         std::function<std::string(std::string const&)> m_GuestQuery;
         bool m_DiskOperationRunning = false;
         bool m_HostManagementRunning = false;
+        bool m_HcnResourceRunning = false;
+        winrt::fire_and_forget RunHcnResourceOperation(winrt::hstring Action, std::string Arguments);
         bool m_VmmsRunning = false;
         winrt::fire_and_forget RunVmmsOperation(winrt::hstring Action, std::string Arguments);
         bool m_NetworkManagementRunning = false;

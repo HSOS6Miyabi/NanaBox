@@ -2020,6 +2020,111 @@ namespace winrt::NanaBox::implementation
     }
 
 
+    void VirtualMachineSettingsPage::HcnKindChanged(winrt::IInspectable const&,
+        winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+    {
+        if (auto Box = this->HcnResourceComboBox()) Box.Items().Clear();
+    }
+
+    void VirtualMachineSettingsPage::HcnResourceButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        if (this->m_HcnResourceRunning) return;
+        using Json = nlohmann::json;
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        auto Selected = [](winrt::ComboBox const& Box)
+        {
+            if (!Box.SelectedItem()) throw winrt::hresult_invalid_argument(L"Select an item first.");
+            return winrt::to_string(winrt::unbox_value<winrt::hstring>(Box.SelectedItem().as<Item>().Tag()));
+        };
+        try
+        {
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            Json Data = {{"Kind", Selected(this->HcnKindComboBox())}};
+            if (Action != L"HcnList" && Action != L"HcnCreate")
+                Data["Id"] = Selected(this->HcnResourceComboBox());
+            if (Action == L"HcnCreate")
+            {
+                Data["Name"] = winrt::to_string(this->HcnNameTextBox().Text());
+                Data["NetworkId"] = winrt::to_string(this->HcnNetworkIdTextBox().Text());
+            }
+            if (Action == L"HcnCreate" || Action == L"HcnModify")
+                Data["Settings"] = Json::parse(winrt::to_string(this->HcnSettingsTextBox().Text()));
+            if ((Action == L"HcnModify" || Action == L"HcnDelete") &&
+                ::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"HostManagementConfirm").c_str(),
+                    L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
+            this->m_HcnResourceRunning = true;
+            this->HcnKindComboBox().IsEnabled(false);
+            this->HcnResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->RunHcnResourceOperation(Action, Data.dump());
+        }
+        catch (...)
+        {
+            this->m_HcnResourceRunning = false;
+            this->HcnKindComboBox().IsEnabled(true);
+            this->HcnResultTextBox().Text(Mile::WinRT::ToHResultError().message());
+        }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunHcnResourceOperation(
+        winrt::hstring Action, std::string Arguments)
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        using Json = nlohmann::json;
+        Json Result, Items;
+        std::wstring ErrorText;
+        try
+        {
+            co_await winrt::resume_background();
+            auto Data = Json::parse(Arguments);
+            auto Run = [Operations = this->m_HostOperations](winrt::hstring const& Command, Json const& Request)
+            {
+                return Json::parse(winrt::to_string(Operations->Manage(Command, winrt::to_hstring(Request.dump()))));
+            };
+            Result = Run(Action, Data);
+            if (Action == L"HcnList") Items = Result.at("Items");
+            else if (Action != L"HcnInspect")
+            {
+                try { Items = Run(L"HcnList", Json{{"Kind", Data.at("Kind")}}).at("Items"); }
+                catch (...) { Result["RefreshError"] = winrt::to_string(Mile::WinRT::ToHResultError().message()); }
+            }
+        }
+        catch (...) { ErrorText = Mile::WinRT::ToHResultError().message().c_str(); }
+        co_await Foreground;
+        this->m_HcnResourceRunning = false;
+        this->HcnKindComboBox().IsEnabled(true);
+        try
+        {
+            if (!ErrorText.empty())
+                Result = {{"Success", false}, {"Error", winrt::to_string(ErrorText)}};
+            else
+            {
+                Result["Success"] = true;
+                if (Items.is_array())
+                {
+                    auto Box = this->HcnResourceComboBox();
+                    Box.Items().Clear();
+                    int Selection = -1;
+                    for (auto const& Entry : Items)
+                    {
+                        auto Id = Entry.at("Id").get<std::string>();
+                        winrt::Windows::UI::Xaml::Controls::ComboBoxItem Item;
+                        Item.Tag(winrt::box_value(winrt::to_hstring(Id)));
+                        Item.Content(winrt::box_value(winrt::to_hstring(Entry.at("Name").get<std::string>() + " (" + Id + ")")));
+                        if (Result.value("Id", std::string()) == Id) Selection = static_cast<int>(Box.Items().Size());
+                        Box.Items().Append(Item);
+                    }
+                    if (Selection >= 0) Box.SelectedIndex(Selection);
+                    else if (Box.Items().Size()) Box.SelectedIndex(0);
+                }
+            }
+            Result["Operation"] = winrt::to_string(Action);
+            this->HcnResultTextBox().Text(winrt::to_hstring(Result.dump(2)));
+        }
+        catch (...) { this->HcnResultTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+    }
+
     void VirtualMachineSettingsPage::VmmsSelectionChanged(winrt::IInspectable const&,
         winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
     {

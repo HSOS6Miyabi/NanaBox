@@ -2045,4 +2045,23 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>需要 HCN 专用环回网卡，并在安装 Linux 客户机服务时启用环回路由。忽略的端口仍在本地处理。IPv6 环回保持不变。</value></data>
   <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>协调 Linux 应用程序与宿主机的端口绑定</value></data>
   <data name="MirroredBindNote.Text" xml:space="preserve"><value>在客户机中安装端口绑定协调功能，并通过 nanabox-bind 启动应用程序。需要 Linux 6.7 或更高版本。</value></data>
+  <data name="TabHcn.Header" xml:space="preserve"><value>HCN 资源</value></data>
+  <data name="HcnResourceNote.Text" xml:space="preserve"><value>管理 HCN 网络、独立终结点、网络命名空间、负载均衡器和 SDN 路由。现有系统资源仅供查看，修改操作使用 HCN 原生 JSON 配置。</value></data>
+  <data name="HcnKind.Header" xml:space="preserve"><value>资源类型</value></data>
+  <data name="HcnResource.Header" xml:space="preserve"><value>资源</value></data>
+  <data name="HcnName.Header" xml:space="preserve"><value>网络名称（创建网络时使用）</value></data>
+  <data name="HcnNetworkId.Header" xml:space="preserve"><value>所属网络 ID（创建终结点时使用）</value></data>
+  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN JSON 配置</value></data>
+  <data name="HcnList.Content" xml:space="preserve"><value>刷新</value></data>
+  <data name="HcnInspect.Content" xml:space="preserve"><value>查看属性</value></data>
+  <data name="HcnCreate.Content" xml:space="preserve"><value>创建</value></data>
+  <data name="HcnModify.Content" xml:space="preserve"><value>修改</value></data>
+  <data name="HcnDelete.Content" xml:space="preserve"><value>删除</value></data>
+  <data name="HcnResult.Header" xml:space="preserve"><value>操作结果</value></data>
+  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>创建终结点时请输入受管理的网络 ID。网络命名空间使用 Host 或 Guest 类型；添加终结点时使用 Endpoint 资源类型及 Settings.EndpointId。修改网络或终结点策略时使用 Policy 修改请求。负载均衡器和 SDN 路由引用受管理的终结点 ID；修改 SDN 路由配置需要重新创建。</value></data>
+  <data name="HcnKindNetwork.Content" xml:space="preserve"><value>网络</value></data>
+  <data name="HcnKindEndpoint.Content" xml:space="preserve"><value>终结点</value></data>
+  <data name="HcnKindNamespace.Content" xml:space="preserve"><value>网络命名空间</value></data>
+  <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>负载均衡器</value></data>
+  <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN 路由</value></data>
 </root>

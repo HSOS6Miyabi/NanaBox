@@ -557,6 +557,35 @@
           </StackPanel>
         </ScrollViewer>
       </PivotItem>
+      <PivotItem x:Uid="/VirtualMachineSettingsPage/TabHcn" Header="HCN resources" AutomationProperties.AutomationId="TabHcn">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="16,4,16,16" Spacing="8">
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/HcnResourceNote" Text="Manage HCN resources through native settings." TextWrapping="Wrap" Opacity="0.75" />
+            <ComboBox x:Name="HcnKindComboBox" x:Uid="/VirtualMachineSettingsPage/HcnKind" Header="Resource type" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="HcnKindChanged" AutomationProperties.AutomationId="HcnKindComboBox">
+              <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/HcnKindNetwork" Content="Network" Tag="Network" AutomationProperties.AutomationId="HcnKindNetwork" />
+              <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/HcnKindEndpoint" Content="Endpoint" Tag="Endpoint" AutomationProperties.AutomationId="HcnKindEndpoint" />
+              <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/HcnKindNamespace" Content="Namespace" Tag="Namespace" AutomationProperties.AutomationId="HcnKindNamespace" />
+              <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/HcnKindLoadBalancer" Content="Load balancer" Tag="LoadBalancer" AutomationProperties.AutomationId="HcnKindLoadBalancer" />
+              <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/HcnKindRoute" Content="SDN route" Tag="Route" AutomationProperties.AutomationId="HcnKindRoute" />
+            </ComboBox>
+            <ComboBox x:Name="HcnResourceComboBox" x:Uid="/VirtualMachineSettingsPage/HcnResource" Header="Resource" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcnResourceComboBox" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Uid="/VirtualMachineSettingsPage/HcnList" Content="Refresh" Tag="HcnList" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnList" />
+              <Button x:Uid="/VirtualMachineSettingsPage/HcnInspect" Content="Inspect" Tag="HcnInspect" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnInspect" />
+            </StackPanel>
+            <TextBox x:Name="HcnNameTextBox" x:Uid="/VirtualMachineSettingsPage/HcnName" Header="Network name (network creation)" AutomationProperties.AutomationId="HcnNameTextBox" />
+            <TextBox x:Name="HcnNetworkIdTextBox" x:Uid="/VirtualMachineSettingsPage/HcnNetworkId" Header="Parent network ID (endpoint creation)" AutomationProperties.AutomationId="HcnNetworkIdTextBox" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/HcnSettingsNote" Text="Use native HCN resource settings." TextWrapping="Wrap" Opacity="0.75" />
+            <TextBox x:Name="HcnSettingsTextBox" x:Uid="/VirtualMachineSettingsPage/HcnSettings" Header="HCN settings JSON" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" Height="160" AutomationProperties.AutomationId="HcnSettingsTextBox" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Uid="/VirtualMachineSettingsPage/HcnCreate" Content="Create" Tag="HcnCreate" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnCreate" />
+              <Button x:Uid="/VirtualMachineSettingsPage/HcnModify" Content="Modify" Tag="HcnModify" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnModify" />
+              <Button x:Uid="/VirtualMachineSettingsPage/HcnDelete" Content="Delete" Tag="HcnDelete" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnDelete" />
+            </StackPanel>
+            <TextBox x:Name="HcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/HcnResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="220" AutomationProperties.AutomationId="HcnResultTextBox" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
       <PivotItem x:Uid="/VirtualMachineSettingsPage/TabStorage" Header="Storage" AutomationProperties.AutomationId="TabStorage">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="16,4,16,16" Spacing="8">

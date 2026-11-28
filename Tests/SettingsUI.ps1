@@ -446,6 +446,35 @@ try {
     }
 
     if (-not $HostIntegration) {
+        Select-Tab 'TabHcn'
+        foreach ($kind in @('Network','Endpoint','Namespace','LoadBalancer','Route')) {
+            Select-Choice 'HcnKindComboBox' "HcnKind$kind"
+            Invoke-Control 'HcnList'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList'}
+            $null = Select-ByName 'HcnResourceComboBox' 'System resource [read-only] ('
+            Invoke-Control 'HcnInspect'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and -not $v.Managed}
+            Confirm-Change 'HcnDelete'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'HcnDelete'}
+            Set-Text 'HcnNameTextBox' 'Test resource'
+            Set-Text 'HcnNetworkIdTextBox' '85c8668e-36fe-447f-aae0-ba159a0142a7'
+            Set-Text 'HcnSettingsTextBox' '{"SchemaVersion":{"Major":2,"Minor":0}}'
+            Invoke-Control 'HcnCreate'
+            $created = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
+            Invoke-Control 'HcnInspect'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Managed -and $v.Id -eq $created.Id}
+            if ($kind -ne 'Route') {
+                Set-Text 'HcnSettingsTextBox' '{"ResourceType":"Policy","RequestType":"Add","Settings":{"Policies":[]}}'
+                Confirm-Change 'HcnModify'
+                $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnModify'}
+                Invoke-Control 'HcnInspect'
+                $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.RequestType -eq 'Add'}
+            }
+            Confirm-Change 'HcnDelete'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
+            Invoke-Control 'HcnList'
+            $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and @($v.Items).Count -eq 1}
+        }
         Select-Tab 'TabVmms'
         Invoke-Control 'HcsInventoryButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsInventory' -and $v.Items[0].Id -eq 'mock-hcs'}

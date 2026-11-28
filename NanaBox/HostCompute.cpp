@@ -12,6 +12,7 @@
 
 #pragma comment(lib, "computecore.lib")
 #pragma comment(lib, "computenetwork.lib")
+#pragma comment(lib, "advapi32.lib")
 
 #include <Mile.Json.h>
 #include <SetupAPI.h>
@@ -1191,11 +1192,347 @@ bool NanaBox::HostManagementSelfTest()
     return false;
 }
 
+
+namespace
+{
+    using HcnJson = nlohmann::json;
+    constexpr wchar_t ResourceRegistry[] = L"SOFTWARE\\NanaBox\\ManagedHcnResources";
+
+    std::wstring HcnGuidName(GUID const& Id)
+    {
+        wchar_t Name[40]{};
+        winrt::check_bool(::StringFromGUID2(Id, Name, ARRAYSIZE(Name)) != 0);
+        return Name;
+    }
+
+    winrt::guid ResourceId(HcnJson const& Value)
+    {
+        auto Id = winrt::guid(Value.get<std::string>());
+        if (Id == winrt::guid{}) throw winrt::hresult_invalid_argument(L"An object ID is required.");
+        return Id;
+    }
+
+    bool RegisteredResource(std::string const& Kind, GUID const& Id)
+    {
+        wchar_t Value[32]{};
+        DWORD Size = sizeof(Value);
+        auto Status = ::RegGetValueW(HKEY_LOCAL_MACHINE, ResourceRegistry, HcnGuidName(Id).c_str(),
+            RRF_RT_REG_SZ | RRF_SUBKEY_WOW6464KEY, nullptr, Value, &Size);
+        if (Status == ERROR_FILE_NOT_FOUND || Status == ERROR_PATH_NOT_FOUND) return false;
+        winrt::check_win32(Status);
+        return winrt::to_string(winrt::hstring(Value)) == Kind;
+    }
+
+    struct RegistryKey
+    {
+        HKEY Value = nullptr;
+        ~RegistryKey() { if (Value) ::RegCloseKey(Value); }
+    };
+
+    void RecordResource(std::string const& Kind, GUID const& Id)
+    {
+        RegistryKey Key;
+        winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, ResourceRegistry, 0, nullptr, 0,
+            KEY_SET_VALUE | KEY_WOW64_64KEY, nullptr, &Key.Value, nullptr));
+        auto Value = winrt::to_hstring(Kind);
+        winrt::check_win32(::RegSetValueExW(Key.Value, HcnGuidName(Id).c_str(), 0, REG_SZ,
+            reinterpret_cast<BYTE const*>(Value.c_str()), static_cast<DWORD>((Value.size() + 1) * sizeof(wchar_t))));
+    }
+
+    void ForgetResource(GUID const& Id)
+    {
+        RegistryKey Key;
+        auto Status = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, ResourceRegistry, 0,
+            KEY_SET_VALUE | KEY_WOW64_64KEY, &Key.Value);
+        if (Status == ERROR_FILE_NOT_FOUND) return;
+        winrt::check_win32(Status);
+        Status = ::RegDeleteValueW(Key.Value, HcnGuidName(Id).c_str());
+        if (Status != ERROR_FILE_NOT_FOUND) winrt::check_win32(Status);
+    }
+
+    void RequireManagedNetwork(winrt::guid const& Id)
+    {
+        auto Network = NanaBox::QueryHostNetwork(Id);
+        if (!std::wstring_view(Network.Name.c_str()).starts_with(ManagedNetworkPrefix) ||
+            (Network.Flags & NanaBox::HcnNetworkFlags::EnableFlowSteering))
+            throw winrt::hresult_error(E_ACCESSDENIED, L"Select a NanaBox-managed non-mirrored network.");
+    }
+
+    struct HcnResourceApi
+    {
+        using Enumerate = HRESULT (WINAPI*)(PCWSTR, PWSTR*, PWSTR*);
+        using Open = HRESULT (WINAPI*)(REFGUID, void**, PWSTR*);
+        using Query = HRESULT (WINAPI*)(void*, PCWSTR, PWSTR*, PWSTR*);
+        using Modify = HRESULT (WINAPI*)(void*, PCWSTR, PWSTR*);
+        using Create = HRESULT (WINAPI*)(REFGUID, PCWSTR, void**, PWSTR*);
+        using Delete = HRESULT (WINAPI*)(REFGUID, PWSTR*);
+        using Close = HRESULT (WINAPI*)(void*);
+
+        HMODULE Module = nullptr;
+        std::string Suffix, Plural;
+
+        explicit HcnResourceApi(std::string const& Kind)
+        {
+            if (Kind == "Network") { Suffix = "Network"; Plural = "Networks"; }
+            else if (Kind == "Endpoint") { Suffix = "Endpoint"; Plural = "Endpoints"; }
+            else if (Kind == "Namespace") { Suffix = "Namespace"; Plural = "Namespaces"; }
+            else if (Kind == "LoadBalancer") { Suffix = "LoadBalancer"; Plural = "LoadBalancers"; }
+            else if (Kind == "Route") { Suffix = "SdnRoute"; Plural = "SdnRoutes"; }
+            else throw winrt::hresult_invalid_argument(L"Unknown HCN resource type.");
+            Module = ::LoadLibraryExW(L"computenetwork.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+            winrt::check_pointer(Module);
+        }
+
+        ~HcnResourceApi() { if (Module) ::FreeLibrary(Module); }
+        HcnResourceApi(HcnResourceApi const&) = delete;
+        HcnResourceApi& operator=(HcnResourceApi const&) = delete;
+
+        template<typename T> T Import(std::string const& Name) const
+        {
+            auto Address = ::GetProcAddress(Module, Name.c_str());
+            if (!Address) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND), winrt::to_hstring(Name));
+            return reinterpret_cast<T>(Address);
+        }
+
+        struct Handle
+        {
+            Close Release;
+            void* Value = nullptr;
+            ~Handle() { if (Value) Release(Value); }
+        };
+
+        HcnJson Ids() const
+        {
+            winrt::cotaskmem_string Result, Error;
+            auto Status = Import<Enumerate>("HcnEnumerate" + Plural)(nullptr, Result.put(), Error.put());
+            ::CheckHcnCall(Status, Error);
+            if (!Result) throw winrt::hresult_error(E_UNEXPECTED);
+            auto Values = HcnJson::parse(winrt::to_string(winrt::hstring(Result.get())));
+            if (!Values.is_array()) throw winrt::hresult_error(E_UNEXPECTED);
+            return Values;
+        }
+
+        HcnJson Properties(winrt::guid const& Id) const
+        {
+            Handle Object{Import<Close>("HcnClose" + Suffix)};
+            winrt::cotaskmem_string Result, Error;
+            auto Status = Import<Open>("HcnOpen" + Suffix)(Id, &Object.Value, Error.put());
+            ::CheckHcnCall(Status, Error);
+            Error.close();
+            Status = Import<Query>("HcnQuery" + Suffix + "Properties")(Object.Value, nullptr, Result.put(), Error.put());
+            ::CheckHcnCall(Status, Error);
+            if (!Result) throw winrt::hresult_error(E_UNEXPECTED);
+            return HcnJson::parse(winrt::to_string(winrt::hstring(Result.get())));
+        }
+
+        void Apply(winrt::guid const& Id, HcnJson const& Data) const
+        {
+            Handle Object{Import<Close>("HcnClose" + Suffix)};
+            winrt::cotaskmem_string Error;
+            auto Status = Import<Open>("HcnOpen" + Suffix)(Id, &Object.Value, Error.put());
+            ::CheckHcnCall(Status, Error);
+            Error.close();
+            Status = Import<Modify>("HcnModify" + Suffix)(Object.Value, winrt::to_hstring(Data.dump()).c_str(), Error.put());
+            ::CheckHcnCall(Status, Error);
+        }
+
+        void Make(winrt::guid const& Id, HcnJson const& Data) const
+        {
+            Handle Object{Import<Close>("HcnClose" + Suffix)};
+            winrt::cotaskmem_string Error;
+            auto Status = Import<Create>("HcnCreate" + Suffix)(Id, winrt::to_hstring(Data.dump()).c_str(), &Object.Value, Error.put());
+            ::CheckHcnCall(Status, Error);
+        }
+
+        void Remove(winrt::guid const& Id) const
+        {
+            winrt::cotaskmem_string Error;
+            auto Status = Import<Delete>("HcnDelete" + Suffix)(Id, Error.put());
+            ::CheckHcnCall(Status, Error);
+        }
+    };
+
+    void CheckResourceSettings(HcnJson const& Data)
+    {
+        if (!Data.is_object() || Data.dump().size() > 1024 * 1024)
+            throw winrt::hresult_invalid_argument(L"Supply a JSON object smaller than 1 MiB.");
+        for (auto It = Data.begin(); It != Data.end(); ++It)
+        {
+            auto Key = winrt::to_hstring(It.key());
+            if (_wcsicmp(Key.c_str(), L"ID") == 0 || _wcsicmp(Key.c_str(), L"Owner") == 0)
+                throw winrt::hresult_invalid_argument(L"Resource ID and owner are assigned by NanaBox.");
+        }
+    }
+
+    void CheckEndpointReferences(HcnJson const& Data)
+    {
+        // Load balancers and routes must only reference endpoints created
+        // by this resource manager, not VM adapters or system endpoints.
+        for (auto It = Data.begin(); It != Data.end(); ++It)
+        {
+            if (_wcsicmp(winrt::to_hstring(It.key()).c_str(), L"HostComputeEndpoints") != 0) continue;
+            if (It.key() != "HostComputeEndpoints" || !It->is_array() || It->empty())
+                throw winrt::hresult_invalid_argument(L"HostComputeEndpoints must contain managed endpoint IDs.");
+            for (auto const& Value : *It)
+                if (!RegisteredResource("Endpoint", ResourceId(Value)))
+                    throw winrt::hresult_error(E_ACCESSDENIED, L"Referenced endpoint is not managed by NanaBox.");
+        }
+    }
+
+    HcnJson HcnManagement(std::string const& Action, HcnJson const& Arguments)
+    {
+        auto Kind = Arguments.at("Kind").get<std::string>();
+        HcnResourceApi Api(Kind);
+        if (Action == "HcnList")
+        {
+            auto Items = HcnJson::array();
+            for (auto const& Value : Api.Ids())
+            {
+                auto Id = ResourceId(Value);
+                auto IdText = winrt::to_string(winrt::hstring(HcnGuidName(Id)));
+                HcnJson Item = {{"Id", IdText}, {"Kind", Kind}};
+                try
+                {
+                    auto Properties = Api.Properties(Id);
+                    auto Name = Properties.value("Name", Kind);
+                    bool Managed = Kind == "Network"
+                        ? std::wstring_view(winrt::to_hstring(Name).c_str()).starts_with(ManagedNetworkPrefix)
+                        : RegisteredResource(Kind, Id);
+                    Item["Managed"] = Managed;
+                    Item["Name"] = Name + (Managed ? " [managed]" : " [read-only]");
+                }
+                catch (winrt::hresult_error const& Error)
+                {
+                    Item["Name"] = Kind + " [unavailable]";
+                    Item["Managed"] = false;
+                    Item["Error"] = winrt::to_string(Error.message());
+                }
+                Items.push_back(std::move(Item));
+            }
+            return {{"Items", std::move(Items)}};
+        }
+        if (Action == "HcnCreate")
+        {
+            auto Data = Arguments.at("Settings");
+            CheckResourceSettings(Data);
+            if (!Data.contains("SchemaVersion")) Data["SchemaVersion"] = {{"Major", 2}, {"Minor", 0}};
+            GUID NewId{};
+            winrt::check_hresult(::CoCreateGuid(&NewId));
+            auto Id = winrt::guid(NewId);
+            if (Kind == "Network")
+            {
+                auto Name = Arguments.at("Name").get<std::string>();
+                auto Settings = NanaBox::BuildManagedNetworkSettings(winrt::to_hstring(Name), false, winrt::to_hstring(Data.dump()));
+                auto FullName = winrt::to_hstring(HcnJson::parse(winrt::to_string(Settings)).at("Name").get<std::string>());
+                for (auto const& Network : NanaBox::EnumerateHostNetworks())
+                    if (_wcsicmp(Network.Name.c_str(), FullName.c_str()) == 0)
+                        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS), L"Network name already exists.");
+                NanaBox::HcnCreateNetwork(Id, Settings);
+            }
+            else
+            {
+                if (Kind == "Endpoint")
+                {
+                    auto NetworkId = ResourceId(Arguments.at("NetworkId"));
+                    RequireManagedNetwork(NetworkId);
+                    for (auto It = Data.begin(); It != Data.end(); ++It)
+                    {
+                        auto Key = winrt::to_hstring(It.key());
+                        if (_wcsicmp(Key.c_str(), L"HostComputeNetwork") == 0 ||
+                            _wcsicmp(Key.c_str(), L"HostComputeNamespace") == 0 ||
+                            _wcsicmp(Key.c_str(), L"VirtualNetwork") == 0 ||
+                            _wcsicmp(Key.c_str(), L"VirtualMachine") == 0)
+                            throw winrt::hresult_invalid_argument(L"Endpoint associations are managed separately.");
+                    }
+                    Data["HostComputeNetwork"] = winrt::to_string(winrt::hstring(HcnGuidName(NetworkId)));
+                    Data["Owner"] = "NanaBox.ResourceManager";
+                    auto Network = NanaBox::HcnOpenNetwork(NetworkId);
+                    NanaBox::HcnCreateEndpoint(Network, Id, winrt::to_hstring(Data.dump()));
+                }
+                else
+                {
+                    if (Kind == "Namespace")
+                    {
+                        auto Type = Data.value("Type", std::string("Host"));
+                        if (Type != "Host" && Type != "Guest")
+                            throw winrt::hresult_invalid_argument(L"Only non-default namespaces can be created.");
+                        for (auto It = Data.begin(); It != Data.end(); ++It)
+                        {
+                            auto Key = winrt::to_hstring(It.key());
+                            if (_wcsicmp(Key.c_str(), L"NamespaceId") == 0 ||
+                                (_wcsicmp(Key.c_str(), L"Resources") == 0 && !It->empty()))
+                                throw winrt::hresult_invalid_argument(L"Create an empty namespace and attach endpoints separately.");
+                        }
+                        Data["Type"] = Type;
+                    }
+                    else CheckEndpointReferences(Data);
+                    Api.Make(Id, Data);
+                }
+                try { RecordResource(Kind, Id); }
+                catch (...) { try { Api.Remove(Id); } catch (...) {} throw; }
+            }
+            return {{"Id", winrt::to_string(winrt::hstring(HcnGuidName(Id)))}, {"Kind", Kind}};
+        }
+        auto Id = ResourceId(Arguments.at("Id"));
+        auto IdText = winrt::to_string(winrt::hstring(HcnGuidName(Id)));
+        if (Action == "HcnInspect")
+        {
+            auto Properties = Api.Properties(Id);
+            bool Managed = Kind == "Network"
+                ? std::wstring_view(winrt::to_hstring(Properties.value("Name", std::string())).c_str()).starts_with(ManagedNetworkPrefix)
+                : RegisteredResource(Kind, Id);
+            return {{"Id", IdText}, {"Kind", Kind}, {"Managed", Managed}, {"Properties", std::move(Properties)}};
+        }
+        if (Kind == "Network") RequireManagedNetwork(Id);
+        else if (!RegisteredResource(Kind, Id))
+            throw winrt::hresult_error(E_ACCESSDENIED, L"Select a resource created by the NanaBox resource manager.");
+        if (Action == "HcnDelete")
+        {
+            if (Kind == "Network") NanaBox::DeleteManagedNetwork(Id);
+            else
+            {
+                if (Kind == "Namespace" && !Api.Properties(Id).value("Resources", HcnJson::array()).empty())
+                    throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_BUSY), L"Remove namespace resources before deleting it.");
+                Api.Remove(Id);
+                ForgetResource(Id);
+            }
+        }
+        else if (Action == "HcnModify")
+        {
+            auto Data = Arguments.at("Settings");
+            CheckResourceSettings(Data);
+            if (Kind == "Route")
+                throw winrt::hresult_error(E_NOTIMPL, L"HCN SDN routes must be deleted and recreated to change their settings.");
+            if (Kind == "LoadBalancer") CheckEndpointReferences(Data);
+            else
+            {
+                auto Resource = Data.at("ResourceType").get<std::string>();
+                auto Request = Data.at("RequestType").get<std::string>();
+                if ((Request != "Add" && Request != "Remove" && Request != "Update") ||
+                    (Kind == "Namespace" ? Resource != "Endpoint" : Resource != "Policy"))
+                    throw winrt::hresult_invalid_argument(L"Use Policy or Endpoint modification requests for this resource type.");
+                if (Kind == "Namespace")
+                {
+                    auto Endpoint = ResourceId(Data.at("Settings").at("EndpointId"));
+                    if (!RegisteredResource("Endpoint", Endpoint))
+                        throw winrt::hresult_error(E_ACCESSDENIED, L"Select an endpoint created by the resource manager.");
+                    Data["Settings"] = {{"EndpointId", winrt::to_string(winrt::hstring(HcnGuidName(Endpoint)))}};
+                }
+            }
+            Api.Apply(Id, Data);
+        }
+        else throw winrt::hresult_invalid_argument();
+        return {{"Id", IdText}, {"Kind", Kind}};
+    }
+}
+
 winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments)
 {
     auto Data = nlohmann::json::parse(winrt::to_string(Arguments));
     if (!Data.is_object()) throw winrt::hresult_invalid_argument();
     Data["Action"] = winrt::to_string(Action);
+    if (std::wstring_view(Action.c_str()).starts_with(L"Hcn"))
+        return winrt::to_hstring(HcnManagement(winrt::to_string(Action), Data).dump());
     if (Action == L"HcsInventory")
     {
         NanaBox::HcsOperation Operation(::HcsCreateOperation(nullptr, nullptr));

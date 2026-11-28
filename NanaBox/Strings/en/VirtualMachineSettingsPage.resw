@@ -2045,4 +2045,23 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged.</value></data>
   <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>Coordinate Linux application port binding with the host</value></data>
   <data name="MirroredBindNote.Text" xml:space="preserve"><value>Install bind coordination in the guest and launch applications with nanabox-bind. Requires Linux 6.7 or newer.</value></data>
+  <data name="TabHcn.Header" xml:space="preserve"><value>HCN resources</value></data>
+  <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage HCN networks, standalone endpoints, namespaces, load balancers and SDN routes. Existing system resources are read-only. Resource modifications use native HCN JSON settings.</value></data>
+  <data name="HcnKind.Header" xml:space="preserve"><value>Resource type</value></data>
+  <data name="HcnResource.Header" xml:space="preserve"><value>Resource</value></data>
+  <data name="HcnName.Header" xml:space="preserve"><value>Network name (network creation)</value></data>
+  <data name="HcnNetworkId.Header" xml:space="preserve"><value>Parent network ID (endpoint creation)</value></data>
+  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN settings JSON</value></data>
+  <data name="HcnList.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="HcnInspect.Content" xml:space="preserve"><value>Inspect</value></data>
+  <data name="HcnCreate.Content" xml:space="preserve"><value>Create</value></data>
+  <data name="HcnModify.Content" xml:space="preserve"><value>Modify</value></data>
+  <data name="HcnDelete.Content" xml:space="preserve"><value>Delete</value></data>
+  <data name="HcnResult.Header" xml:space="preserve"><value>Operation result</value></data>
+  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings.</value></data>
+  <data name="HcnKindNetwork.Content" xml:space="preserve"><value>Network</value></data>
+  <data name="HcnKindEndpoint.Content" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="HcnKindNamespace.Content" xml:space="preserve"><value>Namespace</value></data>
+  <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>Load balancer</value></data>
+  <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN route</value></data>
 </root>
