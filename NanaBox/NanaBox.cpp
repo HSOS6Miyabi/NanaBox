@@ -16,6 +16,7 @@
 
 #include "App.h"
 #include "MainWindow.h"
+#include "MirroredNetworking.h"
 #include "NetworkReconciliation.h"
 #include "PowerTransition.h"
 #include "QuickStartPage.h"
@@ -101,6 +102,7 @@ int WINAPI wWinMain(
     {
         try
         {
+            if (!NanaBox::GuestToolsSelfTest()) return 33;
             NanaBox::VirtualMachineConfiguration Config;
             Config.Name = "SelfTest";
             Config.GuestType = NanaBox::GuestType::Windows;

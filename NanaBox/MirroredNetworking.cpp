@@ -7,6 +7,10 @@
 #include <sddl.h>
 #include <ShlObj.h>
 #include <knownfolders.h>
+#include <wincrypt.h>
+#include <array>
+#include <functional>
+#include <vector>
 #include <Mile.Json.h>
 #include "MirroredNetworking.h"
 #include "HostCompute.h"
@@ -1053,19 +1057,310 @@ void NanaBox::MirroredNetworking::RequestRefresh() noexcept
     m_Impl->RequestRefresh();
 }
 
-std::string NanaBox::QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource)
+namespace
 {
-    if (Resource != "Heartbeat" && Resource != "GuestInformation" && Resource != "Diagnostics")
-        throw winrt::hresult_invalid_argument();
+    constexpr DWORD FileChunk = 64 * 1024;
+    using GuestExchangeRequest = std::function<Json(std::string const&, std::string const&, Json const&)>;
+
+    class FileDigest
+    {
+        HCRYPTPROV Provider{};
+        HCRYPTHASH Hash{};
+    public:
+        FileDigest()
+        {
+            winrt::check_bool(::CryptAcquireContextW(&Provider, nullptr, nullptr, PROV_RSA_AES, CRYPT_VERIFYCONTEXT));
+            if (!::CryptCreateHash(Provider, CALG_SHA_256, 0, 0, &Hash))
+            {
+                auto Error = ::GetLastError();
+                ::CryptReleaseContext(Provider, 0);
+                winrt::throw_hresult(HRESULT_FROM_WIN32(Error));
+            }
+        }
+        ~FileDigest()
+        {
+            if (Hash) ::CryptDestroyHash(Hash);
+            if (Provider) ::CryptReleaseContext(Provider, 0);
+        }
+        FileDigest(FileDigest const&) = delete;
+        FileDigest& operator=(FileDigest const&) = delete;
+        void Update(void const* Buffer, DWORD Size)
+        {
+            winrt::check_bool(::CryptHashData(Hash, static_cast<BYTE const*>(Buffer), Size, 0));
+        }
+        std::string Finish()
+        {
+            std::array<BYTE, 32> Bytes{};
+            DWORD Size = static_cast<DWORD>(Bytes.size());
+            winrt::check_bool(::CryptGetHashParam(Hash, HP_HASHVAL, Bytes.data(), &Size, 0));
+            if (Size != Bytes.size()) throw winrt::hresult_error(E_UNEXPECTED);
+            constexpr char Hex[] = "0123456789abcdef";
+            std::string Result;
+            for (auto Byte : Bytes) { Result += Hex[Byte >> 4]; Result += Hex[Byte & 15]; }
+            return Result;
+        }
+    };
+
+    std::string EncodeFileChunk(BYTE const* Bytes, DWORD Count)
+    {
+        DWORD Length = 0;
+        winrt::check_bool(::CryptBinaryToStringA(Bytes, Count, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &Length));
+        std::string Encoded(Length, '\0');
+        winrt::check_bool(::CryptBinaryToStringA(Bytes, Count, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, Encoded.data(), &Length));
+        Encoded.resize(Length);
+        return Encoded;
+    }
+
+    std::vector<BYTE> DecodeFileChunk(std::string const& Text)
+    {
+        if (Text.empty()) return {};
+        if (Text.size() > ((FileChunk + 2) / 3) * 4) throw winrt::hresult_invalid_argument();
+        DWORD Length = 0;
+        winrt::check_bool(::CryptStringToBinaryA(Text.c_str(), static_cast<DWORD>(Text.size()),
+            CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT, nullptr, &Length, nullptr, nullptr));
+        if (Length > FileChunk) throw winrt::hresult_invalid_argument();
+        std::vector<BYTE> Result(Length);
+        winrt::check_bool(::CryptStringToBinaryA(Text.c_str(), static_cast<DWORD>(Text.size()),
+            CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT, Result.data(), &Length, nullptr, nullptr));
+        Result.resize(Length);
+        return Result;
+    }
+
+    winrt::handle OpenLocalFile(std::wstring const& Path, DWORD Access, DWORD Share, DWORD Creation)
+    {
+        HANDLE Raw = ::CreateFileW(Path.c_str(), Access, Share, nullptr, Creation, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        if (Raw == INVALID_HANDLE_VALUE) winrt::throw_last_error();
+        winrt::handle Result(Raw);
+        BY_HANDLE_FILE_INFORMATION Info{};
+        winrt::check_bool(::GetFileInformationByHandle(Result.get(), &Info));
+        if (Info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            throw winrt::hresult_invalid_argument(L"Select a regular file.");
+        return Result;
+    }
+
+    void WriteLocalFile(HANDLE File, BYTE const* Bytes, DWORD Length)
+    {
+        while (Length)
+        {
+            DWORD Written = 0;
+            winrt::check_bool(::WriteFile(File, Bytes, Length, &Written, nullptr));
+            if (!Written) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_WRITE_FAULT));
+            Bytes += Written;
+            Length -= Written;
+        }
+    }
+
+    std::wstring TemporaryFilePath(std::wstring const& Path)
+    {
+        GUID Id{};
+        winrt::check_hresult(::CoCreateGuid(&Id));
+        return Path + L".nanabox-" + std::wstring(::FromGuid(Id).c_str()) + L".partial";
+    }
+
+    Json ExecuteGuestTools(std::string const& Action, std::wstring const& LocalPath,
+        std::string const& GuestName, bool Overwrite, GuestExchangeRequest const& Request)
+    {
+        if (Action == "Heartbeat" || Action == "GuestInformation" || Action == "Diagnostics" || Action == "TimeQuery")
+        {
+            auto Kind = Action == "TimeQuery" ? "TimeSync" : Action;
+            auto Result = Request(Kind, "Query", Json::object());
+            if (Action == "TimeQuery")
+            {
+                auto Now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count();
+                Result["HostUnixMilliseconds"] = Now;
+                Result["GuestOffsetMilliseconds"] = Result.at("UnixMilliseconds").get<std::int64_t>() - Now;
+            }
+            return Result;
+        }
+        if (Action == "TimeSync")
+        {
+            auto Now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            return Request("TimeSync", "Update", Json{{"UnixMilliseconds", Now}});
+        }
+        if ((Action != "FileUpload" && Action != "FileDownload") || LocalPath.empty() || GuestName.empty())
+            throw winrt::hresult_invalid_argument(L"Specify a local path and a guest exchange filename.");
+
+        std::string Token;
+        auto Abort = Mile::ScopeExitTaskHandler([&]()
+        {
+            if (!Token.empty())
+                try { Request("FileExchange", "Abort", Json{{"Token", Token}}); } catch (...) {}
+        });
+        FileDigest Digest;
+        if (Action == "FileUpload")
+        {
+            auto File = OpenLocalFile(LocalPath, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING);
+            LARGE_INTEGER Length{};
+            winrt::check_bool(::GetFileSizeEx(File.get(), &Length));
+            if (Length.QuadPart < 0) throw winrt::hresult_error(E_UNEXPECTED);
+            auto Size = static_cast<std::uint64_t>(Length.QuadPart);
+            auto Opened = Request("FileExchange", "BeginUpload",
+                Json{{"Name", GuestName}, {"Size", Size}, {"Overwrite", Overwrite}});
+            Token = Opened.at("Token").get<std::string>();
+            auto ChunkSize = Opened.at("ChunkSize").get<DWORD>();
+            if (!ChunkSize || ChunkSize > FileChunk || Opened.at("Size").get<std::uint64_t>() != Size)
+                throw winrt::hresult_error(E_UNEXPECTED);
+            std::array<BYTE, FileChunk> Buffer{};
+            std::uint64_t Offset = 0;
+            while (Offset < Size)
+            {
+                DWORD Count = 0;
+                DWORD Wanted = static_cast<DWORD>((std::min)(static_cast<std::uint64_t>(ChunkSize), Size - Offset));
+                winrt::check_bool(::ReadFile(File.get(), Buffer.data(), Wanted, &Count, nullptr));
+                if (!Count) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_HANDLE_EOF));
+                Digest.Update(Buffer.data(), Count);
+                auto Reply = Request("FileExchange", "Write", Json{{"Token", Token}, {"Offset", Offset},
+                    {"Data", EncodeFileChunk(Buffer.data(), Count)}});
+                Offset += Count;
+                if (Reply.at("Offset").get<std::uint64_t>() != Offset)
+                    throw winrt::hresult_error(E_UNEXPECTED, L"Guest acknowledged an incorrect file offset.");
+            }
+            auto Sha = Digest.Finish();
+            auto Reply = Request("FileExchange", "Commit", Json{{"Token", Token}, {"Sha256", Sha}});
+            if (Reply.at("Size").get<std::uint64_t>() != Size || Reply.at("Sha256") != Sha)
+                throw winrt::hresult_error(E_FAIL, L"Guest file integrity check failed.");
+            Token.clear();
+            return Reply;
+        }
+
+        auto Opened = Request("FileExchange", "OpenDownload", Json{{"Name", GuestName}});
+        Token = Opened.at("Token").get<std::string>();
+        auto Size = Opened.at("Size").get<std::uint64_t>();
+        if (Size > static_cast<std::uint64_t>(INT64_MAX)) throw winrt::hresult_invalid_argument();
+        auto ChunkSize = Opened.at("ChunkSize").get<DWORD>();
+        if (!ChunkSize || ChunkSize > FileChunk) throw winrt::hresult_error(E_UNEXPECTED);
+        if (!Overwrite && ::GetFileAttributesW(LocalPath.c_str()) != INVALID_FILE_ATTRIBUTES)
+            throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS), L"The destination already exists.");
+        auto Temporary = TemporaryFilePath(LocalPath);
+        auto File = OpenLocalFile(Temporary, GENERIC_WRITE, 0, CREATE_NEW);
+        auto Remove = Mile::ScopeExitTaskHandler([&]() { File.close(); ::DeleteFileW(Temporary.c_str()); });
+        std::uint64_t Offset = 0;
+        while (Offset < Size)
+        {
+            DWORD Wanted = static_cast<DWORD>((std::min)(static_cast<std::uint64_t>(ChunkSize), Size - Offset));
+            auto Reply = Request("FileExchange", "Read", Json{{"Token", Token}, {"Offset", Offset}, {"Length", Wanted}});
+            auto Bytes = DecodeFileChunk(Reply.at("Data").get<std::string>());
+            if (Bytes.empty() || Bytes.size() > Wanted || Reply.at("Offset").get<std::uint64_t>() != Offset + Bytes.size())
+                throw winrt::hresult_error(E_UNEXPECTED, L"Guest returned an invalid file chunk.");
+            WriteLocalFile(File.get(), Bytes.data(), static_cast<DWORD>(Bytes.size()));
+            Digest.Update(Bytes.data(), static_cast<DWORD>(Bytes.size()));
+            Offset += Bytes.size();
+            if (Reply.at("End").get<bool>() != (Offset == Size))
+                throw winrt::hresult_error(E_UNEXPECTED);
+        }
+        auto Reply = Request("FileExchange", "FinishDownload", Json{{"Token", Token}});
+        if (Reply.at("Size").get<std::uint64_t>() != Size || Reply.at("Sha256") != Digest.Finish())
+            throw winrt::hresult_error(E_FAIL, L"Downloaded file integrity check failed.");
+        Token.clear();
+        winrt::check_bool(::FlushFileBuffers(File.get()));
+        File.close();
+        winrt::check_bool(::MoveFileExW(Temporary.c_str(), LocalPath.c_str(),
+            MOVEFILE_WRITE_THROUGH | (Overwrite ? MOVEFILE_REPLACE_EXISTING : 0)));
+        return Reply;
+    }
+}
+
+std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
+    std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite)
+{
     RegisterGuestSocket();
     WSADATA Data{};
     auto Result = ::WSAStartup(MAKEWORD(2, 2), &Data);
     if (Result) winrt::throw_hresult(HRESULT_FROM_WIN32(Result));
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
     std::atomic<bool> Stop{false};
-    auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", Resource},
-        {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, Resource == "Diagnostics" ? 40 : 15);
-    return Json{{"Success", true}, {"ResourceType", Resource}, {"Data", Reply}}.dump(2);
+    auto Reply = ExecuteGuestTools(Action, LocalPath, GuestName, Overwrite,
+        [&](std::string const& Kind, std::string const& Verb, Json const& Settings)
+        {
+            return GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", Kind},
+                {"RequestType", Verb}, {"Settings", Settings}}, Stop, Kind == "Diagnostics" ? 40 : 15);
+        });
+    return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
+}
+
+std::string NanaBox::QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource)
+{
+    return RunGuestToolsAction(RuntimeId, Resource, L"", "", false);
+}
+
+bool NanaBox::GuestToolsSelfTest()
+{
+    wchar_t Root[MAX_PATH + 1]{};
+    auto Length = ::GetTempPathW(ARRAYSIZE(Root), Root);
+    if (!Length || Length >= ARRAYSIZE(Root)) return false;
+    auto Source = TemporaryFilePath(std::wstring(Root) + L"NanaBox-guest-test");
+    auto Target = TemporaryFilePath(std::wstring(Root) + L"NanaBox-guest-test");
+    auto Cleanup = Mile::ScopeExitTaskHandler([&]() { ::DeleteFileW(Source.c_str()); ::DeleteFileW(Target.c_str()); });
+    std::vector<BYTE> Payload(2 * FileChunk + 117);
+    for (size_t Index = 0; Index < Payload.size(); ++Index) Payload[Index] = static_cast<BYTE>(Index % 251);
+    {
+        auto File = OpenLocalFile(Source, GENERIC_WRITE, 0, CREATE_NEW);
+        WriteLocalFile(File.get(), Payload.data(), static_cast<DWORD>(Payload.size()));
+    }
+    FileDigest Reference;
+    Reference.Update(Payload.data(), static_cast<DWORD>(Payload.size()));
+    auto Sha = Reference.Finish();
+    std::vector<BYTE> Received;
+    std::uint64_t Offset = 0;
+    bool Corrupt = false, Aborted = false;
+    auto Exchange = [&](std::string const& Kind, std::string const& Verb, Json const& Settings) -> Json
+    {
+        if (Kind != "FileExchange") throw winrt::hresult_error(E_UNEXPECTED);
+        if (Verb == "BeginUpload" || Verb == "OpenDownload")
+        {
+            Offset = 0;
+            if (Verb == "BeginUpload")
+            {
+                Received.clear();
+                if (Settings.at("Size") != Payload.size()) throw winrt::hresult_error(E_UNEXPECTED);
+            }
+            return Json{{"Token", "00000000000000000000000000000001"}, {"Size", Payload.size()}, {"ChunkSize", FileChunk}};
+        }
+        if (Verb == "Abort") { Aborted = true; return Json{{"Aborted", true}}; }
+        if (Verb == "Write")
+        {
+            if (Settings.at("Offset") != Offset) throw winrt::hresult_error(E_UNEXPECTED);
+            auto Chunk = DecodeFileChunk(Settings.at("Data").get<std::string>());
+            Received.insert(Received.end(), Chunk.begin(), Chunk.end());
+            Offset += Chunk.size();
+            return Json{{"Offset", Offset}};
+        }
+        if (Verb == "Read")
+        {
+            if (Settings.at("Offset") != Offset) throw winrt::hresult_error(E_UNEXPECTED);
+            auto Count = static_cast<DWORD>((std::min)(static_cast<std::uint64_t>(Settings.at("Length").get<DWORD>()),
+                static_cast<std::uint64_t>(Payload.size()) - Offset));
+            auto Encoded = EncodeFileChunk(Payload.data() + Offset, Count);
+            Offset += Count;
+            return Json{{"Offset", Offset}, {"Data", Encoded}, {"End", Offset == Payload.size()}};
+        }
+        if (Verb == "Commit" && Settings.at("Sha256") != Sha) throw winrt::hresult_error(E_UNEXPECTED);
+        if (Verb != "Commit" && Verb != "FinishDownload") throw winrt::hresult_error(E_UNEXPECTED);
+        return Json{{"Name", "payload.bin"}, {"Size", Offset}, {"Sha256", Corrupt ? std::string(64, '0') : Sha}};
+    };
+    auto Upload = ExecuteGuestTools("FileUpload", Source, "payload.bin", false, Exchange);
+    if (Upload.at("Sha256") != Sha || Received != Payload || Aborted) return false;
+    Corrupt = true;
+    bool Failed = false;
+    try { ExecuteGuestTools("FileDownload", Target, "payload.bin", false, Exchange); }
+    catch (...) { Failed = true; }
+    if (!Failed || !Aborted || ::GetFileAttributesW(Target.c_str()) != INVALID_FILE_ATTRIBUTES) return false;
+    Corrupt = false;
+    Aborted = false;
+    auto Download = ExecuteGuestTools("FileDownload", Target, "payload.bin", false, Exchange);
+    if (Download.at("Sha256") != Sha || Aborted) return false;
+    auto File = OpenLocalFile(Target, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING);
+    std::vector<BYTE> Actual(Payload.size());
+    DWORD Count = 0;
+    winrt::check_bool(::ReadFile(File.get(), Actual.data(), static_cast<DWORD>(Actual.size()), &Count, nullptr));
+    if (Count != Actual.size() || Actual != Payload) return false;
+    File.close();
+    Failed = false;
+    try { ExecuteGuestTools("FileDownload", Target, "payload.bin", false, Exchange); }
+    catch (...) { Failed = true; }
+    return Failed && Aborted;
 }
 
 std::string NanaBox::CheckMirroredHostSupport()
