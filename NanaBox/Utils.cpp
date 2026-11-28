@@ -8,6 +8,8 @@
 #pragma comment(lib,"virtdisk.lib")
 
 #include <Shlwapi.h>
+#include <shellapi.h>
+#include <algorithm>
 #pragma comment(lib, "Shlwapi.lib")
 
 #include <dwmapi.h>
@@ -45,98 +47,77 @@ void SplitCommandLineEx(
     ApplicationName.clear();
     OptionsAndParameters.clear();
     UnresolvedCommandLine.clear();
+    int Count = 0;
+    auto Arguments = ::CommandLineToArgvW(CommandLine.c_str(), &Count);
+    if (!Arguments) winrt::throw_last_error();
+    auto FreeArguments = Mile::ScopeExitTaskHandler([Arguments]() { ::LocalFree(Arguments); });
+    if (Count <= 0) return;
+    ApplicationName = Arguments[0];
 
-    size_t arg_size = 0;
-    for (auto& SplitArgument : Mile::SplitCommandLineWideString(CommandLine))
+    bool PathStarted = false;
+    for (int Index = 1; Index < Count; ++Index)
     {
-        // We need to process the application name at the beginning.
-        if (ApplicationName.empty())
+        std::wstring Argument = Arguments[Index];
+        if (!PathStarted && Argument == L"--")
         {
-            // For getting the unresolved command line, we need to cumulate
-            // length which including spaces.
-            arg_size += SplitArgument.size() + 1;
+            PathStarted = true;
+            continue;
+        }
+        std::size_t PrefixLength = 0;
+        if (!PathStarted)
+            for (auto const& Prefix : OptionPrefixes)
+                if (!Prefix.empty() && Prefix.size() <= Argument.size() &&
+                    _wcsnicmp(Argument.c_str(), Prefix.c_str(), Prefix.size()) == 0)
+                    PrefixLength = (std::max)(PrefixLength, Prefix.size());
 
-            // Save
-            ApplicationName = SplitArgument;
+        if (PrefixLength != 0)
+        {
+            auto Option = Argument.substr(PrefixLength);
+            std::size_t SeparatorPosition = std::wstring::npos;
+            std::size_t SeparatorLength = 0;
+            for (auto const& Separator : OptionParameterSeparators)
+            {
+                if (Separator.empty()) continue;
+                auto Position = Option.find(Separator);
+                if (Position < SeparatorPosition)
+                {
+                    SeparatorPosition = Position;
+                    SeparatorLength = Separator.size();
+                }
+            }
+            if (SeparatorPosition == std::wstring::npos)
+                OptionsAndParameters[Option] = L"";
+            else OptionsAndParameters[Option.substr(0, SeparatorPosition)] =
+                Option.substr(SeparatorPosition + SeparatorLength);
         }
         else
         {
-            bool IsOption = false;
-            size_t OptionPrefixLength = 0;
-
-            for (auto& OptionPrefix : OptionPrefixes)
-            {
-                if (0 == ::_wcsnicmp(
-                    SplitArgument.c_str(),
-                    OptionPrefix.c_str(),
-                    OptionPrefix.size()))
-                {
-                    IsOption = true;
-                    OptionPrefixLength = OptionPrefix.size();
-                }
-            }
-
-            if (IsOption)
-            {
-                // For getting the unresolved command line, we need to cumulate
-                // length which including spaces.
-                arg_size += SplitArgument.size() + 1;
-
-                // Get the option name and parameter.
-
-                wchar_t* OptionStart = &SplitArgument[0] + OptionPrefixLength;
-                wchar_t* ParameterStart = nullptr;
-
-                for (auto& OptionParameterSeparator
-                    : OptionParameterSeparators)
-                {
-                    wchar_t* Result = std::wcsstr(
-                        OptionStart,
-                        OptionParameterSeparator.c_str());
-                    if (nullptr == Result)
-                    {
-                        continue;
-                    }
-
-                    Result[0] = L'\0';
-                    ParameterStart = Result + OptionParameterSeparator.size();
-
-                    break;
-                }
-
-                // Save
-                OptionsAndParameters[(OptionStart ? OptionStart : L"")] =
-                    (ParameterStart ? ParameterStart : L"");
-            }
-            else
-            {
-                // Get the approximate location of the unresolved command line.
-                // We use "(arg_size - 1)" to ensure that the program path
-                // without quotes can also correctly parse.
-                wchar_t* search_start =
-                    const_cast<wchar_t*>(CommandLine.c_str()) + (arg_size - 1);
-
-                // Get the unresolved command line. Search for the beginning of
-                // the first parameter delimiter called space and exclude the
-                // first space by adding 1 to the result.
-                wchar_t* command = std::wcsstr(search_start, L" ") + 1;
-
-                // Omit the space. (Thanks to wzzw.)
-                while (command && *command == L' ')
-                {
-                    ++command;
-                }
-
-                // Save
-                if (command)
-                {
-                    UnresolvedCommandLine = command;
-                }
-
-                break;
-            }
+            PathStarted = true;
+            if (!UnresolvedCommandLine.empty()) UnresolvedCommandLine += L" ";
+            UnresolvedCommandLine += Argument;
         }
     }
+}
+
+std::wstring QuoteCommandLineArgument(std::wstring const& Argument)
+{
+    std::wstring Result = L"\"";
+    std::size_t Backslashes = 0;
+    for (wchar_t Character : Argument)
+    {
+        if (Character == L'\\')
+        {
+            ++Backslashes;
+            continue;
+        }
+        if (Character == L'"') Result.append(Backslashes * 2 + 1, L'\\');
+        else Result.append(Backslashes, L'\\');
+        Backslashes = 0;
+        Result += Character;
+    }
+    Result.append(Backslashes * 2, L'\\');
+    Result += L'"';
+    return Result;
 }
 
 winrt::hstring FromGuid(
@@ -262,13 +243,15 @@ void WriteAllTextToUtf8TextFile(
 std::wstring GetAbsolutePath(
     std::wstring const& FileName)
 {
-    // 32767 is the maximum path length without the terminating null character.
-    std::wstring Path(32767, L'\0');
-    Path.resize(::GetFullPathNameW(
-        FileName.c_str(),
-        static_cast<DWORD>(Path.size()),
-        &Path[0],
-        nullptr));
+    if (FileName.empty()) return {};
+    DWORD Required = ::GetFullPathNameW(FileName.c_str(), 0, nullptr, nullptr);
+    if (!Required) winrt::throw_last_error();
+    std::wstring Path(Required, L'\0');
+    DWORD Written = ::GetFullPathNameW(FileName.c_str(), Required, Path.data(), nullptr);
+    if (!Written) winrt::throw_last_error();
+    if (Written >= Required)
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER));
+    Path.resize(Written);
     return Path;
 }
 

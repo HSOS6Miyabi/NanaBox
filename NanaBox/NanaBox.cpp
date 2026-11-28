@@ -29,6 +29,7 @@
 #include "VirtualMachineSettingsPage.h"
 #include "SettingsHostMock.h"
 #include <shellapi.h>
+#include <filesystem>
 #include <commctrl.h>
 #pragma comment(lib, "comctl32.lib")
 #include <virtdisk.h>
@@ -108,6 +109,35 @@ int WINAPI wWinMain(
     {
         try
         {
+            {
+                std::wstring Application, Path;
+                std::map<std::wstring, std::wstring> Options;
+                const std::vector<std::wstring> Prefixes{L"-", L"/", L"--"};
+                const std::vector<std::wstring> Separators{L"=", L":"};
+                auto Parse = [&](std::wstring const& Command)
+                {
+                    ::SplitCommandLineEx(Command, Prefixes, Separators, Application, Options, Path);
+                };
+                std::wstring File = L"C:\\Virtual Machines\\\u4e2d\u6587 configuration.7b";
+                Parse(L"\"C:\\Program Files\\NanaBox.exe\" " + ::QuoteCommandLineArgument(File));
+                if (Application != L"C:\\Program Files\\NanaBox.exe" || Path != File || !Options.empty()) return 68;
+                Parse(L"NanaBox.exe --AcquireSponsorEdition \"C:\\Virtual Machines\\test.7b\"");
+                if (Path != L"C:\\Virtual Machines\\test.7b" || !Options.contains(L"AcquireSponsorEdition")) return 68;
+                Parse(L"NanaBox.exe -- \"-local config.7b\"");
+                if (Path != L"-local config.7b" || !Options.empty()) return 68;
+                Parse(L"NanaBox.exe C:\\Virtual Machines\\test.7b");
+                if (Path != L"C:\\Virtual Machines\\test.7b") return 68;
+                for (std::wstring const& Value : {std::wstring(L""), std::wstring(L"a b\\"),
+                    std::wstring(L"a\\\"b"), File})
+                {
+                    auto Command = L"NanaBox.exe " + ::QuoteCommandLineArgument(Value);
+                    int ArgumentNumber = 0;
+                    auto Parsed = ::CommandLineToArgvW(Command.c_str(), &ArgumentNumber);
+                    if (!Parsed) return 68;
+                    auto FreeParsed = Mile::ScopeExitTaskHandler([Parsed]() { ::LocalFree(Parsed); });
+                    if (ArgumentNumber != 2 || Value != Parsed[1]) return 68;
+                }
+            }
             {
                 auto Batches = NanaBox::EncodeKeyboardText(L"aA\r\n\t");
                 if (Batches.size() != 1 || Batches[0].size() != 10 ||
@@ -923,7 +953,9 @@ int WINAPI wWinMain(
             Information.lpVerb = L"runas";
             Information.nShow = nShowCmd;
             Information.lpFile = ApplicationName.c_str();
-            Information.lpParameters = UnresolvedCommandLine.c_str();
+            auto Parameters = UnresolvedCommandLine.empty() ? std::wstring() :
+                ::QuoteCommandLineArgument(::GetAbsolutePath(UnresolvedCommandLine));
+            Information.lpParameters = Parameters.empty() ? nullptr : Parameters.c_str();
             winrt::check_bool(::ShellExecuteExW(&Information));
             ::WaitForSingleObjectEx(Information.hProcess, INFINITE, FALSE);
             ::CloseHandle(Information.hProcess);
@@ -959,7 +991,13 @@ int WINAPI wWinMain(
 
     if (!UnresolvedCommandLine.empty())
     {
-        ConfigurationFilePath = ::GetAbsolutePath(UnresolvedCommandLine);
+        try { ConfigurationFilePath = ::GetAbsolutePath(UnresolvedCommandLine); }
+        catch (...)
+        {
+            auto Error = Mile::WinRT::ToHResultError();
+            ::ShowErrorMessageDialog(Error);
+            return Error.code();
+        }
     }
     else
     {
@@ -999,10 +1037,13 @@ int WINAPI wWinMain(
     }
 
     {
-        std::wstring CurrentPath = ConfigurationFilePath;
-        std::wcsrchr(&CurrentPath[0], L'\\')[0] = L'\0';
-        CurrentPath.resize(std::wcslen(CurrentPath.c_str()));
-        ::SetCurrentDirectoryW(CurrentPath.c_str());
+        auto CurrentPath = std::filesystem::path(ConfigurationFilePath).parent_path();
+        if (!::SetCurrentDirectoryW(CurrentPath.c_str()))
+        {
+            auto Error = winrt::hresult_error(HRESULT_FROM_WIN32(::GetLastError()));
+            ::ShowErrorMessageDialog(Error);
+            return Error.code();
+        }
     }
 
     WTL::CMessageLoop MessageLoop;

@@ -499,7 +499,6 @@ namespace
     ValueChoices HotkeyChoices()
     {
         ValueChoices Choices = {
-            {::GetSettingsString(L"KeyDefault"), L"0"},
             {::GetSettingsString(L"KeyBreak"), winrt::to_hstring(VK_CANCEL)},
             {L"Home", winrt::to_hstring(VK_HOME)},
             {L"End", winrt::to_hstring(VK_END)},
@@ -1685,7 +1684,7 @@ namespace winrt::NanaBox::implementation
             if (Length == 0) winrt::throw_last_error();
             if (Length >= MAX_PATH) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER));
             std::wstring Editor = std::wstring(SystemDirectory, Length) + L"\\notepad.exe";
-            std::wstring Parameters = L"\"" + Path + L"\"";
+            std::wstring Parameters = ::QuoteCommandLineArgument(Path);
             SHELLEXECUTEINFOW Info = {};
             Info.cbSize = sizeof(Info);
             Info.hwnd = this->m_WindowHandle;

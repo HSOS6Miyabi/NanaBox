@@ -21,6 +21,8 @@ void SplitCommandLineEx(
     std::map<std::wstring, std::wstring>& OptionsAndParameters,
     std::wstring& UnresolvedCommandLine);
 
+std::wstring QuoteCommandLineArgument(std::wstring const& Argument);
+
 winrt::hstring FromGuid(
     winrt::guid const& Value);
 
