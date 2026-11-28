@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <vector>
 
 namespace NanaBox
@@ -83,7 +84,8 @@ namespace NanaBox
         typename Add, typename Report>
     std::vector<Share> ReconcileVirtualSmbAdditions(
         std::vector<Share> const& Current, std::vector<Share> const& Desired,
-        SameName&& NameEquals, SameProvider&& ProviderEquals, Add&& AddShare, Report&& ReportError)
+        SameName&& NameEquals, SameProvider&& ProviderEquals, Add&& AddShare, Report&& ReportError,
+        std::size_t Maximum = 128)
     {
         std::vector<Share> Actual;
         Actual.reserve(Current.size() + Desired.size());
@@ -111,6 +113,11 @@ namespace NanaBox
         for (auto const& New : Desired)
         {
             if (Find(Current, New) != Current.end()) continue;
+            if (Actual.size() >= Maximum)
+            {
+                ReportError(New, "Limit");
+                continue;
+            }
             try
             {
                 AddShare(New);

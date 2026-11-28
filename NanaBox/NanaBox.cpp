@@ -359,6 +359,15 @@ int WINAPI wWinMain(
                         Reports != (Mode ? 2u : 1u) || Actual[0].AutoMount != (Mode == 2) ||
                         Actual[0].ReadOnly || Actual[1].Name != Removed.Name) return 53;
                 }
+                unsigned Adds = 0, Limits = 0;
+                auto Actual = NanaBox::ReconcileVirtualSmbAdditions(
+                    std::vector<NanaBox::VirtualSmbShareConfiguration>{Old, Removed},
+                    std::vector<NanaBox::VirtualSmbShareConfiguration>{Changed, Added},
+                    NanaBox::EqualVirtualSmbShareName, Same,
+                    [&](auto const&) { ++Adds; },
+                    [&](auto const&, char const* Action) { if (std::string_view(Action) == "Limit") ++Limits; },
+                    2);
+                if (Actual.size() != 2 || Adds || Limits != 1 || Actual[0].AutoMount) return 53;
             }
             Config.ProcessorLimit = 75000;
             Config.ProcessorWeight = 250;

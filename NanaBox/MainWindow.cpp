@@ -1566,6 +1566,8 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
                     {
                         auto Label = winrt::to_hstring(std::string(Action) + " VSMB share " + Share.Name);
                         if (std::string_view(Action) == "Add") Report(Label.c_str());
+                        else if (std::string_view(Action) == "Limit")
+                            Errors += std::wstring(Label.c_str()) + L": The VSMB share limit has been reached.\n";
                         else Errors += std::wstring(Label.c_str()) + L": Shut down the VM before removing or replacing a VSMB export.\n";
                     });
                 for (auto& Entry : this->m_VirtualSmbManifest)
