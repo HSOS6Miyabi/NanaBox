@@ -726,6 +726,11 @@
             <TextBlock x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeHelp"
               Text="Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points."
               TextWrapping="Wrap" Opacity="0.8" />
+            <CheckBox x:Name="ClipboardWindowsUnicodeCheckBox" x:Uid="/VirtualMachineSettingsPage/ClipboardWindowsUnicodeCheckBox"
+              Content="Native Unicode input (Windows)" AutomationProperties.AutomationId="ClipboardWindowsUnicodeCheckBox" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/ClipboardWindowsUnicodeHelp"
+              Text="Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded."
+              TextWrapping="Wrap" Opacity="0.8" />
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250" />

@@ -285,6 +285,41 @@ void NanaBox::MainWindow::OnCommand(
                     throw winrt::hresult_invalid_argument(L"Clipboard text is invalid or exceeds 4096 characters.");
                 Text.assign(Buffer, Length);
             }
+            if (this->m_ClipboardInput.valid())
+                throw winrt::hresult_error(E_PENDING, L"Clipboard input is already in progress.");
+            if (Text.empty()) break;
+            if (this->m_Configuration.GuestType == NanaBox::GuestType::Windows &&
+                this->m_Configuration.Keyboard.ClipboardWindowsUnicode)
+            {
+                auto Id = this->GuestRuntimeId();
+                auto Enhanced = this->m_RdpClientMode != RdpClientMode::BasicSession;
+                auto Stop = std::make_shared<std::atomic<bool>>(false);
+                this->m_ClipboardInputGeneration = this->m_VirtualMachineGeneration;
+                if (!this->SetTimer(NanaBox::MainWindowTimerEvents::ClipboardInput, 100))
+                    winrt::throw_last_error();
+                try
+                {
+                    this->m_ClipboardInput = std::async(std::launch::async,
+                        [Id, Enhanced, Stop, Text = std::move(Text)]()
+                        {
+                            try
+                            {
+                                NanaBox::TypeGuestUnicodeText(Id, Text, Enhanced, *Stop);
+                                return std::wstring();
+                            }
+                            catch (...) { return std::wstring(Mile::WinRT::ToHResultError().message().c_str()); }
+                        });
+                    this->m_ClipboardInputStop = std::move(Stop);
+                }
+                catch (...)
+                {
+                    this->KillTimer(NanaBox::MainWindowTimerEvents::ClipboardInput);
+                    throw;
+                }
+                this->UpdatePowerControls();
+                this->m_RdpClientWindow.SetFocus();
+                break;
+            }
             std::vector<NanaBox::KeyboardTextBatch> Batches;
             try { Batches = NanaBox::EncodeKeyboardText(Text, this->m_Configuration.Keyboard.ClipboardKeyboardLayout,
                 this->m_Configuration.GuestType == NanaBox::GuestType::Linux && this->m_Configuration.Keyboard.ClipboardGtkUnicode); }
@@ -517,6 +552,27 @@ void NanaBox::MainWindow::RequestNetworkDiagnostics(bool Retry, std::function<vo
 void NanaBox::MainWindow::OnTimer(
     UINT_PTR nIDEvent)
 {
+    if (nIDEvent == NanaBox::MainWindowTimerEvents::ClipboardInput)
+    {
+        if (!this->m_ClipboardInput.valid() ||
+            this->m_ClipboardInput.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        this->KillTimer(NanaBox::MainWindowTimerEvents::ClipboardInput);
+        this->m_ClipboardInputStop.reset();
+        try
+        {
+            auto Error = this->m_ClipboardInput.get();
+            this->UpdatePowerControls();
+            if (!Error.empty() && this->m_VirtualMachineRunning &&
+                this->m_ClipboardInputGeneration == this->m_VirtualMachineGeneration)
+                ::ShowErrorMessageDialog(this->m_hWnd, winrt::hresult_error(E_FAIL, winrt::hstring(Error)));
+        }
+        catch (...)
+        {
+            this->UpdatePowerControls();
+            ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError());
+        }
+        return;
+    }
     if (nIDEvent == NanaBox::MainWindowTimerEvents::MirroredNetworkStatus)
     {
         if (this->m_MirroredNetworking)
@@ -733,7 +789,7 @@ void NanaBox::MainWindow::UpdatePowerControls()
     Control->SetToggleState(Control->PauseVirtualMachineButton(), this->m_VirtualMachinePaused);
     Control->PauseVirtualMachineButton().IsEnabled(Enabled);
     Control->RestartVirtualMachineButton().IsEnabled(Enabled);
-    Control->TypeClipboardTextButton().IsEnabled(Enabled && !this->m_VirtualMachinePaused);
+    Control->TypeClipboardTextButton().IsEnabled(Enabled && !this->m_VirtualMachinePaused && !this->m_ClipboardInput.valid());
     // Keep the power menu available while a graceful shutdown is pending.
     Control->PowerMenuButton().IsEnabled(this->m_VirtualMachineRunning);
     Control->ShutdownAction().IsEnabled(Enabled);
@@ -764,6 +820,7 @@ void NanaBox::MainWindow::SetVirtualMachinePaused(bool Paused)
 
 void NanaBox::MainWindow::CleanupExitedVirtualMachine()
 {
+    if (this->m_ClipboardInputStop) this->m_ClipboardInputStop->store(true);
     this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
     this->m_Plan9MountManager.reset();
     if (this->m_MirroredNetworking) this->m_MirroredNetworking->VmExited();
@@ -904,6 +961,7 @@ void NanaBox::MainWindow::SaveAndCloseVirtualMachine()
 
 void NanaBox::MainWindow::OnDestroy()
 {
+    if (this->m_ClipboardInputStop) this->m_ClipboardInputStop->store(true);
     ++this->m_VirtualMachineGeneration;
     if (this->m_VirtualMachineRunning && this->m_VirtualMachine)
     {

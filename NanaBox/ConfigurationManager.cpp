@@ -310,6 +310,8 @@ std::string NanaBox::MakeHcsConfiguration(
         throw std::invalid_argument("Clipboard keyboard layout must be Host or an eight-digit hexadecimal KLID.");
     if (Configuration.Keyboard.ClipboardGtkUnicode && Configuration.GuestType != NanaBox::GuestType::Linux)
         throw std::invalid_argument("GTK Unicode clipboard input requires a Linux guest.");
+    if (Configuration.Keyboard.ClipboardWindowsUnicode && Configuration.GuestType != NanaBox::GuestType::Windows)
+        throw std::invalid_argument("Windows Unicode clipboard input requires a Windows guest.");
     auto Minor = Configuration.HcsSchemaMinor;
     for (auto const& Share : Configuration.Plan9Shares)
         if (!Share.AllowedFiles.empty()) Minor = (std::max)(Minor, 2u);

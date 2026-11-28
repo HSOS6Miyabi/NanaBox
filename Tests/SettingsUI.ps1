@@ -152,6 +152,14 @@ try {
         Invoke-Control 'ReferenceButton'
         $null = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'Reference'}
     }
+    Select-Tab 'TabSession'
+    Assert-Equal (Find-Control 'ClipboardWindowsUnicodeCheckBox').Current.IsEnabled $true 'Windows Unicode control enabled'
+    Set-Check 'ClipboardWindowsUnicodeCheckBox' $true
+    $windowsSaved = Save-Config
+    Assert-Equal $windowsSaved.Keyboard.ClipboardWindowsUnicode $true 'Windows Unicode saved'
+    Invoke-Control 'ReloadButton'
+    Select-Tab 'TabSession'
+    Assert-Equal (Pattern (Find-Control 'ClipboardWindowsUnicodeCheckBox') ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState ([System.Windows.Automation.ToggleState]::On) 'Windows Unicode reloaded'
     Select-Tab 'TabGeneral'
     Select-Choice 'GuestTypeComboBox' 'GuestLinux'
     Set-Text 'NameTextBox' 'UI automation saved'
@@ -723,6 +731,7 @@ try {
     Invoke-Control 'RefreshDeviceButton'
     Set-Check 'RedirectKeyCombinationsCheckBox' $false
     Set-Text 'ClipboardKeyboardLayoutTextBox' '00000407'
+    Assert-Equal (Find-Control 'ClipboardWindowsUnicodeCheckBox').Current.IsEnabled $false 'Windows Unicode control disabled for Linux'
     Set-Check 'ClipboardGtkUnicodeCheckBox' $true
     foreach ($id in @('FullScreen','CtrlEsc','AltEsc','AltTab','AltShiftTab','AltSpace','CtrlAltDel','FocusReleaseLeft','FocusReleaseRight')) {
         Set-Text ($id+'HotkeyTextBox') '65'
@@ -802,6 +811,7 @@ try {
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
     Assert-Equal $saved.Keyboard.ClipboardKeyboardLayout '00000407' 'Clipboard keyboard layout'
     Assert-Equal $saved.Keyboard.ClipboardGtkUnicode $true 'GTK Unicode input'
+    Assert-Equal ([bool]$saved.Keyboard.ClipboardWindowsUnicode) $false 'Windows Unicode disabled for Linux'
     Assert-Equal $saved.VideoMonitor.HorizontalResolution 1280 'Resolution'
     Assert-Equal $saved.VideoMonitor.EnableDpiScalingValueOverride $true 'Display scaling override'
     Assert-Equal $saved.VideoMonitor.OverriddenDpiScalingValue 175 'Display scale'

@@ -578,6 +578,7 @@ namespace winrt::NanaBox::implementation
                 Configuration.RedirectKeyCombinations);
             this->ClipboardKeyboardLayoutTextBox().Text(winrt::to_hstring(Configuration.ClipboardKeyboardLayout));
             this->ClipboardGtkUnicodeCheckBox().IsChecked(Configuration.ClipboardGtkUnicode);
+            this->ClipboardWindowsUnicodeCheckBox().IsChecked(Configuration.ClipboardWindowsUnicode);
             this->FullScreenHotkeyTextBox().Text(
                 winrt::to_hstring(Configuration.FullScreenHotkey));
             this->CtrlEscHotkeyTextBox().Text(
@@ -966,6 +967,8 @@ namespace winrt::NanaBox::implementation
             Result.Keyboard.ClipboardKeyboardLayout = winrt::to_string(this->ClipboardKeyboardLayoutTextBox().Text());
             Result.Keyboard.ClipboardGtkUnicode = Result.GuestType == NanaBox::GuestType::Linux &&
                 winrt::unbox_value<bool>(this->ClipboardGtkUnicodeCheckBox().IsChecked());
+            Result.Keyboard.ClipboardWindowsUnicode = Result.GuestType == NanaBox::GuestType::Windows &&
+                winrt::unbox_value<bool>(this->ClipboardWindowsUnicodeCheckBox().IsChecked());
             Result.Keyboard.FullScreenHotkey =
                 ::ReadSettingInteger<std::int32_t>(
                     this->FullScreenHotkeyTextBox());
@@ -1589,6 +1592,8 @@ namespace winrt::NanaBox::implementation
         bool WindowsGuest = Type == NanaBox::GuestType::Windows;
         if (this->ClipboardGtkUnicodeCheckBox())
             this->ClipboardGtkUnicodeCheckBox().IsEnabled(Type == NanaBox::GuestType::Linux);
+        if (this->ClipboardWindowsUnicodeCheckBox())
+            this->ClipboardWindowsUnicodeCheckBox().IsEnabled(WindowsGuest);
         this->GuestManualMountPanel().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestLinuxShareNote().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestWindowsShareNote().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);

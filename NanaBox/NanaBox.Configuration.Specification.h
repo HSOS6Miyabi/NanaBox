@@ -94,6 +94,7 @@ namespace NanaBox
         bool RedirectKeyCombinations = true;
         std::string ClipboardKeyboardLayout = "00000409";
         bool ClipboardGtkUnicode = false;
+        bool ClipboardWindowsUnicode = false;
         std::int32_t FullScreenHotkey = VK_CANCEL; // CTRL + ALT + ?
         std::int32_t CtrlEscHotkey = VK_HOME; // ALT + ?
         std::int32_t AltEscHotkey = VK_INSERT; // ALT + ?

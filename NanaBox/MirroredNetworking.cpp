@@ -1874,6 +1874,31 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
     return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
 }
 
+void NanaBox::TypeGuestUnicodeText(winrt::guid const& RuntimeId, std::wstring const& Text,
+    bool Enhanced, std::atomic<bool> const& Stop)
+{
+    if (Stop.load()) throw winrt::hresult_error(E_ABORT);
+    if (Text.empty()) return;
+    if (Text.size() > 4096) throw winrt::hresult_invalid_argument(L"Clipboard text exceeds 4096 UTF-16 code units.");
+    auto Count = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, Text.data(),
+        static_cast<int>(Text.size()), nullptr, 0, nullptr, nullptr);
+    if (!Count) winrt::throw_last_error();
+    std::string Utf8(static_cast<std::size_t>(Count), '\0');
+    if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, Text.data(),
+        static_cast<int>(Text.size()), Utf8.data(), Count, nullptr, nullptr) != Count)
+        winrt::throw_last_error();
+    RegisterGuestSocket(false, false, false, true);
+    WSADATA Data{};
+    auto Result = ::WSAStartup(MAKEWORD(2, 2), &Data);
+    if (Result) winrt::throw_hresult(HRESULT_FROM_WIN32(Result));
+    auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
+    auto Reply = GuestRequest(RuntimeId, Json{{"Version",1},{"ResourceType","KeyboardInput"},
+        {"RequestType","Type"},{"Settings",{{"Mode",Enhanced ? "Enhanced" : "Console"},
+            {"Text",std::move(Utf8)}}}}, Stop, 20, GuestToolServiceId);
+    if (!Reply.is_object() || Reply.value("Utf16Units", std::size_t{}) != Text.size())
+        throw winrt::hresult_error(E_UNEXPECTED, L"Unexpected Unicode input acknowledgement.");
+}
+
 std::string NanaBox::QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource)
 {
     return RunGuestToolsAction(RuntimeId, Resource, L"", "", false);

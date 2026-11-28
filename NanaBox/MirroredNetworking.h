@@ -13,6 +13,8 @@ namespace NanaBox
     std::string RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
         std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
         std::shared_ptr<std::atomic<bool>> const& Cancellation = {});
+    void TypeGuestUnicodeText(winrt::guid const& RuntimeId, std::wstring const& Text,
+        bool Enhanced, std::atomic<bool> const& Stop);
     bool GuestToolsSelfTest();
     void PrepareGuestPlan9ShareRemoval(winrt::guid const& RuntimeId, std::string const& Name, std::uint32_t Port);
     class Plan9MountManager

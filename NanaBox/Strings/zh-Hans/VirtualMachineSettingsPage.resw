@@ -1455,6 +1455,8 @@
   <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请与客户机的键盘布局保持一致：美式 00000409、英式 00000809、日语 00000411、德语 00000407、法语 0000040C，或输入 Host 使用宿主机布局。</value></data>
   <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode 输入（Linux）</value></data>
   <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>仅在当前 Linux 应用程序支持 Ctrl+Shift+U Unicode 输入时启用。无法直接输入的字符将通过十六进制码位输入。</value></data>
+  <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>原生 Unicode 输入（Windows）</value></data>
+  <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>需要在客户机中使用 EnableUnicodeInput 选项安装 GuestTool。文本将输入当前控制台或增强会话中具有焦点的窗口。不支持安全桌面。</value></data>
   <data name="VmmsAutomaticActions.Content" xml:space="preserve">
     <value>设置自动启动和关闭策略</value>
   </data>

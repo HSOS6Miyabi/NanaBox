@@ -1455,6 +1455,8 @@
   <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host.</value></data>
   <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode input (Linux)</value></data>
   <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points.</value></data>
+  <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>Native Unicode input (Windows)</value></data>
+  <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded.</value></data>
   <data name="VmmsAutomaticActions.Content" xml:space="preserve">
     <value>Configure automatic start and stop</value>
   </data>

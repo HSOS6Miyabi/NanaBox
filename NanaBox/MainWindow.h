@@ -18,6 +18,7 @@
 #include "VirtualMachineCapture.h"
 #include <atomic>
 #include <functional>
+#include <future>
 
 namespace NanaBox
 {
@@ -27,6 +28,7 @@ namespace NanaBox
         {
             SyncDisplaySettings = 1,
             MirroredNetworkStatus = 2,
+            ClipboardInput = 3,
         };
     }
 
@@ -160,6 +162,9 @@ namespace NanaBox
         bool m_MouseCaptureMode = false;
         bool m_VirtualMachineNeverConnected = false;
         bool m_VmmsCertificateCreationAttempted = false;
+        std::future<std::wstring> m_ClipboardInput;
+        std::shared_ptr<std::atomic<bool>> m_ClipboardInputStop;
+        UINT_PTR m_ClipboardInputGeneration = 0;
 
         winrt::handle m_RecordingThread;
         winrt::handle m_ScreenshotThread;
