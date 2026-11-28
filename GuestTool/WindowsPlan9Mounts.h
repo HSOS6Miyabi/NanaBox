@@ -158,7 +158,7 @@ public:
         if(!directory.Valid()) return false;
         wchar_t volume[MAX_PATH]{},filesystem[MAX_PATH]{};
         return GetVolumeInformationByHandleW(directory.Get(),volume,MAX_PATH,nullptr,nullptr,nullptr,filesystem,MAX_PATH) &&
-            Equal(volume,label) && Equal(filesystem,L"NanaBox9P");
+            Equal(volume,label) && Equal(filesystem,L"FUSE-NanaBox9P");
     }
     void Signal() const {if(Alive()) SetEvent(StopEvent.Get());}
     void WaitReady()
