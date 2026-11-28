@@ -7,6 +7,7 @@ on:
       - 'Tests/GuestProtocolReference/**'
       - 'NanaBox/KeyboardText*.h'
       - 'Tests/KeyboardTextTests.cpp'
+      - 'Tests/Plan9ClientTests.cpp'
       - 'Tests/KeyboardGtkIntegration.py'
       - '.github/workflows/TestGuestTool.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'Tests/GuestProtocolReference/**'
       - 'NanaBox/KeyboardText*.h'
       - 'Tests/KeyboardTextTests.cpp'
+      - 'Tests/Plan9ClientTests.cpp'
       - 'Tests/KeyboardGtkIntegration.py'
       - '.github/workflows/TestGuestTool.yml'
   workflow_dispatch:
@@ -47,6 +49,12 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/Plan9.cpp -o GuestTool/nanabox-plan9
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/Plan9Tests.cpp -o /tmp/nanabox-plan9-tests
           /tmp/nanabox-plan9-tests
+      - name: Test portable 9P2000.L client
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread Tests/Plan9ClientTests.cpp -o /tmp/nanabox-plan9-client-tests
+          /tmp/nanabox-plan9-client-tests
       - name: Test GTK Unicode clipboard input
         if: runner.os == 'Linux'
         shell: bash
