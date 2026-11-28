@@ -172,3 +172,5 @@ The native C++ GuestTool service handles heartbeat, system information, clock qu
 ### Windows architecture selection
 
 The Windows distribution contains native x64 executables at the GuestTool directory root and native ARM64 executables in `arm64/`. The installers select the Windows guest's native architecture. ARM64 binaries are cross-compiled in the x64 Windows CI job; execution on ARM64 requires an ARM64 guest or runner.
+
+When host GPU driver sharing is disabled in a Windows VM configuration, the host publishes the disabled state even if no other shared folders are configured. GuestTool restores its backed-up guest driver files, removes its own symbolic links and PATH/LIB entries, and retries incomplete cleanup on subsequent inventory updates. Unrelated files and environment entries are preserved. Restart affected guest applications or devices if they still have old driver images loaded.

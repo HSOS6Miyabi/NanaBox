@@ -1158,7 +1158,6 @@ void NanaBox::MainWindow::PublishPlan9Inventory()
 {
     bool Windows = this->m_Configuration.GuestType == NanaBox::GuestType::Windows;
     if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux && !Windows) return;
-    if (Windows && !this->m_Configuration.Gpu.EnableHostDriverStore && this->m_VirtualSmbManifest.empty()) return;
     auto Manifest = this->m_Plan9Builtins;
     for (auto const& Share : this->m_Configuration.Plan9Shares)
         Manifest.push_back({{"Name", Share.Name}, {"Port", Share.Port},

@@ -598,8 +598,28 @@ namespace
         }
     }
 
+    class GpuMappingLifecycle
+    {
+        bool Enabled = false;
+        bool Clean = false;
+    public:
+        bool Active() const { return Enabled; }
+        template<class Cleanup>
+        void Configure(bool enabled, Cleanup cleanup)
+        {
+            Enabled = enabled;
+            if (enabled) Clean = false;
+            else if (!Clean)
+            {
+                cleanup();
+                Clean = true;
+            }
+        }
+    };
+
     class Manager
     {
+        GpuMappingLifecycle Lifecycle;
         DriverMount Mount;
         RestartTracker Restart;
         std::string VerifiedGeneration;
@@ -701,7 +721,7 @@ namespace
         Json Query()
         {
             auto result = Last;
-            result["Mounted"] = Mount.Ready();
+            result["Mounted"] = Lifecycle.Active() && Mount.Ready();
             result["Backend"] = NativeMode ? "VirtualSmb" : "Plan9";
             result["NativeTransportActive"] = NativeActive.load();
             return result;
@@ -759,6 +779,9 @@ namespace
             {
                 Last={{"Mounted",false},{"Files",Json::array()},{"Errors",mountErrors},{"VirtualSmbShares",mounted},
                     {"Backend",NativeMode?"VirtualSmb":"Plan9"}};
+                try { Lifecycle.Configure(false, [&]() { Cleanup(); }); }
+                catch (std::exception const& error)
+                { Last["Errors"].push_back(std::string("GPU mapping cleanup: ") + error.what()); }
                 return Last;
             }
             auto const& wddm = settings.at("Wddm");
@@ -775,6 +798,7 @@ namespace
                 else if (Wddm::ExtraShareName(name)) extraShares.insert(name);
             }
             if (!shared) throw std::runtime_error("Read-only host GPU repository is unavailable");
+            Lifecycle.Configure(true, []() {});
             Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", wddm.at("Errors")},
                 {"VirtualSmbShares", mounted}, {"ShareErrors", mountErrors}, {"Backend", NativeMode ? "VirtualSmb" : "Plan9"}};
             for (auto const& error : wddm.value(NativeMode ? "VirtualSmbErrors" : "Plan9Errors", Json::array()))
@@ -1002,9 +1026,25 @@ namespace
             std::set<std::wstring> ids;
             for (auto const& link : links) ids.insert(link.first);
             for (auto const& backup : backups) ids.insert(backup.first);
-            for (auto const& id : ids) RemoveMapping(key, links, backups, id);
+            std::string errors;
+            for (auto const& id : ids)
+            {
+                try { RemoveMapping(key, links, backups, id); }
+                catch (std::exception const& error)
+                {
+                    if (!errors.empty()) errors += "; ";
+                    errors += Utf8(id) + ": " + error.what();
+                }
+            }
             UpdateEnvironment(key, L"Path", L"OwnedPath", {});
             UpdateEnvironment(key, L"LIB", L"OwnedLib", {});
+            DWORD_PTR ignored = 0;
+            SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
+                reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
+            if (!errors.empty()) throw std::runtime_error(errors);
+            VerifiedImages.clear();
+            VerifiedGeneration.clear();
+            Restart = RestartTracker{};
         }
     };
 
@@ -1144,6 +1184,30 @@ namespace
 
     int SelfTest()
     {
+        {
+            GpuMappingLifecycle lifecycle;
+            unsigned calls = 0;
+            auto cleanup = [&]() { ++calls; };
+            if (lifecycle.Active()) return 33;
+            lifecycle.Configure(false, cleanup);
+            lifecycle.Configure(false, cleanup);
+            if (lifecycle.Active() || calls != 1) return 34;
+            lifecycle.Configure(true, cleanup);
+            if (!lifecycle.Active() || calls != 1) return 35;
+            bool failed = false;
+            try
+            {
+                lifecycle.Configure(false, [&]() { ++calls; throw std::runtime_error("busy"); });
+            }
+            catch (std::runtime_error const&) { failed = true; }
+            if (!failed || lifecycle.Active() || calls != 2) return 36;
+            lifecycle.Configure(false, cleanup);
+            lifecycle.Configure(false, cleanup);
+            if (calls != 3) return 37;
+            lifecycle.Configure(true, cleanup);
+            lifecycle.Configure(false, cleanup);
+            if (calls != 4 || lifecycle.Active()) return 38;
+        }
         {
             for(auto layout:{88u,92u,108u,116u,120u})
             {
