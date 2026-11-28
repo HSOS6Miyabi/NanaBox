@@ -1031,6 +1031,9 @@ int main(int argc, char** argv)
         {
             auto arg = fs::path(argv[i]).u8string();
             if (arg == "--self-test") { SelfTest(); return 0; }
+#ifndef _WIN32
+            if (arg == "--network-self-test") { NativeNetworkIntegrationTest(); return 0; }
+#endif
             if (arg == "--exchange-root" && i + 1 < argc) ExchangeRoot = fs::path(argv[++i]);
             else if (arg == "--allow-clock-set") AllowClock = true;
             else if (arg == "--service") service = true;

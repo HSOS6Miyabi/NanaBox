@@ -8,7 +8,7 @@ The NanaBox host's MirroredNetworking component registers an HCN guest network s
 
 Run `RegisterHost.ps1` as an administrator on the Windows Hyper-V host.
 
-On a Linux guest with systemd, Python 3, iproute2 and systemd-resolved, run the installer from the extracted GuestTools directory:
+On a Linux guest with systemd, iproute2 and systemd-resolved, run the installer from the extracted GuestTools directory:
 
 ```sh
 sudo sh InstallLinuxGuest.sh --enable-file-exchange
@@ -16,13 +16,13 @@ sudo sh InstallLinuxGuest.sh --enable-file-exchange
 
 Add `--allow-clock-set` to enable manual clock synchronization. Run the same command to upgrade or change permissions. Uninstall with `sudo sh UninstallLinuxGuest.sh`; exchanged files are preserved.
 
-On a Windows guest with Python 3.12 or later installed for all users, run as administrator:
+On a Windows guest, run as administrator:
 
 ```powershell
-.\InstallWindowsGuest.ps1 -PythonPath 'C:\Program Files\Python313\python.exe' -EnableFileExchange
+.\InstallWindowsGuest.ps1 -EnableFileExchange
 ```
 
-Specify the installed interpreter's actual path. The startup task runs as SYSTEM. Add `-AllowClockSet` to permit manual clock synchronization. Re-run the installer to upgrade or change permissions. Run `UninstallWindowsGuest.ps1` to remove the service while preserving exchanged files. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
+The native services run as SYSTEM. When enabling DNS tunneling, specify the system-wide Python interpreter with `-PythonPath`. Add `-AllowClockSet` to permit manual clock synchronization. Re-run the installer to upgrade or change permissions. Run `UninstallWindowsGuest.ps1` to remove the service while preserving exchanged files. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
 
 ## Guest tools
 
@@ -144,4 +144,4 @@ The Windows filesystem client requires the matching Dokany kernel driver, and GP
 
 ## Native integration service
 
-The native C++ GuestTool service handles heartbeat, system information, clock queries and optional synchronization, and protected file exchange on Hyper-V socket port 27457. Installers start it alongside the network service. File exchange and clock synchronization permissions are assigned only to the native service. The host selects the native transport before starting a file transaction; diagnostics continue to use the networking component. The Linux source build requires C++17, nlohmann-json and OpenSSL development headers. The Windows installer uses the prebuilt `nanabox-guest-tool.exe` from the matching GuestTool artifact. The guest service rejects requests exceeding 256 KiB, limits concurrent transfers to 16, and expires incomplete transfers after 15 minutes.
+The native C++ GuestTool service handles heartbeat, system information, clock queries and optional synchronization, and protected file exchange on Hyper-V socket port 27457. Installers start it alongside the native network service. The optional DNS tunnel, Linux GELNIC routing and application bind broker currently select the compatibility network service. File exchange and clock synchronization permissions are assigned only to the native service. The host selects the native transport before starting a file transaction; diagnostics continue to use the networking component. The Linux source build requires C++17, nlohmann-json and OpenSSL development headers. The Windows installer uses the prebuilt `nanabox-guest-tool.exe` from the matching GuestTool artifact. The guest service rejects requests exceeding 256 KiB, limits concurrent transfers to 16, and expires incomplete transfers after 15 minutes.

@@ -1,6 +1,6 @@
 # Run in the Windows guest as administrator with Python 3.12+ installed for all users.
 param(
-    [Parameter(Mandatory=$true)][string]$PythonPath,
+    [string]$PythonPath,
     [switch]$EnableFileExchange,
     [switch]$AllowClockSet,
     [switch]$EnableDnsTunnel,
@@ -10,13 +10,16 @@ $ErrorActionPreference = 'Stop'
 $NativeExecutable = (Resolve-Path -LiteralPath $NativeExecutable).Path
 & $NativeExecutable --self-test
 if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool self-test failed.' }
-$PythonPath = (Resolve-Path -LiteralPath $PythonPath).Path
-$programDirs = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramW6432) | Where-Object { $_ }
-if (-not @($programDirs | Where-Object { $PythonPath.StartsWith($_.TrimEnd('\')+'\', [StringComparison]::OrdinalIgnoreCase) }).Count) {
-    throw 'Install Python for all users under Program Files before registering the SYSTEM service.'
+if ($EnableDnsTunnel) {
+    if (-not $PythonPath) { throw 'Specify the Python interpreter for DNS tunneling.' }
+    $PythonPath = (Resolve-Path -LiteralPath $PythonPath).Path
+    $programDirs = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramW6432) | Where-Object { $_ }
+    if (-not @($programDirs | Where-Object { $PythonPath.StartsWith($_.TrimEnd('\')+'\', [StringComparison]::OrdinalIgnoreCase) }).Count) {
+        throw 'Install Python for all users under Program Files before registering the SYSTEM service.'
+    }
+    & $PythonPath -I -c "import socket; assert hasattr(socket, 'AF_HYPERV')"
+    if ($LASTEXITCODE -ne 0) { throw 'Python 3.12+ with Hyper-V socket support is required' }
 }
-& $PythonPath -I -c "import socket; assert hasattr(socket, 'AF_HYPERV')"
-if ($LASTEXITCODE -ne 0) { throw 'Python 3.12+ with Hyper-V socket support is required' }
 
 function Initialize-ProtectedDirectory([string]$Path) {
     $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
@@ -66,6 +69,11 @@ if ($EnableFileExchange) {
 }
 if ($AllowClockSet) { $nativeArgs += ' --allow-clock-set' }
 
+$networkService = Get-Service -Name 'NanaBoxGuestNetwork' -ErrorAction SilentlyContinue
+if ($networkService -and $networkService.Status -ne 'Stopped') {
+    Stop-Service -Name 'NanaBoxGuestNetwork'
+    (Get-Service -Name 'NanaBoxGuestNetwork').WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30))
+}
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($null -ne $task -and $task.State -eq 'Running') {
     Stop-ScheduledTask -TaskName $taskName
@@ -95,22 +103,41 @@ if ($nativeService) {
 if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool service registration failed.' }
 & sc.exe failure NanaBoxGuestTool reset= 86400 actions= restart/5000/restart/10000/restart/30000
 if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool recovery configuration failed.' }
-$script = Join-Path $dir 'gns.py'
-$temporary = Join-Path $dir ('gns-'+[guid]::NewGuid().ToString('N')+'.tmp')
-try {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'gns.py') -Destination $temporary
-    if (Test-Path -LiteralPath $script) {
-        $item = Get-Item -LiteralPath $script -Force
-        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Unsafe guest service script' }
-        [IO.File]::Replace($temporary,$script,$null)
-    } else { [IO.File]::Move($temporary,$script) }
-} finally { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
-$action = New-ScheduledTaskAction -Execute $PythonPath -Argument $arguments -WorkingDirectory $dir
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-$settings = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-Start-ScheduledTask -TaskName $taskName
+if ($EnableDnsTunnel) {
+    if ($networkService) {
+        & sc.exe delete NanaBoxGuestNetwork
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot remove inactive native network service.' }
+    }
+    $script = Join-Path $dir 'gns.py'
+    $temporary = Join-Path $dir ('gns-'+[guid]::NewGuid().ToString('N')+'.tmp')
+    try {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'gns.py') -Destination $temporary
+        if (Test-Path -LiteralPath $script) {
+            $item = Get-Item -LiteralPath $script -Force
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Unsafe guest service script' }
+            [IO.File]::Replace($temporary,$script,$null)
+        } else { [IO.File]::Move($temporary,$script) }
+    } finally { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
+    $action = New-ScheduledTaskAction -Execute $PythonPath -Argument $arguments -WorkingDirectory $dir
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+    Start-ScheduledTask -TaskName $taskName
+} else {
+    if ($task) { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false }
+    $networkImage = '"' + $nativeTarget + '" --service --network'
+    if ($networkService) {
+        & sc.exe config NanaBoxGuestNetwork binPath= $networkImage start= auto
+    } else {
+        & sc.exe create NanaBoxGuestNetwork binPath= $networkImage start= auto DisplayName= 'NanaBox Guest Network'
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'Native network service registration failed.' }
+    & sc.exe failure NanaBoxGuestNetwork reset= 86400 actions= restart/5000/restart/10000/restart/30000
+    if ($LASTEXITCODE -ne 0) { throw 'Native network service recovery configuration failed.' }
+    Start-Service -Name 'NanaBoxGuestNetwork'
+    (Get-Service -Name 'NanaBoxGuestNetwork').WaitForStatus('Running',[TimeSpan]::FromSeconds(30))
+}
 Start-Service -Name 'NanaBoxGuestTool'
 (Get-Service -Name 'NanaBoxGuestTool').WaitForStatus('Running',[TimeSpan]::FromSeconds(30))
 Write-Host 'NanaBox guest service installed and started.'

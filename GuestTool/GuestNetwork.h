@@ -695,18 +695,20 @@
         auto command=L"\""+app+L"\" -NoProfile -NonInteractive -EncodedCommand "+std::wstring(encoded.begin(),encoded.end());
         if(command.size()>=32767)Fail("Windows network command is too large");
         SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};
-        ProcessHandle inRead,inWrite,outRead,outWrite;
+        ProcessHandle inRead,inWrite,outRead,outWrite,errRead,errWrite;
         if(!CreatePipe(&inRead.Value,&inWrite.Value,&security,0)||
-           !CreatePipe(&outRead.Value,&outWrite.Value,&security,0))Fail("Cannot create Windows command pipes");
+           !CreatePipe(&outRead.Value,&outWrite.Value,&security,0)||
+           !CreatePipe(&errRead.Value,&errWrite.Value,&security,0))Fail("Cannot create Windows command pipes");
         if(!SetHandleInformation(inWrite.Value,HANDLE_FLAG_INHERIT,0)||
-           !SetHandleInformation(outRead.Value,HANDLE_FLAG_INHERIT,0))Fail("Cannot protect Windows command pipes");
+           !SetHandleInformation(outRead.Value,HANDLE_FLAG_INHERIT,0)||
+           !SetHandleInformation(errRead.Value,HANDLE_FLAG_INHERIT,0))Fail("Cannot protect Windows command pipes");
         STARTUPINFOW startup{};startup.cb=sizeof(startup);startup.dwFlags=STARTF_USESTDHANDLES;
-        startup.hStdInput=inRead.Value;startup.hStdOutput=outWrite.Value;startup.hStdError=outWrite.Value;
+        startup.hStdInput=inRead.Value;startup.hStdOutput=outWrite.Value;startup.hStdError=errWrite.Value;
         PROCESS_INFORMATION pi{};
         if(!CreateProcessW(app.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,nullptr,&startup,&pi))
             Fail("Cannot start Windows network management command");
         ProcessHandle child;child.Value=pi.hProcess;
-        CloseHandle(pi.hThread);inRead.Close();outWrite.Close();
+        CloseHandle(pi.hThread);inRead.Close();outWrite.Close();errWrite.Close();
         auto body=input.dump();
         std::atomic<bool> writeOk{true};
         std::thread writer([&]()
@@ -730,28 +732,39 @@
                 if(Writer.joinable())Writer.join();
             }
         } finish{child.Value,writer};
-        std::string output;
+        std::string output, errors;
         auto end=Mono::now()+std::chrono::seconds(65);
-        while(!Stop && Mono::now()<end)
+        auto drain=[&](HANDLE handle,std::string& result)
         {
             DWORD available=0;
-            if(!PeekNamedPipe(outRead.Value,nullptr,0,nullptr,&available,nullptr))
-            {if(GetLastError()==ERROR_BROKEN_PIPE)break;Fail("Cannot read Windows network command");}
-            if(available)
+            if(!PeekNamedPipe(handle,nullptr,0,nullptr,&available,nullptr))
             {
-                char buffer[8192];DWORD n=0;
-                if(!ReadFile(outRead.Value,buffer,std::min<DWORD>(available,sizeof(buffer)),&n,nullptr))
-                    Fail("Cannot read Windows network command");
-                if(output.size()+n>4*1024*1024)Fail("Windows network command output too large");
-                output.append(buffer,n);continue;
+                if(GetLastError()==ERROR_BROKEN_PIPE)return false;
+                Fail("Cannot read Windows network command");
             }
-            if(WaitForSingleObject(child.Value,20)==WAIT_OBJECT_0)break;
+            if(!available)return false;
+            char buffer[8192];DWORD n=0;
+            if(!ReadFile(handle,buffer,std::min<DWORD>(available,static_cast<DWORD>(sizeof(buffer))),&n,nullptr))
+                Fail("Cannot read Windows network command");
+            if(result.size()+n>4*1024*1024)Fail("Windows network command output too large");
+            result.append(buffer,n);
+            return n!=0;
+        };
+        while(!Stop && Mono::now()<end)
+        {
+            bool more=drain(outRead.Value,output);
+            more=drain(errRead.Value,errors)||more;
+            if(more)continue;
+            if(WaitForSingleObject(child.Value,20)==WAIT_OBJECT_0)
+            {
+                if(!drain(outRead.Value,output)&&!drain(errRead.Value,errors))break;
+            }
         }
         if(WaitForSingleObject(child.Value,1000)!=WAIT_OBJECT_0)Fail("Windows network command deadline expired");
         if(writer.joinable())writer.join();
         DWORD status=0;
         if(!GetExitCodeProcess(child.Value,&status)||status||!writeOk)
-            throw std::runtime_error("Windows network command failed: "+output.substr(0,2000));
+            throw std::runtime_error("Windows network command failed: "+(errors.empty()?output:errors).substr(0,2000));
         return output;
     }
 
@@ -766,6 +779,66 @@
     };
 #endif
 
+    Json NetworkConnectivity(Json const& settings)
+    {
+        Fields(settings,{"Address","Port"});
+        auto ip=Ip::Parse(settings.at("Address").get<std::string>());
+        if(ip.Zero()||ip.Multicast())Fail("Invalid connectivity target");
+        auto port=Integer(settings.at("Port"),1,65535);
+        sockaddr_storage remote{};
+        int size=0;
+        int family=ip.Family==4?AF_INET:AF_INET6;
+        if(family==AF_INET)
+        {
+            auto* a=reinterpret_cast<sockaddr_in*>(&remote);
+            a->sin_family=AF_INET;a->sin_port=htons(static_cast<unsigned short>(port));
+            std::memcpy(&a->sin_addr,ip.Bytes.data(),4);size=sizeof(*a);
+        }
+        else
+        {
+            auto* a=reinterpret_cast<sockaddr_in6*>(&remote);
+            a->sin6_family=AF_INET6;a->sin6_port=htons(static_cast<unsigned short>(port));
+            std::memcpy(&a->sin6_addr,ip.Bytes.data(),16);size=sizeof(*a);
+        }
+#ifdef _WIN32
+        auto sock=socket(family,SOCK_STREAM,IPPROTO_TCP);
+        if(sock==INVALID_SOCKET)Fail("Cannot open connectivity socket");
+        struct CloseSocket{SOCKET S;~CloseSocket(){closesocket(S);}} cleanup{sock};
+        u_long enabled=1;
+        if(ioctlsocket(sock,FIONBIO,&enabled))Fail("Cannot configure connectivity socket");
+        if(connect(sock,reinterpret_cast<sockaddr*>(&remote),size))
+        {
+            if(WSAGetLastError()!=WSAEWOULDBLOCK)Fail("Guest TCP connection failed");
+            fd_set writable,errors;
+            FD_ZERO(&writable);FD_SET(sock,&writable);FD_ZERO(&errors);FD_SET(sock,&errors);
+            timeval timeout{5,0};
+            if(select(0,nullptr,&writable,&errors,&timeout)<=0)Fail("Guest TCP connection timed out");
+            int error=0,length=sizeof(error);
+            if(getsockopt(sock,SOL_SOCKET,SO_ERROR,reinterpret_cast<char*>(&error),&length)||error)
+                Fail("Guest TCP connection failed");
+        }
+        int length=sizeof(remote);
+#else
+        auto sock=socket(family,SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC,IPPROTO_TCP);
+        if(sock<0)Fail("Cannot open connectivity socket");
+        struct CloseSocket{int S;~CloseSocket(){close(S);}} cleanup{sock};
+        if(connect(sock,reinterpret_cast<sockaddr*>(&remote),static_cast<socklen_t>(size)))
+        {
+            if(errno!=EINPROGRESS)Fail("Guest TCP connection failed");
+            pollfd fd{sock,POLLOUT,0};
+            if(poll(&fd,1,5000)<=0)Fail("Guest TCP connection timed out");
+            int error=0;socklen_t length=sizeof(error);
+            if(getsockopt(sock,SOL_SOCKET,SO_ERROR,&error,&length)||error)Fail("Guest TCP connection failed");
+        }
+        socklen_t length=sizeof(remote);
+#endif
+        if(getsockname(sock,reinterpret_cast<sockaddr*>(&remote),&length))Fail("Cannot query local connection address");
+        Ip local;local.Family=ip.Family;
+        if(family==AF_INET)std::memcpy(local.Bytes.data(),&reinterpret_cast<sockaddr_in*>(&remote)->sin_addr,4);
+        else std::memcpy(local.Bytes.data(),&reinterpret_cast<sockaddr_in6*>(&remote)->sin6_addr,16);
+        return {{"LocalAddress",local.Text()},{"RemoteAddress",ip.Text()},{"Port",port}};
+    }
+
     class Network
     {
 #ifdef _WIN32
@@ -779,6 +852,7 @@
             auto const& settings=request.at("Settings");
             if(resource=="Diagnostics"&&action=="Query")
             {Fields(settings,{});return Backend.Diagnostics();}
+            if(resource=="Connectivity"&&action=="Query")return NetworkConnectivity(settings);
             auto target=Mac(request.at("AdapterMac").get<std::string>());
             auto normalized=NormalizeResource(resource,action,settings);
             if(resource=="Reconcile")
@@ -790,6 +864,92 @@
             return Json::object();
         }
     };
+
+#ifndef _WIN32
+    void NativeNetworkIntegrationTest()
+    {
+        auto root=fs::temp_directory_path()/("NanaBox-Network-"+Token());
+        fs::create_directories(root/"nb-test0/device");
+        struct Cleanup
+        {
+            fs::path Path;
+            ~Cleanup()
+            {
+                try{RunNetworkCommand({"ip","link","del","nb-test0"});}catch(...){}
+                std::error_code ec;fs::remove_all(Path,ec);
+            }
+        } cleanup{root};
+        {std::ofstream file(root/"nb-test0/address");file<<"00:15:5d:12:34:56\n";}
+        RunNetworkCommand({"ip","link","add","nb-test0","type","veth","peer","name","nb-test1"});
+        RunNetworkCommand({"ip","link","set","nb-test1","up"});
+        RunNetworkCommand({"ip","link","set","nb-test0","address","00:15:5d:12:34:56"});
+        std::vector<std::string> dns,domains;
+        NetworkRunner runner=[&](Arguments const& args)
+        {
+            if(args[0]!="resolvectl")return RunNetworkCommand(args);
+            auto& values=args[1]=="dns"?dns:domains;
+            if(args.size()==3)
+            {
+                std::string text="Link 1 (nb-test0):";
+                for(auto const& value:values)text+=" "+value;
+                return text;
+            }
+            values.clear();
+            for(std::size_t i=3;i<args.size();++i)if(!args[i].empty())values.push_back(args[i]);
+            return std::string();
+        };
+        LinuxNetwork backend(runner,root);
+        Json raw={{"Interface",{{"Connected",true},{"NlMtu",1500},{"Mirrored",true}}},
+            {"Addresses",Json::array({{{"Address","192.0.2.10"},{"OnLinkPrefixLength",24},{"Mirrored",true}},
+                {{"Address","2001:db8::10"},{"OnLinkPrefixLength",64},{"Mirrored",true}}})},
+            {"Routes",Json::array({{{"DestinationPrefix","0.0.0.0/0"},{"NextHop","192.0.2.1"},{"Metric",10}},
+                {{"DestinationPrefix","192.0.2.0/24"},{"Metric",10}},
+                {{"DestinationPrefix","::/0"},{"NextHop","2001:db8::1"}},
+                {{"DestinationPrefix","2001:db8::/64"}}})},
+            {"DNS",{{"ServerList",Json::array({"192.0.2.53"})},{"Suffix","Example.Test."}}},
+            {"PortRange",{{"Start",49152},{"End",53247}}}};
+        auto desired=NormalizeResource("Reconcile","Update",raw);
+        auto result=backend.Reconcile("00155d123456",desired);
+        auto table=Scalar(result.at("PolicyRoutingTable"));
+        for(auto family:{"-4","-6"})
+        {
+            auto routes=Json::parse(RunNetworkCommand({"ip",family,"-j","route","show","table",table}));
+            if(routes.size()!=2)Fail("Native policy table routes missing");
+        }
+        RunNetworkCommand({"ip","-4","address","add","198.18.0.10/24","dev","nb-test1","noprefixroute"});
+        RunNetworkCommand({"ip","-4","route","add","198.18.0.0/24","dev","nb-test1","proto","242"});
+        RunNetworkCommand({"ip","-4","route","append","default","via","198.18.0.1","dev","nb-test1","metric","5","proto","242"});
+        auto checkRoute=[&](Arguments args,std::string const& expected)
+        {
+            auto rows=Json::parse(RunNetworkCommand(args));
+            if(rows.empty()||rows.at(0).at("dev")!=expected)Fail("Native source or interface routing failed");
+        };
+        checkRoute({"ip","-4","-j","route","get","203.0.113.8","from","192.0.2.10"},"nb-test0");
+        checkRoute({"ip","-4","-j","route","get","203.0.113.8"},"nb-test1");
+        checkRoute({"ip","-6","-j","route","get","2001:db8:ffff::1","from","2001:db8::10"},"nb-test0");
+        RunNetworkCommand({"ip","-4","rule","add","pref","19000","from","203.0.113.1/32","lookup",table,"protocol","99"});
+        bool refused=false;
+        try{backend.Reconcile("00155d123456",desired);}catch(...){refused=true;}
+        RunNetworkCommand({"ip","-4","rule","del","pref","19000","from","203.0.113.1/32","lookup",table,"protocol","99"});
+        if(!refused)Fail("Foreign routing table was accepted");
+        RunNetworkCommand({"ip","-4","route","del","default","via","192.0.2.1","dev","nb-test0","metric","10","proto","242"});
+        RunNetworkCommand({"ip","-4","address","del","192.0.2.10/24","dev","nb-test0"});
+        LinuxNetwork restarted(runner,root);
+        restarted.Reconcile("00155d123456",desired);
+        restarted.Reconcile("00155d123456",desired);
+        if(dns!=std::vector<std::string>{"192.0.2.53"}||domains!=std::vector<std::string>{"example.test"})
+            Fail("Native DNS reconciliation failed");
+        raw["Interface"]["Connected"]=false;
+        raw["Addresses"]=Json::array();raw["Routes"]=Json::array();
+        raw["DNS"]={{"ServerList",Json::array()},{"Suffix",""}};
+        restarted.Reconcile("00155d123456",NormalizeResource("Reconcile","Update",raw));
+        if(!dns.empty()||!domains.empty())Fail("Native DNS cleanup failed");
+        auto other=RunNetworkCommand({"ip","-4","route","show","dev","nb-test1","proto","242"});
+        if(other.find("198.18.0.0/24")==std::string::npos||other.find("default via 198.18.0.1")==std::string::npos)
+            Fail("Unrelated adapter routes were removed");
+        std::cout<<"Native Linux mirrored network integration passed\n";
+    }
+#endif
 
     void NetworkValidationTest()
     {

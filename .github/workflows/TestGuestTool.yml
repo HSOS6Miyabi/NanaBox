@@ -55,6 +55,7 @@ jobs:
           sudo apt-get install -y nlohmann-json3-dev libssl-dev
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/GuestTool.cpp -lcrypto -o GuestTool/nanabox-guest-tool
           GuestTool/nanabox-guest-tool --self-test
+          sudo unshare --net GuestTool/nanabox-guest-tool --network-self-test
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
@@ -62,6 +63,8 @@ jobs:
           path: |
             GuestTool/gns.py
             GuestTool/GuestTool.cpp
+            GuestTool/GuestNetwork.h
+            GuestTool/WindowsNetworkScripts.h
             GuestTool/nanabox-guest-tool
             GuestTool/nanabox-guest-tool.exe
             GuestTool/nanabox-plan9

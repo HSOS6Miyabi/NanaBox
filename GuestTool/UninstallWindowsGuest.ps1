@@ -1,5 +1,14 @@
 # Run as administrator in the Windows guest.
 $ErrorActionPreference = 'Stop'
+$network = Get-Service -Name 'NanaBoxGuestNetwork' -ErrorAction SilentlyContinue
+if ($network) {
+    if ($network.Status -ne 'Stopped') {
+        Stop-Service -Name 'NanaBoxGuestNetwork'
+        (Get-Service -Name 'NanaBoxGuestNetwork').WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30))
+    }
+    & sc.exe delete NanaBoxGuestNetwork
+    if ($LASTEXITCODE -ne 0) { throw 'Native network service deletion failed.' }
+}
 $native = Get-Service -Name 'NanaBoxGuestTool' -ErrorAction SilentlyContinue
 if ($native) {
     if ($native.Status -ne 'Stopped') {

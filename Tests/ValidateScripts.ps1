@@ -21,3 +21,8 @@ $guestSource = [IO.File]::ReadAllText((Join-Path $root 'GuestTool\gns.py'))
 $embedded = [regex]::Matches($guestSource, "(?s)^WINDOWS_\w+ = r'''(.*?)'''", [System.Text.RegularExpressions.RegexOptions]::Multiline)
 if ($embedded.Count -lt 2) { throw 'Windows guest scripts missing' }
 foreach ($script in $embedded) { Assert-Parsed 'Windows guest script' $script.Groups[1].Value }
+
+$nativeSource = [IO.File]::ReadAllText((Join-Path $root 'GuestTool\WindowsNetworkScripts.h'))
+$nativeScripts = [regex]::Matches($nativeSource, 'R"NANABOX\(([\s\S]*?)\)NANABOX"')
+if ($nativeScripts.Count -ne 3) { throw 'Native Windows networking scripts missing' }
+foreach ($script in $nativeScripts) { Assert-Parsed 'Native Windows guest network script' $script.Groups[1].Value }

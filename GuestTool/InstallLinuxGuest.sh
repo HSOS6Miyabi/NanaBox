@@ -21,7 +21,11 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
+legacy_network=0
+if [ "$dns" -eq 1 ] || [ "$loopback" -eq 1 ] || [ "$bind" -eq 1 ]; then
+    legacy_network=1
+    python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
+fi
 for path in /opt/nanabox-gns /var/lib/nanabox-gns /var/lib/nanabox-gns/exchange /etc/systemd/system/nanabox-gns.service.d /etc/systemd/system/nanabox-guest-tool.service.d; do
     if [ -L "$path" ]; then echo "Unsafe symbolic link: $path" >&2; exit 1; fi
 done
@@ -67,7 +71,9 @@ install -d -o root -g root -m 0755 /opt/nanabox-gns /etc/systemd/system/nanabox-
 install -o root -g root -m 0755 "$native_core" /opt/nanabox-gns/nanabox-guest-tool
 install -o root -g root -m 0644 "$source_dir/nanabox-guest-tool.service" /etc/systemd/system/nanabox-guest-tool.service
 install -d -o root -g root -m 0700 /var/lib/nanabox-gns
-install -o root -g root -m 0644 "$source_dir/gns.py" /opt/nanabox-gns/gns.py
+if [ "$legacy_network" -eq 1 ]; then
+    install -o root -g root -m 0644 "$source_dir/gns.py" /opt/nanabox-gns/gns.py
+fi
 install -o root -g root -m 0644 "$source_dir/nanabox-gns.service" /etc/systemd/system/nanabox-gns.service
 options=
 caps=CAP_NET_ADMIN
@@ -118,7 +124,14 @@ else
     rm -f /opt/nanabox-gns/libnanabox-bind.so /opt/nanabox-gns/nanabox-bind
 fi
 temporary="$build_dir/network-options.conf"
-printf '[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\n' "$options" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
+if [ "$legacy_network" -eq 1 ]; then
+    network_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve$options"
+    cleanup_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py clear-loopback /run/nanabox-gns/loopback.json"
+else
+    network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network"
+    cleanup_command=
+fi
+printf '[Service]\nExecStart=\nExecStart=%s\nExecStopPost=\n%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\nEnvironment=LC_ALL=C\nEnvironment=PATH=/usr/sbin:/usr/bin:/sbin:/bin\n' "$network_command" "$(if [ -n "$cleanup_command" ]; then printf 'ExecStopPost=%s' "$cleanup_command"; fi)" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
 chmod 0644 "$temporary"
 mv -f "$temporary" /etc/systemd/system/nanabox-gns.service.d/50-options.conf
 if [ "$plan9" -eq 1 ]; then
