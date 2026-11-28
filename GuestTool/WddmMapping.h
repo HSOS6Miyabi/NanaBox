@@ -67,6 +67,30 @@ namespace NanaBox::Wddm
         return true;
     }
 
+    inline std::wstring NormalizeServiceImage(std::wstring value, std::wstring_view windows)
+    {
+        auto first = value.find_first_not_of(L" \t");
+        auto last = value.find_last_not_of(L" \t");
+        if (first == std::wstring::npos) return {};
+        value = value.substr(first, last - first + 1);
+        if (value.front() == L'"')
+        {
+            auto end = value.find(L'"', 1);
+            if (end == std::wstring::npos) return {};
+            value = value.substr(1, end - 1);
+        }
+        if (value.rfind(L"\\??\\", 0) == 0 || value.rfind(L"\\\\?\\", 0) == 0)
+            value.erase(0, 4);
+        auto lower = Fold(value);
+        if (lower.rfind(L"\\systemroot\\", 0) == 0)
+            value = std::wstring(windows) + value.substr(11);
+        else if (lower.rfind(L"%systemroot%\\", 0) == 0)
+            value = std::wstring(windows) + value.substr(12);
+        else if (lower.rfind(L"system32\\", 0) == 0)
+            value = std::wstring(windows) + L"\\" + value;
+        return value;
+    }
+
     struct Mapping
     {
         std::wstring Source;

@@ -1721,7 +1721,7 @@ struct NanaBox::Plan9MountManager::Impl
                         GpuRevision = Current;
                         LastGpuInventory = Now;
                     }
-                    auto Manifest = Inventory.at("Shares");
+                    auto PublishedManifest = Inventory.at("Shares");
                     auto Wddm = GpuInventory;
                     auto ExtraShares = Wddm.at("ExtraShares");
                     Wddm.erase("ExtraShares");
@@ -1732,7 +1732,7 @@ struct NanaBox::Plan9MountManager::Impl
                         try
                         {
                             AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra);
-                            Manifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
+                            PublishedManifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
                                 {"ReadOnly", true}, {"AutoMount", true}});
                             for (auto const& File : Extra.at("AllowedFiles"))
                                 Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
@@ -1740,7 +1740,7 @@ struct NanaBox::Plan9MountManager::Impl
                         }
                         catch (...) { Wddm["Errors"].push_back("Cannot share supplemental GPU driver files"); }
                     }
-                    Settings = {{"Shares", Manifest}, {"Wddm", Wddm}};
+                    Settings = {{"Shares", PublishedManifest}, {"Wddm", Wddm}};
                 }
                 (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
                     {"RequestType", "Update"}, {"Settings", Settings}}, Stop, 15, Plan9ServiceId);

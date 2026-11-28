@@ -571,13 +571,13 @@ namespace
         DriverRegistryKey& operator=(DriverRegistryKey const&) = delete;
     };
 
-    std::wstring RegistryText(HKEY Key, wchar_t const* Name)
+    std::wstring RegistryText(HKEY Key, wchar_t const* Name, DWORD Flags = RRF_RT_REG_SZ)
     {
         DWORD Bytes = 0;
-        if (::RegGetValueW(Key, nullptr, Name, RRF_RT_REG_SZ, nullptr, nullptr, &Bytes) != ERROR_SUCCESS ||
+        if (::RegGetValueW(Key, nullptr, Name, Flags, nullptr, nullptr, &Bytes) != ERROR_SUCCESS ||
             Bytes < sizeof(wchar_t) || Bytes > 65536) return {};
         std::vector<wchar_t> Data(Bytes / sizeof(wchar_t) + 1);
-        if (::RegGetValueW(Key, nullptr, Name, RRF_RT_REG_SZ, nullptr, Data.data(), &Bytes) != ERROR_SUCCESS)
+        if (::RegGetValueW(Key, nullptr, Name, Flags, nullptr, Data.data(), &Bytes) != ERROR_SUCCESS)
             return {};
         return Data.data();
     }
@@ -589,6 +589,20 @@ namespace
             reinterpret_cast<PBYTE>(Data), sizeof(Data), nullptr)) return {};
         Data[ARRAYSIZE(Data)-1] = 0;
         return Data;
+    }
+
+    std::wstring ServiceDriverImage(std::wstring const& Service)
+    {
+        if (!NanaBox::Wddm::SafeComponent(Service)) return {};
+        DriverRegistryKey Key;
+        auto Path = std::wstring(L"SYSTEM\\CurrentControlSet\\Services\\") + Service;
+        if (::RegOpenKeyExW(HKEY_LOCAL_MACHINE, Path.c_str(), 0, KEY_READ, &Key.Value) != ERROR_SUCCESS)
+            return {};
+        auto Image = RegistryText(Key.Value, L"ImagePath", RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ);
+        wchar_t Windows[MAX_PATH]{};
+        auto Length = ::GetWindowsDirectoryW(Windows, ARRAYSIZE(Windows));
+        if (!Length || Length >= ARRAYSIZE(Windows)) return {};
+        return NanaBox::Wddm::NormalizeServiceImage(Image, Windows);
     }
 
     std::wstring DriverPackage(HKEY Key)
@@ -875,6 +889,12 @@ winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> cons
         }
         auto Service = AdapterService(Set, Device);
         if (!Wddm::SafeComponent(Service)) return;
+        auto Image = ServiceDriverImage(Service);
+        if (!Image.empty())
+        {
+            try { AddAssociatedFiles({Image}, Packages, Extras, Result); }
+            catch (...) { Result["Errors"].push_back("Cannot resolve GPU service driver package"); }
+        }
         DriverRegistryKey ServiceKey;
         if (::RegOpenKeyExW(Key.Value, Service.c_str(), 0, KEY_READ, &ServiceKey.Value) == ERROR_SUCCESS)
             ReadCopyRules(ServiceKey.Value, Package, Result);

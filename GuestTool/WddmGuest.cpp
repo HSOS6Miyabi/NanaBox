@@ -836,6 +836,12 @@ namespace
             Wddm::SafeSystemDirectory(L"Program Files") ||
             !Wddm::ExtraShareName("NanaBox.GpuExtra.0123456789abcdef") ||
             Wddm::ExtraShareName("NanaBox.GpuExtra.0123456789abcde/")) return 10;
+        if (Wddm::NormalizeServiceImage(L"\\SystemRoot\\System32\\DriverStore\\gpu.sys", L"C:\\Windows") !=
+                L"C:\\Windows\\System32\\DriverStore\\gpu.sys" ||
+            Wddm::NormalizeServiceImage(L"\"\\??\\C:\\Windows\\System32\\gpu.sys\"", L"C:\\Windows") !=
+                L"C:\\Windows\\System32\\gpu.sys" ||
+            Wddm::NormalizeServiceImage(L"%SystemRoot%\\System32\\gpu.sys", L"C:\\Windows") !=
+                L"C:\\Windows\\System32\\gpu.sys") return 14;
         if (JoinPath(SplitPath(L"C:\\first;;C:\\second;")) != L"C:\\first;;C:\\second;") return 4;
         auto root = fs::temp_directory_path() / (L"NanaBox-GpuTest-" + std::to_wstring(GetCurrentProcessId()));
         fs::create_directory(root);
