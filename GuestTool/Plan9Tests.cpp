@@ -97,6 +97,30 @@ int main()
     mgr.update({});
     mgr.reconcile(128);
     assert(mounts.empty() && !gpu);
+    // Explicit local mounts survive host inventory refresh and service restart.
+    const auto localTarget = (root / "local").string();
+    mgr.manualMount("Local", localTarget, 50002, true);
+    mgr.update(desired);
+    mgr.reconcile(128);
+    assert(mounts.at(localTarget)[0].ro);
+    Manager localRestart(root / "state", root / "media", root / "wsl", mock);
+    localRestart.update({});
+    localRestart.reconcile(128);
+    assert(mounts.size() == 1 && mounts.count(localTarget));
+    expectFailure([&]() { localRestart.manualMount("local", (root / "other").string(), 50002); });
+    expectFailure([&]() { localRestart.manualMount("nanabox.hostdrivers", (root / "other").string(), 50002); });
+    // A host definition takes ownership and cannot be shadowed by a local mount.
+    localRestart.update(inventory(array{share("Local", true, false, 50003)}));
+    localRestart.reconcile(128);
+    assert(!mounts.count(localTarget));
+    localRestart.manualMount("Local", localTarget);
+    assert(mounts.at(localTarget)[0].source == source(share("Local", true, false, 50003)));
+    localRestart.update({});
+    localRestart.reconcile(128);
+    assert(mounts.empty());
+    localRestart.manualMount("Local", localTarget, 50002);
+    localRestart.manualUnmount("Local");
+    assert(mounts.empty() && localRestart.query().at("Shares").as_array().empty());
     // Foreign filesystems must be left intact, and unavailable shares must retry without starving others.
     auto target = (root / "media/Projects").string();
     mounts[target] = {{nextId++, "tmpfs", "tmpfs", false}};

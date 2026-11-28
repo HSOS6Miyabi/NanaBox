@@ -474,12 +474,15 @@ class Manager
         {
             if (errno != ENOENT)
                 sysfail("stat state");
-            return {{"Shares", object{}}, {"Mounted", object{}}, {"Suppressed", array{}}, {"Errors", object{}}};
+            return {{"Shares", object{}}, {"LocalShares", object{}}, {"Mounted", object{}}, {"Suppressed", array{}}, {"Errors", object{}}};
         }
         auto o = j::parse(readFile(path)).as_object();
         for (auto key : {"Shares", "Mounted", "Errors"})
             (void)o.at(key).as_object();
         (void)o.at("Suppressed").as_array();
+        if (!o.contains("LocalShares"))
+            o["LocalShares"] = object{};
+        (void)o.at("LocalShares").as_object();
         return o;
     }
     void save(const object &state)
@@ -657,7 +660,26 @@ class Manager
         auto guard = lock();
         auto state = load();
         auto &shares = state.at("Shares").as_object();
-        if (shares != desired)
+        auto &local = state.at("LocalShares").as_object();
+        std::set<std::string> hostNames;
+        for (const auto &entry : desired)
+            hostNames.insert(folded(std::string(entry.key())));
+        bool localChanged = false;
+        for (auto it = local.begin(); it != local.end();)
+        {
+            auto key = std::string(it->key());
+            if (hostNames.count(folded(key)))
+            {
+                it = local.erase(it);
+                localChanged = true;
+            }
+            else
+            {
+                desired[key] = it->value();
+                ++it;
+            }
+        }
+        if (shares != desired || localChanged)
         {
             auto old = shares;
             shares = std::move(desired);
@@ -765,10 +787,17 @@ class Manager
         auto item = shares.if_contains(key);
         if (!item)
         {
-            if (!manualPort || gpuShare(key))
+            if (!manualPort || folded(key) == folded(DriverShare) || folded(key) == folded(LibraryShare))
                 fail("Unknown share; specify its port or wait for host inventory");
+            if (std::any_of(shares.begin(), shares.end(),
+                            [&](const auto &entry) { return folded(std::string(entry.key())) == folded(key); }))
+                fail("A share with this name already exists");
+            auto &local = state.at("LocalShares").as_object();
+            if (local.size() >= 128)
+                fail("Too many local shares");
             shares[key] =
                 descriptor(object{{"Name", key}, {"Port", manualPort}, {"ReadOnly", readOnly}, {"AutoMount", false}});
+            local[key] = shares.at(key);
             item = shares.if_contains(key);
         }
         else if (manualPort && port(item->as_object().at("Port")) != manualPort)
@@ -797,7 +826,14 @@ class Manager
             fail("Unknown share");
         if (mounted.contains(key))
             drop(state, key);
-        if (!suppressed(state, key))
+        auto &local = state.at("LocalShares").as_object();
+        if (local.erase(key))
+        {
+            shares.erase(key);
+            state.at("Errors").as_object().erase(key);
+            unsuppress(state, key);
+        }
+        else if (!suppressed(state, key))
             state.at("Suppressed").as_array().push_back(j::value(key));
         save(state);
         syncGpu(state);
@@ -825,6 +861,7 @@ class Manager
                 if (m.type == "9p" && m.source == src)
                     fail("Share still has an active mount");
         shares.erase(key);
+        state.at("LocalShares").as_object().erase(key);
         state.at("Errors").as_object().erase(key);
         unsuppress(state, key);
         save(state);
