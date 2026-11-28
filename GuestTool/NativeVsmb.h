@@ -332,6 +332,11 @@ public:
                 DWORD count=0;
                 if(!WriteFile(file.Get(),bytes,7,&count,nullptr)||count!=7)Error("Write Bind Filter test file");
             }
+            wchar_t imagePath[32768]{};
+            auto imageLength=GetModuleFileNameW(nullptr,imagePath,static_cast<DWORD>(std::size(imagePath)));
+            if(!imageLength||imageLength>=std::size(imagePath)||
+                !CopyFileW(imagePath,(source/L"test.exe").c_str(),TRUE))
+                Error("Prepare executable image mapping test");
             if(ExistingTarget(mount,NtPath(source),true))throw std::runtime_error("Unexpected existing test binding");
             auto status=Setup(nullptr,0x61,mount.c_str(),source.c_str(),nullptr,0);
             if(FAILED(status))throw std::runtime_error("Create test binding failed: "+std::to_string(static_cast<unsigned long>(status)));
@@ -364,6 +369,19 @@ public:
                     throw std::runtime_error("Bind Filter did not preserve the local DOS filename");
             }
             {
+                NativeHandle file(CreateFileW((mount/L"test.exe").c_str(),GENERIC_READ|GENERIC_EXECUTE,
+                    FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+                if(!file.Valid())Error("Open bound executable image");
+                NativeHandle image(CreateFileMappingW(file.Get(),nullptr,PAGE_READONLY|SEC_IMAGE,0,0,nullptr));
+                if(!image.Valid())Error("Create bound executable image section");
+            }
+            {
+                bool conflict=false;
+                try{(void)ExistingTarget(mount,NtPath(root/L"other"),true);}
+                catch(std::runtime_error const&){conflict=true;}
+                if(!conflict)throw std::runtime_error("Unrelated mount target was accepted");
+            }
+            {
                 NativeHandle file(CreateFileW((mount/L"test.txt").c_str(),GENERIC_WRITE,0,nullptr,
                     OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
                 if(file.Valid())throw std::runtime_error("Read-only Bind Filter accepted a write handle");
@@ -372,8 +390,24 @@ public:
             bound=false;
             if(ExistingTarget(mount,NtPath(source),true)||!fs::is_empty(mount))
                 throw std::runtime_error("Test binding still exists");
+            status=Setup(nullptr,0x60,mount.c_str(),source.c_str(),nullptr,0);
+            if(FAILED(status))throw std::runtime_error("Create writable test binding failed");
+            bound=true;
+            if(!ExistingTarget(mount,NtPath(source),false))throw std::runtime_error("Writable test binding not reported");
+            {
+                NativeHandle file(CreateFileW((mount/L"created.txt").c_str(),GENERIC_WRITE,0,nullptr,
+                    CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr));
+                if(!file.Valid())Error("Create file in writable bound directory");
+                char byte='x';DWORD count=0;
+                if(!WriteFile(file.Get(),&byte,1,&count,nullptr)||count!=1)Error("Write bound file");
+            }
+            if(fs::file_size(source/L"created.txt")!=1)throw std::runtime_error("Writable mount did not update source");
+            if(FAILED(Remove(nullptr,mount.c_str())))throw std::runtime_error("Remove writable test binding failed");
+            bound=false;
+            if(ExistingTarget(mount,NtPath(source),false)||!fs::is_empty(mount))
+                throw std::runtime_error("Writable test binding still exists");
             fs::remove_all(root);
-            std::cout<<"Native Bind Filter integration passed\n";
+            std::cout<<"Native Bind Filter integration passed (read-only, read-write, image sections and local filenames)\n";
             return 0;
         }
         catch(...)

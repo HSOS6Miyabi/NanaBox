@@ -745,6 +745,16 @@ namespace
                     }
                 }
             }
+            else
+            {
+                for (auto const& share : smbShares)
+                {
+                    auto name = share.at("Name").get<std::string>();
+                    if (name=="NanaBox.HostDrivers" || name=="HostDriverStore" ||
+                        name=="NanaBox.HostLxssLib" || Wddm::ExtraShareName(name)) continue;
+                    mountErrors.push_back(name+": Virtual SMB shares require the native Windows backend");
+                }
+            }
             if (!gpuEnabled)
             {
                 Last={{"Mounted",false},{"Files",Json::array()},{"Errors",mountErrors},{"VirtualSmbShares",mounted},
