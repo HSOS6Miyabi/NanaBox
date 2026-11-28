@@ -5,6 +5,8 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <hvsocket.h>
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 #include <sfc.h>
 #include <winternl.h>
 #include <setupapi.h>
@@ -49,10 +51,10 @@ namespace
     constexpr std::uint32_t MaximumMessage = 256 * 1024;
     std::atomic<bool> Stop{false};
     SERVICE_STATUS_HANDLE ServiceHandle = nullptr;
-    std::wstring CirnoPath;
+    std::wstring CirnoPath, WinFspPlan9Path;
     bool AutomaticRestart = true;
     bool NativeMode = true;
-    std::atomic<bool> NativeActive{false};
+    std::atomic<bool> NativeActive{false}, Plan9Active{false};
     void Status(DWORD state,DWORD error);
 
     [[noreturn]] void Error(char const* message)
@@ -189,6 +191,7 @@ namespace
     }
 
 #include "NativeVsmb.h"
+#include "WindowsPlan9Mounts.h"
 
     class DriverMount
     {
@@ -659,6 +662,7 @@ namespace
     class Manager
     {
         GpuMappingLifecycle Lifecycle;
+        WindowsPlan9Mounts UserPlan9;
         DriverMount Mount;
         RestartTracker Restart;
         std::string VerifiedGeneration;
@@ -767,7 +771,15 @@ namespace
                 for (auto& share : result["VirtualSmbShares"])
                     share["Mounted"] = VsmbClient.Ready(fs::path(Wide(share.at("Target").get<std::string>())),
                         Wide(share.at("Name").get<std::string>()), share.at("ReadOnly").get<bool>());
+            result.update(UserPlan9.Query());
             return result;
+        }
+        Json Plan9Action(std::string const& action,Json const& settings)
+        {
+            if(!settings.is_object() || settings.size()!=(action=="Unmount"?1u:2u))
+                throw std::runtime_error("Invalid Plan 9 mount request");
+            UserPlan9.Action(action,settings);
+            return Query();
         }
         Json Update(Json const& settings)
         {
@@ -775,6 +787,7 @@ namespace
             auto smbShares = settings.value("VirtualSmbShares", Json::array());
             bool gpuEnabled = settings.value("GpuEnabled", true);
             auto descriptors = ParseVirtualSmbInventory(smbShares);
+            UserPlan9.Update(shares);
             Json mounted = Json::array();
             Json mountErrors = Json::array();
             if (NativeMode)
@@ -1166,6 +1179,8 @@ namespace
                 Json response;
                 if (request.at("RequestType") == "Query") response = manager.Query();
                 else if (request.at("RequestType") == "Update") response = manager.Update(request.at("Settings"));
+                else if(request.at("RequestType")=="Mount" || request.at("RequestType")=="Unmount")
+                    response=manager.Plan9Action(request.at("RequestType").get<std::string>(),request.at("Settings"));
                 else throw std::runtime_error("Unsupported GPU mount operation");
                 Send(client.Handle, {{"Version", 1}, {"Success", true}, {"Data", response}});
             }
@@ -1183,7 +1198,7 @@ namespace
         status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
         status.dwCurrentState = state;
         status.dwControlsAccepted = state == SERVICE_RUNNING ?
-            SERVICE_ACCEPT_SHUTDOWN | (NativeActive ? 0u : SERVICE_ACCEPT_STOP) : 0;
+            SERVICE_ACCEPT_SHUTDOWN | ((NativeActive || Plan9Active) ? 0u : SERVICE_ACCEPT_STOP) : 0;
         status.dwWin32ExitCode = error;
         status.dwWaitHint = state == SERVICE_STOP_PENDING ? 15000 : 0;
         if (ServiceHandle) SetServiceStatus(ServiceHandle, &status);
@@ -1191,7 +1206,7 @@ namespace
 
     void WINAPI Control(DWORD control)
     {
-        if ((control == SERVICE_CONTROL_STOP && !NativeActive) || control == SERVICE_CONTROL_SHUTDOWN)
+        if ((control == SERVICE_CONTROL_STOP && !NativeActive && !Plan9Active) || control == SERVICE_CONTROL_SHUTDOWN)
         {
             Stop = true;
             Status(SERVICE_STOP_PENDING);
@@ -1207,6 +1222,9 @@ namespace
         {
             Key key(StateKey, KEY_READ);
             CirnoPath = key.Read(L"CirnoPath");
+            WinFspPlan9Path = key.Read(L"WinFspPlan9Path");
+            if(!WinFspPlan9Path.empty() && !fs::path(WinFspPlan9Path).is_absolute())
+                throw std::runtime_error("Invalid WinFsp Plan 9 executable path");
             auto backend = key.Read(L"Backend");
             NativeMode = backend == L"VirtualSmb" || (backend.empty() && CirnoPath.empty());
             if (!backend.empty() && backend != L"VirtualSmb" && backend != L"Plan9")
@@ -1222,6 +1240,30 @@ namespace
 
     int SelfTest()
     {
+        {
+            auto share=[](std::string name,unsigned port,bool readOnly,bool automatic)
+            {return Json{{"Name",name},{"Port",port},{"ReadOnly",readOnly},{"AutoMount",automatic}};};
+            auto rows=ParseWindowsPlan9Inventory(Json::array({share("Projects",564,false,true),
+                share("Manual",565,true,false),share("NanaBox.HostDrivers",50001,true,true)}));
+            if(rows.size()!=2 || rows[0].Port!=564 || !rows[0].AutoMount || !rows[1].ReadOnly || rows[1].AutoMount) return 60;
+            for(auto const& bad:{Json::array({share("CON",564,false,true)}),
+                Json::array({share("Projects",27456,false,true)}),
+                Json::array({share("Projects",564,false,true),share("projects",565,true,false)}),
+                Json::array({share("NanaBox.HostDrivers",50001,false,true)}),
+                Json::array({share("../bad",564,false,true)})})
+            {
+                bool rejected=false;try{(void)ParseWindowsPlan9Inventory(bad);}catch(std::exception const&){rejected=true;}
+                if(!rejected) return 61;
+            }
+            fs::path root=L"C:\\ProgramData\\NanaBox Guest 9P";
+            if(WindowsPlan9Target(root,rows[0],"")!=root/L"Projects" ||
+                WindowsPlan9Target(root,rows[0],"Custom")!=root/L"Custom") return 62;
+            for(auto bad:{"../escape","C:\\Windows\\System32","C:\\ProgramData\\NanaBox Guest 9P\\..\\Escape","CON"})
+            {
+                bool rejected=false;try{(void)WindowsPlan9Target(root,rows[0],bad);}catch(std::exception const&){rejected=true;}
+                if(!rejected) return 63;
+            }
+        }
         {
             auto share = [](std::string name, bool readOnly) -> Json
             { return {{"Name",std::move(name)},{"ReadOnly",readOnly}}; };
@@ -1391,6 +1433,8 @@ int wmain(int argc, wchar_t** argv)
     try
     {
         if (argc == 2 && std::wstring_view(argv[1]) == L"--self-test") return SelfTest();
+        if (argc == 4 && std::wstring_view(argv[1]) == L"--plan9-manager-test")
+            return WindowsPlan9ManagerTest(argv[2],argv[3]);
         if (argc == 2 && std::wstring_view(argv[1]) == L"--bind-filter-self-test") return VsmbClient.LocalMappingTest();
         if (argc == 2 && std::wstring_view(argv[1]) == L"--cleanup")
         {
