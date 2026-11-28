@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import traceback
 import time
 import uuid
 
@@ -172,6 +173,7 @@ class Server:
         try:
             with self.listener.accept()[0] as connection:
                 connection.settimeout(30)
+                connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 while True:
                     header=self.receive(connection,4)
                     if header is None:break
@@ -191,6 +193,8 @@ class Server:
                     connection.sendall(P("BH",reply,tag)+body)
         except Exception as error:
             self.error=error
+            traceback.print_exc()
+            print('9P server last requests:', self.calls[-40:], file=sys.stderr, flush=True)
         finally:self.listener.close()
 
 kernel=ctypes.WinDLL("kernel32",use_last_error=True)
@@ -295,6 +299,9 @@ def run(exe, readonly):
                 assert not mount.exists()
                 if readonly:assert not any(t in server.calls for t in (14,118,122,26,72,74))
                 else:assert all(t in server.calls for t in (14,118,116,122,26,72,74,50))
+            except Exception:
+                print('Server error:', repr(server.error), 'last requests:', server.calls[-40:], flush=True)
+                raise
             finally:
                 kernel.SetEvent(event)
                 if process.poll() is None:
