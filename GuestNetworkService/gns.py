@@ -1,5 +1,6 @@
 """NanaBox guest network configuration protocol (Python 3.12+ on Windows)."""
 import argparse
+import array
 import base64
 import hashlib
 import hmac
@@ -27,6 +28,7 @@ DNS_PORT = 27454
 BIND_PORT = 27455
 BIND_SOCKET = '/run/nanabox-gns/bind.sock'
 BIND_REQUEST_SIZE = 20
+SO_NETNS_COOKIE = getattr(socket, 'SO_NETNS_COOKIE', 71)
 DNS_SERVICE = f'{DNS_PORT:08x}-facb-11e6-bd58-64006a7986d3'
 SERVICE = f'{PORT:08x}-facb-11e6-bd58-64006a7986d3'
 LIMIT = 256 * 1024
@@ -1722,6 +1724,7 @@ class BindCoordinator:
         self.channel = None
         self.local_listener = None
         self.socket_identity = None
+        self.netns_cookie = None
         self.host_listener = None
         self.stopping = threading.Event()
         self.threads = []
@@ -1800,6 +1803,35 @@ class BindCoordinator:
                 with self.lock:
                     self._exchange(bytes(BIND_REQUEST_SIZE))
 
+    def _read_local_request(self, conn):
+        # SCM_RIGHTS supplies the socket that will be bound. SO_NETNS_COOKIE
+        # verifies its actual namespace without inspecting another UID's
+        # /proc entries or granting the service CAP_SYS_PTRACE.
+        fds = array.array('i')
+        data, ancillary, flags, _ = conn.recvmsg(
+            BIND_REQUEST_SIZE, socket.CMSG_SPACE(4 * fds.itemsize), socket.MSG_CMSG_CLOEXEC)
+        try:
+            for level, kind, value in ancillary:
+                if level == socket.SOL_SOCKET and kind == socket.SCM_RIGHTS:
+                    fds.frombytes(value[:len(value) - len(value) % fds.itemsize])
+            if flags & (socket.MSG_CTRUNC | socket.MSG_TRUNC) or len(fds) != 1:
+                raise ValueError('One application socket is required')
+            request = data + read_exact(conn, BIND_REQUEST_SIZE - len(data))
+            protocol, _ = bind_request_key(request)
+            with socket.socket(fileno=os.dup(fds[0])) as target:
+                if target.getsockopt(socket.SOL_SOCKET, SO_NETNS_COOKIE, 8) != self.netns_cookie:
+                    raise ValueError('Application socket belongs to another network namespace')
+                if target.getsockopt(socket.SOL_SOCKET, socket.SO_PROTOCOL) != protocol:
+                    raise ValueError('Application socket protocol does not match request')
+                family = target.getsockopt(socket.SOL_SOCKET, socket.SO_DOMAIN)
+                if family not in (socket.AF_INET, socket.AF_INET6) or (
+                        request[1] == 6 and family != socket.AF_INET6):
+                    raise ValueError('Application socket address family does not match request')
+            return request
+        finally:
+            for fd in fds:
+                os.close(fd)
+
     def _accept_local(self):
         while not self.stopping.is_set():
             try:
@@ -1811,16 +1843,13 @@ class BindCoordinator:
             with conn:
                 conn.settimeout(3)
                 try:
-                    pid, _, _ = struct.unpack('=iii', conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
-                    # Port sharing is for the mirrored network namespace, not
-                    # for separate container or application namespaces.
-                    if os.readlink(f'/proc/{pid}/ns/net') != os.readlink('/proc/self/ns/net'):
-                        conn.sendall(b'\x02')
-                        continue
-                    status = self.reserve(read_exact(conn, BIND_REQUEST_SIZE))
-                    conn.sendall(bytes([status]))
+                    request = self._read_local_request(conn)
+                    conn.sendall(bytes([self.reserve(request)]))
                 except (OSError, ValueError, EOFError):
-                    continue
+                    try:
+                        conn.sendall(b'\x02')
+                    except OSError:
+                        pass
 
     def _accept_host(self):
         while not self.stopping.is_set():
@@ -1852,6 +1881,8 @@ class BindCoordinator:
                     self.path.unlink()
                 else:
                     raise RuntimeError('Bind coordination service is already running')
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            self.netns_cookie = probe.getsockopt(socket.SOL_SOCKET, SO_NETNS_COOKIE, 8)
         self.local_listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.local_listener.bind(str(self.path))

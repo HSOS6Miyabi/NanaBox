@@ -30,7 +30,7 @@ static int transfer(int fd, unsigned char *buffer, size_t length, int writing)
     return 0;
 }
 
-static int request_reservation(unsigned char request[20])
+static int request_reservation(int application_fd, unsigned char request[20])
 {
     const char *path = getenv("NANABOX_BIND_SOCKET");
     if (!path || !*path) path = "/run/nanabox-gns/bind.sock";
@@ -49,7 +49,19 @@ static int request_reservation(unsigned char request[20])
     if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &peer, &size) ||
         (peer.uid != 0 && peer.uid != geteuid())) goto done;
     unsigned char status = 2;
-    if (!transfer(fd, request, 20, 1) && !transfer(fd, &status, 1, 0))
+    union { struct cmsghdr alignment; unsigned char data[CMSG_SPACE(sizeof(int))]; } control = {0};
+    struct iovec iov = { .iov_base = request, .iov_len = 20 };
+    struct msghdr message = { .msg_iov = &iov, .msg_iovlen = 1,
+        .msg_control = control.data, .msg_controllen = sizeof(control.data) };
+    struct cmsghdr *header = CMSG_FIRSTHDR(&message);
+    header->cmsg_level = SOL_SOCKET;
+    header->cmsg_type = SCM_RIGHTS;
+    header->cmsg_len = CMSG_LEN(sizeof(int));
+    memcpy(CMSG_DATA(header), &application_fd, sizeof(application_fd));
+    ssize_t sent;
+    do { sent = sendmsg(fd, &message, MSG_NOSIGNAL); } while (sent < 0 && errno == EINTR);
+    if (sent > 0 && sent <= 20 && !transfer(fd, request + sent, 20 - (size_t)sent, 1) &&
+        !transfer(fd, &status, 1, 0))
         result = status;
 done:
     close(fd);
@@ -109,7 +121,7 @@ int bind(int fd, const struct sockaddr *address, socklen_t length)
             return real_bind(fd, address, length);
     }
     memcpy(request + 2, &port, 2);
-    int result = request_reservation(request);
+    int result = request_reservation(fd, request);
     if (result != 0) {
         errno = result == 1 ? EADDRINUSE : ENETDOWN;
         return -1;

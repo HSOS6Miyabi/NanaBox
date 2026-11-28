@@ -1,4 +1,5 @@
 import errno
+import array
 import os
 import pathlib
 import platform
@@ -61,6 +62,30 @@ class BindTests(unittest.TestCase):
                 coordinator.close()
                 thread.join(5)
             self.assertFalse(thread.is_alive())
+
+    def test_validate_socket_descriptor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            coordinator = gns.BindCoordinator(pathlib.Path(temp, 'bind.sock'))
+            coordinator.start(listen_host=False)
+            try:
+                request = struct.pack('!BBH', 6, 4, 32000) + socket.inet_aton('127.0.0.1') + bytes(12)
+                for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+                    with socket.socket(socket.AF_INET, kind) as target:
+                        a, b = socket.socketpair()
+                        with a, b:
+                            a.sendmsg([request], [(socket.SOL_SOCKET, socket.SCM_RIGHTS, array.array('i', [target.fileno()]))])
+                            if kind == socket.SOCK_STREAM:
+                                self.assertEqual(coordinator._read_local_request(b), request)
+                            else:
+                                with self.assertRaisesRegex(ValueError, 'protocol'):
+                                    coordinator._read_local_request(b)
+                a, b = socket.socketpair()
+                with a, b:
+                    a.sendall(request)
+                    with self.assertRaisesRegex(ValueError, 'socket'):
+                        coordinator._read_local_request(b)
+            finally:
+                coordinator.close()
 
     def test_native_bind_conflict_and_success(self):
         if not shutil.which('cc'):
