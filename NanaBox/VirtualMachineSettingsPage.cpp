@@ -8,6 +8,8 @@
 #include "ConfigurationManager.h"
 #include "NanaBoxResources.h"
 #include "MainWindow.h"
+#include "SettingsText.h"
+#include <shellapi.h>
 
 #include <algorithm>
 #include <charconv>
@@ -49,7 +51,17 @@ namespace
     {
         std::wstring ResourcePath = L"VirtualMachineSettingsPage/";
         ResourcePath.append(Name);
-        return Mile::WinRT::GetLocalizedString(winrt::hstring(ResourcePath));
+        wchar_t const* Fallback = L"Settings";
+        bool Chinese = PRIMARYLANGID(::GetUserDefaultUILanguage()) == LANG_CHINESE;
+        for (auto const& Entry : ::NanaBox::SettingsText::Strings)
+        {
+            if (Entry.Key == Name)
+            {
+                Fallback = Chinese ? Entry.Chinese : Entry.English;
+                break;
+            }
+        }
+        return Mile::WinRT::GetLocalizedString(winrt::hstring(ResourcePath), Fallback);
     }
 
     void ShowSettingsError(
@@ -405,6 +417,63 @@ namespace winrt::NanaBox::implementation
     void VirtualMachineSettingsPage::InitializeComponent()
     {
         VirtualMachineSettingsPageT::InitializeComponent();
+        using namespace winrt::Windows::UI::Xaml::Controls;
+        for (auto const& Binding : ::NanaBox::SettingsText::Bindings)
+        {
+            auto Element = this->FindName(Binding.Element).try_as<winrt::Windows::UI::Xaml::DependencyObject>();
+            if (!Element) continue;
+            auto Value = ::GetSettingsString(Binding.Key);
+            std::wstring_view Property = Binding.Property;
+            if (Property == L"Text")
+            {
+                if (auto Text = Element.try_as<TextBlock>()) Text.Text(Value);
+            }
+            else if (Property == L"Content")
+            {
+                if (auto Control = Element.try_as<ContentControl>()) Control.Content(winrt::box_value(Value));
+            }
+            else if (Property == L"Header")
+            {
+                if (auto Box = Element.try_as<TextBox>()) Box.Header(winrt::box_value(Value));
+                else if (auto Box = Element.try_as<ComboBox>()) Box.Header(winrt::box_value(Value));
+            }
+            else if (Property == L"AutomationProperties.Name")
+                winrt::AutomationProperties::SetName(Element, Value);
+            else if (Property == L"AutomationProperties.HelpText")
+                winrt::AutomationProperties::SetHelpText(Element, Value);
+            else if (Property == L"ToolTipService.ToolTip")
+                winrt::ToolTipService::SetToolTip(Element, winrt::box_value(Value));
+        }
+        this->SettingsNavigation().SelectionChanged([Weak = this->get_weak()](
+            winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
+        {
+            if (auto Page = Weak.get())
+            {
+                winrt::FrameworkElement Sections[] = {
+                    Page->SectionGeneral(),
+                    Page->SectionGpu(),
+                    Page->SectionStorage(),
+                    Page->SectionNetwork(),
+                    Page->SectionShares(),
+                    Page->SectionSession(),
+                    Page->SectionSerial(),
+                    Page->SectionGuestTools(),
+                    Page->SectionHostManagement(),
+                    Page->SectionVmms(),
+                    Page->SectionHcn(),
+                    Page->SectionAdvanced(),
+                };
+                auto Index = Sender.as<ListView>().SelectedIndex();
+                for (int i = 0; i < static_cast<int>(sizeof(Sections) / sizeof(Sections[0])); ++i)
+                    Sections[i].Visibility(i == Index ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+            }
+        });
+        this->SettingsNavigation().SelectedIndex(0);
+        this->SizeChanged([Weak = this->get_weak()](winrt::IInspectable const&, winrt::Windows::UI::Xaml::SizeChangedEventArgs const& Args)
+        {
+            if (auto Page = Weak.get())
+                Page->SettingsNavigationColumn().Width(winrt::GridLengthHelper::FromPixels(Args.NewSize().Width < 720 ? 164 : 208));
+        });
         this->AssignmentModeComboBox().SelectionChanged([
             WeakSection = winrt::make_weak(this->GpuDeviceSection())](
                 winrt::IInspectable const& Sender,
@@ -1239,14 +1308,26 @@ namespace winrt::NanaBox::implementation
                 this->ConfigurationStatusTextBox().Text(this->m_HostOperations->ExternalAction(L"OpenConfiguration", Path));
                 return;
             }
-            ::ShowMessageDialog(this->m_WindowHandle,
-                Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsInstructionText"),
-                Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsContentText"));
-            OPENASINFO OpenAsInfo = {};
-            OpenAsInfo.pcszFile = Path.c_str();
-            OpenAsInfo.oaifInFlags = OAIF_EXEC;
-            HRESULT Result = ::SHOpenWithDialog(this->m_WindowHandle, &OpenAsInfo);
-            if (Result != HRESULT_FROM_WIN32(ERROR_CANCELLED)) winrt::check_hresult(Result);
+            Path = ::GetAbsolutePath(Path);
+            DWORD Attributes = ::GetFileAttributesW(Path.c_str());
+            if (Attributes == INVALID_FILE_ATTRIBUTES) winrt::throw_last_error();
+            if (Attributes & FILE_ATTRIBUTE_DIRECTORY) throw winrt::hresult_invalid_argument();
+            wchar_t SystemDirectory[MAX_PATH] = {};
+            UINT Length = ::GetSystemDirectoryW(SystemDirectory, MAX_PATH);
+            if (Length == 0) winrt::throw_last_error();
+            if (Length >= MAX_PATH) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER));
+            std::wstring Editor = std::wstring(SystemDirectory, Length) + L"\\notepad.exe";
+            std::wstring Parameters = L"\"" + Path + L"\"";
+            SHELLEXECUTEINFOW Info = {};
+            Info.cbSize = sizeof(Info);
+            Info.hwnd = this->m_WindowHandle;
+            Info.fMask = SEE_MASK_FLAG_NO_UI;
+            Info.lpVerb = L"open";
+            Info.lpFile = Editor.c_str();
+            Info.lpParameters = Parameters.c_str();
+            Info.nShow = SW_SHOWNORMAL;
+            winrt::check_bool(::ShellExecuteExW(&Info));
+            this->ConfigurationStatusTextBox().Text(::GetSettingsString(L"ConfigurationEditorOpened"));
         }
         catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
     }

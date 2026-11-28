@@ -117,1479 +117,723 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="AddGpuDeviceButton.Content" xml:space="preserve">
-    <value>Add</value>
-    <comment>Add</comment>
-  </data>
-  <data name="AddNetworkAdapterButton.Content" xml:space="preserve">
-    <value>Add</value>
-    <comment>Add</comment>
-  </data>
-  <data name="AddPlan9ShareButton.Content" xml:space="preserve">
-    <value>Add</value>
-    <comment>Add</comment>
-  </data>
-  <data name="AddScsiDeviceButton.Content" xml:space="preserve">
-    <value>Add</value>
-    <comment>Add</comment>
-  </data>
-  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve">
-    <value>Add</value>
-    <comment>Add</comment>
-  </data>
-  <data name="AltEscHotkeyLabel.Text" xml:space="preserve">
-    <value>Alt+Esc Hotkey</value>
-    <comment>Alt+Esc Hotkey</comment>
-  </data>
-  <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</comment>
-  </data>
-  <data name="AltEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Alt+Esc Hotkey</value>
-    <comment>Alt+Esc Hotkey</comment>
-  </data>
-  <data name="AltEscHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</comment>
-  </data>
-  <data name="AltShiftTabHotkeyLabel.Text" xml:space="preserve">
-    <value>Alt+Shift+Tab Hotkey</value>
-    <comment>Alt+Shift+Tab Hotkey</comment>
-  </data>
-  <data name="AltShiftTabHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</comment>
-  </data>
-  <data name="AltShiftTabHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Alt+Shift+Tab Hotkey</value>
-    <comment>Alt+Shift+Tab Hotkey</comment>
-  </data>
-  <data name="AltShiftTabHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</comment>
-  </data>
-  <data name="AltSpaceHotkeyLabel.Text" xml:space="preserve">
-    <value>Alt+Space Hotkey</value>
-    <comment>Alt+Space Hotkey</comment>
-  </data>
-  <data name="AltSpaceHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</comment>
-  </data>
-  <data name="AltSpaceHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Alt+Space Hotkey</value>
-    <comment>Alt+Space Hotkey</comment>
-  </data>
-  <data name="AltSpaceHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</comment>
-  </data>
-  <data name="AltTabHotkeyLabel.Text" xml:space="preserve">
-    <value>Alt+Tab Hotkey</value>
-    <comment>Alt+Tab Hotkey</comment>
-  </data>
-  <data name="AltTabHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</comment>
-  </data>
-  <data name="AltTabHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Alt+Tab Hotkey</value>
-    <comment>Alt+Tab Hotkey</comment>
-  </data>
-  <data name="AltTabHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</comment>
-  </data>
-  <data name="ApplyButton.AutomationProperties.Name" xml:space="preserve">
-    <value>Apply Changes</value>
-    <comment>Apply Changes</comment>
-  </data>
-  <data name="ApplyButtonTextBlock.Text" xml:space="preserve">
-    <value>Apply Changes</value>
-    <comment>Apply Changes</comment>
-  </data>
-  <data name="AssignmentModeComboBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The GPU assignment mode setting of virtual machine.</value>
-    <comment>The GPU assignment mode setting of virtual machine.</comment>
-  </data>
-  <data name="AssignmentModeComboBox.AutomationProperties.Name" xml:space="preserve">
-    <value>GPU Assignment Mode</value>
-    <comment>GPU Assignment Mode</comment>
-  </data>
-  <data name="AssignmentModeComboBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The GPU assignment mode setting of virtual machine.</value>
-    <comment>The GPU assignment mode setting of virtual machine.</comment>
-  </data>
-  <data name="AssignmentModeLabel.Text" xml:space="preserve">
-    <value>GPU Assignment Mode</value>
-    <comment>GPU Assignment Mode</comment>
-  </data>
-  <data name="BaseBoardSerialNumberLabel.Text" xml:space="preserve">
-    <value>Baseboard Serial Number</value>
-    <comment>Baseboard Serial Number</comment>
-  </data>
-  <data name="BaseBoardSerialNumberTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The serial number of the baseboard of virtual machine.</value>
-    <comment>The serial number of the baseboard of virtual machine.</comment>
-  </data>
-  <data name="BaseBoardSerialNumberTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Baseboard Serial Number</value>
-    <comment>Baseboard Serial Number</comment>
-  </data>
-  <data name="BaseBoardSerialNumberTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The serial number of the baseboard of virtual machine.</value>
-    <comment>The serial number of the baseboard of virtual machine.</comment>
-  </data>
-  <data name="ChassisAssetTagLabel.Text" xml:space="preserve">
-    <value>Chassis Asset Tag</value>
-    <comment>Chassis Asset Tag</comment>
-  </data>
-  <data name="ChassisAssetTagTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The asset tag of the chassis of virtual machine.</value>
-    <comment>The asset tag of the chassis of virtual machine.</comment>
-  </data>
-  <data name="ChassisAssetTagTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Chassis Asset Tag</value>
-    <comment>Chassis Asset Tag</comment>
-  </data>
-  <data name="ChassisAssetTagTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The asset tag of the chassis of virtual machine.</value>
-    <comment>The asset tag of the chassis of virtual machine.</comment>
-  </data>
-  <data name="ChassisSerialNumberLabel.Text" xml:space="preserve">
-    <value>Chassis Serial Number</value>
-    <comment>Chassis Serial Number</comment>
-  </data>
-  <data name="ChassisSerialNumberTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The serial number of the chassis of virtual machine.</value>
-    <comment>The serial number of the chassis of virtual machine.</comment>
-  </data>
-  <data name="ChassisSerialNumberTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Chassis Serial Number</value>
-    <comment>Chassis Serial Number</comment>
-  </data>
-  <data name="ChassisSerialNumberTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The serial number of the chassis of virtual machine.</value>
-    <comment>The serial number of the chassis of virtual machine.</comment>
-  </data>
-  <data name="ChipsetInformationTitle.Text" xml:space="preserve">
-    <value>Chipset Information</value>
-    <comment>Chipset Information</comment>
-  </data>
-  <data name="ChipsetNote.Text" xml:space="preserve">
-    <value>Note: You need Windows Server 2022 or later Host OS.</value>
-    <comment>Note: You need Windows Server 2022 or later Host OS.</comment>
-  </data>
-  <data name="ChipsetVersionLabel.Text" xml:space="preserve">
-    <value>Version</value>
-    <comment>Version</comment>
-  </data>
-  <data name="ChipsetVersionTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The version of virtual machine.</value>
-    <comment>The version of virtual machine.</comment>
-  </data>
-  <data name="ChipsetVersionTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Version</value>
-    <comment>Version</comment>
-  </data>
-  <data name="ChipsetVersionTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The version of virtual machine.</value>
-    <comment>The version of virtual machine.</comment>
-  </data>
-  <data name="ChoiceComPort1Item.Content" xml:space="preserve">
-    <value>COM1</value>
-    <comment>COM1</comment>
-  </data>
-  <data name="ChoiceComPort2Item.Content" xml:space="preserve">
-    <value>COM2</value>
-    <comment>COM2</comment>
-  </data>
-  <data name="ChoiceDefaultItem.Content" xml:space="preserve">
-    <value>Default</value>
-    <comment>Default</comment>
-  </data>
-  <data name="ChoiceDefaultItem2.Content" xml:space="preserve">
-    <value>Default</value>
-    <comment>Default</comment>
-  </data>
-  <data name="ChoiceDisabledItem.Content" xml:space="preserve">
-    <value>Disabled</value>
-    <comment>Disabled</comment>
-  </data>
-  <data name="ChoiceDisabledItem2.Content" xml:space="preserve">
-    <value>Disabled</value>
-    <comment>Disabled</comment>
-  </data>
-  <data name="ChoiceListItem.Content" xml:space="preserve">
-    <value>Selected GPUs</value>
-    <comment>Selected GPUs</comment>
-  </data>
-  <data name="ChoiceMirrorItem.Content" xml:space="preserve">
-    <value>Mirror All GPUs</value>
-    <comment>Mirror All GPUs</comment>
-  </data>
-  <data name="ChoicePhysicalDevice" xml:space="preserve">
-    <value>Physical Device</value>
-    <comment>Physical Device</comment>
-  </data>
-  <data name="ChoiceVirtualDisk" xml:space="preserve">
-    <value>Virtual Hard Disk</value>
-    <comment>Virtual Hard Disk</comment>
-  </data>
-  <data name="ChoiceVirtualImage" xml:space="preserve">
-    <value>ISO Image</value>
-    <comment>ISO Image</comment>
-  </data>
-  <data name="ComPort1Label.Text" xml:space="preserve">
-    <value>COM1 Named Pipe</value>
-    <comment>COM1 Named Pipe</comment>
-  </data>
-  <data name="ComPort1TextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) The named pipe path of guest COM1 of virtual machine.</value>
-    <comment>(Optional) The named pipe path of guest COM1 of virtual machine.</comment>
-  </data>
-  <data name="ComPort1TextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>COM1 Named Pipe</value>
-    <comment>COM1 Named Pipe</comment>
-  </data>
-  <data name="ComPort1TextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) The named pipe path of guest COM1 of virtual machine.</value>
-    <comment>(Optional) The named pipe path of guest COM1 of virtual machine.</comment>
-  </data>
-  <data name="ComPort2Label.Text" xml:space="preserve">
-    <value>COM2 Named Pipe</value>
-    <comment>COM2 Named Pipe</comment>
-  </data>
-  <data name="ComPort2TextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) The named pipe path of guest COM2 of virtual machine.</value>
-    <comment>(Optional) The named pipe path of guest COM2 of virtual machine.</comment>
-  </data>
-  <data name="ComPort2TextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>COM2 Named Pipe</value>
-    <comment>COM2 Named Pipe</comment>
-  </data>
-  <data name="ComPort2TextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) The named pipe path of guest COM2 of virtual machine.</value>
-    <comment>(Optional) The named pipe path of guest COM2 of virtual machine.</comment>
-  </data>
-  <data name="ComPortsTitle.Text" xml:space="preserve">
-    <value>Serial Ports</value>
-    <comment>Serial Ports</comment>
-  </data>
-  <data name="CtrlAltDelHotkeyLabel.Text" xml:space="preserve">
-    <value>Ctrl+Alt+Delete Hotkey</value>
-    <comment>Ctrl+Alt+Delete Hotkey</comment>
-  </data>
-  <data name="CtrlAltDelHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</value>
-    <comment>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</comment>
-  </data>
-  <data name="CtrlAltDelHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Ctrl+Alt+Delete Hotkey</value>
-    <comment>Ctrl+Alt+Delete Hotkey</comment>
-  </data>
-  <data name="CtrlAltDelHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</value>
-    <comment>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</comment>
-  </data>
-  <data name="CtrlEscHotkeyLabel.Text" xml:space="preserve">
-    <value>Ctrl+Esc Hotkey</value>
-    <comment>Ctrl+Esc Hotkey</comment>
-  </data>
-  <data name="CtrlEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</comment>
-  </data>
-  <data name="CtrlEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Ctrl+Esc Hotkey</value>
-    <comment>Ctrl+Esc Hotkey</comment>
-  </data>
-  <data name="CtrlEscHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</comment>
-  </data>
-  <data name="DeviceDescription.Text" xml:space="preserve">
-    <value>(Optional) The string array of selected devices used for redirection from the host to the virtual machine.</value>
-    <comment>(Optional) The string array of selected devices used for redirection from the host to the virtual machine.</comment>
-  </data>
-  <data name="DeviceTitleTextBlock.Text" xml:space="preserve">
-    <value>Devices</value>
-    <comment>Devices</comment>
-  </data>
-  <data name="DisableDpiScalingCheckBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</value>
-    <comment>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</comment>
-  </data>
-  <data name="DisableDpiScalingCheckBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Disable Basic Session DPI Scaling</value>
-    <comment>Disable Basic Session DPI Scaling</comment>
-  </data>
-  <data name="DisableDpiScalingCheckBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</value>
-    <comment>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</comment>
-  </data>
-  <data name="DisableDpiScalingLabel.Text" xml:space="preserve">
-    <value>Disable Basic Session DPI Scaling</value>
-    <comment>Disable Basic Session DPI Scaling</comment>
-  </data>
-  <data name="DriveDescription.Text" xml:space="preserve">
-    <value>(Optional) The string array of selected disk drives used for redirection from the host to the virtual machine.</value>
-    <comment>(Optional) The string array of selected disk drives used for redirection from the host to the virtual machine.</comment>
-  </data>
-  <data name="DriveTitleTextBlock.Text" xml:space="preserve">
-    <value>Drives</value>
-    <comment>Drives</comment>
-  </data>
-  <data name="EnableHostDriverStoreCheckBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value>
-    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
-  </data>
-  <data name="EnableHostDriverStoreCheckBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Share Host Driver Store</value>
-    <comment>Share Host Driver Store</comment>
-  </data>
-  <data name="EnableHostDriverStoreCheckBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value>
-    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
-  </data>
-  <data name="EnableHostDriverStoreLabel.Text" xml:space="preserve">
-    <value>Share Host Driver Store</value>
-    <comment>Share Host Driver Store</comment>
-  </data>
-  <data name="EnhancedSessionTitle.Text" xml:space="preserve">
-    <value>Enhanced Session</value>
-    <comment>Enhanced Session</comment>
-  </data>
-  <data name="EnumerationFailed" xml:space="preserve">
-    <value>Unable to refresh the redirection list.</value>
-    <comment>Unable to refresh the redirection list.</comment>
-  </data>
-  <data name="FamilyLabel.Text" xml:space="preserve">
-    <value>Family</value>
-    <comment>Family</comment>
-  </data>
-  <data name="FamilyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The family of virtual machine.</value>
-    <comment>The family of virtual machine.</comment>
-  </data>
-  <data name="FamilyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Family</value>
-    <comment>Family</comment>
-  </data>
-  <data name="FamilyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The family of virtual machine.</value>
-    <comment>The family of virtual machine.</comment>
-  </data>
-  <data name="FocusReleaseLeftHotkeyLabel.Text" xml:space="preserve">
-    <value>Focus Release Hotkey (Left)</value>
-    <comment>Focus Release Hotkey (Left)</comment>
-  </data>
-  <data name="FocusReleaseLeftHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</comment>
-  </data>
-  <data name="FocusReleaseLeftHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Focus Release Hotkey (Left)</value>
-    <comment>Focus Release Hotkey (Left)</comment>
-  </data>
-  <data name="FocusReleaseLeftHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</comment>
-  </data>
-  <data name="FocusReleaseRightHotkeyLabel.Text" xml:space="preserve">
-    <value>Focus Release Hotkey (Right)</value>
-    <comment>Focus Release Hotkey (Right)</comment>
-  </data>
-  <data name="FocusReleaseRightHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</comment>
-  </data>
-  <data name="FocusReleaseRightHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Focus Release Hotkey (Right)</value>
-    <comment>Focus Release Hotkey (Right)</comment>
-  </data>
-  <data name="FocusReleaseRightHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</comment>
-  </data>
-  <data name="FullScreenHotkeyLabel.Text" xml:space="preserve">
-    <value>Full Screen Hotkey</value>
-    <comment>Full Screen Hotkey</comment>
-  </data>
-  <data name="FullScreenHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</comment>
-  </data>
-  <data name="FullScreenHotkeyTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Full Screen Hotkey</value>
-    <comment>Full Screen Hotkey</comment>
-  </data>
-  <data name="FullScreenHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</value>
-    <comment>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</comment>
-  </data>
-  <data name="GeneralTitle.Text" xml:space="preserve">
-    <value>General</value>
-    <comment>General</comment>
-  </data>
-  <data name="GpuDeviceDescription.Text" xml:space="preserve">
-    <value>(Optional) The string or object array of selected GPUs used for virtual machine. Set as the object with &quot;DeviceInterface&quot; and &quot;PartitionId&quot; for the specific GPU instance if you want to use GPU-P (partitioning) mode, or set as the string which contains &quot;DeviceInterface&quot; for using GPU-PV (paravirtualization) mode.</value>
-    <comment>(Optional) The string or object array of selected GPUs used for virtual machine. Set as the object with &quot;DeviceInterface&quot; and &quot;PartitionId&quot; for the specific GPU instance if you want to use GPU-P (partitioning) mode, or set as the string which contains &quot;DeviceInterface&quot; for using GPU-PV (paravirtualization) mode.</comment>
-  </data>
-  <data name="GpuDeviceDeviceInterfaceHelp" xml:space="preserve">
-    <value>The device interface path of the selected GPU used for paravirtualization of virtual machine.</value>
-    <comment>The device interface path of the selected GPU used for paravirtualization of virtual machine.</comment>
-  </data>
-  <data name="GpuDeviceDeviceInterfaceLabel" xml:space="preserve">
-    <value>Device Interface Path</value>
-    <comment>Device Interface Path</comment>
-  </data>
-  <data name="GpuDevicePartitionIdHelp" xml:space="preserve">
-    <value>The partition ID of the selected GPU used for paravirtualization of virtual machine. It's actually an uint16 value. Set it 65535 for using GPU-PV  (paravirtualization) mode.</value>
-    <comment>The partition ID of the selected GPU used for paravirtualization of virtual machine. It's actually an uint16 value. Set it 65535 for using GPU-PV  (paravirtualization) mode.</comment>
-  </data>
-  <data name="GpuDevicePartitionIdLabel" xml:space="preserve">
-    <value>Partition ID</value>
-    <comment>Partition ID</comment>
-  </data>
-  <data name="GpuDeviceTitle.Text" xml:space="preserve">
-    <value>Selected GPUs</value>
-    <comment>Selected GPUs</comment>
-  </data>
-  <data name="GpuTitle.Text" xml:space="preserve">
-    <value>GPU</value>
-    <comment>GPU</comment>
-  </data>
-  <data name="GuestStateFileLabel.Text" xml:space="preserve">
-    <value>Guest State File</value>
-    <comment>Guest State File</comment>
-  </data>
-  <data name="GuestStateFileTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) The path of guest state file for virtual machine.</value>
-    <comment>(Optional) The path of guest state file for virtual machine.</comment>
-  </data>
-  <data name="GuestStateFileTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Guest State File</value>
-    <comment>Guest State File</comment>
-  </data>
-  <data name="GuestStateFileTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) The path of guest state file for virtual machine.</value>
-    <comment>(Optional) The path of guest state file for virtual machine.</comment>
-  </data>
-  <data name="HorizontalResolutionLabel.Text" xml:space="preserve">
-    <value>Horizontal Resolution</value>
-    <comment>Horizontal Resolution</comment>
-  </data>
-  <data name="HorizontalResolutionTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) The horizontal resolution of the video monitor of virtual machine.</value>
-    <comment>(Optional) The horizontal resolution of the video monitor of virtual machine.</comment>
-  </data>
-  <data name="HorizontalResolutionTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Horizontal Resolution</value>
-    <comment>Horizontal Resolution</comment>
-  </data>
-  <data name="HorizontalResolutionTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) The horizontal resolution of the video monitor of virtual machine.</value>
-    <comment>(Optional) The horizontal resolution of the video monitor of virtual machine.</comment>
-  </data>
-  <data name="InvalidValue" xml:space="preserve">
-    <value>Invalid setting: %s</value>
-    <comment>Invalid setting: %s</comment>
-  </data>
-  <data name="KeyboardNote.Text" xml:space="preserve">
-    <value>Note: You need to use the decimal value of the virtual-key code.</value>
-    <comment>Note: You need to use the decimal value of the virtual-key code.</comment>
-  </data>
-  <data name="KeyboardTitle.Text" xml:space="preserve">
-    <value>Keyboard</value>
-    <comment>Keyboard</comment>
-  </data>
-  <data name="ManufacturerLabel.Text" xml:space="preserve">
-    <value>Manufacturer</value>
-    <comment>Manufacturer</comment>
-  </data>
-  <data name="ManufacturerTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The manufacturer of virtual machine.</value>
-    <comment>The manufacturer of virtual machine.</comment>
-  </data>
-  <data name="ManufacturerTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Manufacturer</value>
-    <comment>Manufacturer</comment>
-  </data>
-  <data name="ManufacturerTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The manufacturer of virtual machine.</value>
-    <comment>The manufacturer of virtual machine.</comment>
-  </data>
-  <data name="MemorySizeLabel.Text" xml:space="preserve">
-    <value>Memory Size (MB)</value>
-    <comment>Memory Size (MB)</comment>
-  </data>
-  <data name="MemorySizeTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The memory size of virtual machine, in MB.</value>
-    <comment>The memory size of virtual machine, in MB.</comment>
-  </data>
-  <data name="MemorySizeTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Memory Size (MB)</value>
-    <comment>Memory Size (MB)</comment>
-  </data>
-  <data name="MemorySizeTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The memory size of virtual machine, in MB.</value>
-    <comment>The memory size of virtual machine, in MB.</comment>
-  </data>
-  <data name="NamedTitle" xml:space="preserve">
-    <value>%s Settings - NanaBox</value>
-    <comment>%s Settings - NanaBox</comment>
-  </data>
-  <data name="NameLabel.Text" xml:space="preserve">
-    <value>Name</value>
-    <comment>Name</comment>
-  </data>
-  <data name="NameTextBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>The unique name of virtual machine.</value>
-    <comment>The unique name of virtual machine.</comment>
-  </data>
-  <data name="NameTextBox.AutomationProperties.Name" xml:space="preserve">
-    <value>Name</value>
-    <comment>Name</comment>
-  </data>
-  <data name="NameTextBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>The unique name of virtual machine.</value>
-    <comment>The unique name of virtual machine.</comment>
-  </data>
-  <data name="NetworkAdapterConnectedHelp" xml:space="preserve">
-    <value>Make the current network adapter connected if set it true.</value>
-    <comment>Make the current network adapter connected if set it true.</comment>
-  </data>
-  <data name="NetworkAdapterConnectedLabel" xml:space="preserve">
-    <value>Connected</value>
-    <comment>Connected</comment>
-  </data>
-  <data name="NetworkAdapterDescription.Text" xml:space="preserve">
-    <value>The network adapters setting object array of virtual machine.</value>
-    <comment>The network adapters setting object array of virtual machine.</comment>
-  </data>
-  <data name="NetworkAdapterMacAddressHelp" xml:space="preserve">
-    <value>(Optional) The MAC address of the current network adapter.</value>
-    <comment>(Optional) The MAC address of the current network adapter.</comment>
-  </data>
-  <data name="NetworkAdapterMacAddressLabel" xml:space="preserve">
-    <value>MAC Address</value>
-    <comment>MAC Address</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchIdHelp" xml:space="preserve">
-    <value>(Optional) The switch GUID suggested for the current network adapter.</value>
-    <comment>(Optional) The switch GUID suggested for the current network adapter.</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchIdLabel" xml:space="preserve">
-    <value>Suggested Switch ID</value>
-    <comment>Suggested Switch ID</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchNameHelp" xml:space="preserve">
-    <value>(Optional) The switch name suggested for the current network adapter.</value>
-    <comment>(Optional) The switch name suggested for the current network adapter.</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchNameLabel" xml:space="preserve">
-    <value>Suggested Switch Name</value>
-    <comment>Suggested Switch Name</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve">
-    <value>(Optional) The switch subnet suggested for the current network adapter.</value>
-    <comment>(Optional) The switch subnet suggested for the current network adapter.</comment>
-  </data>
-  <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve">
-    <value>Suggested Switch Subnet</value>
-    <comment>Suggested Switch Subnet</comment>
-  </data>
-  <data name="NetworkAdapterTitle.Text" xml:space="preserve">
-    <value>Network Adapters</value>
-    <comment>Network Adapters</comment>
-  </data>
-  <data name="NetworkNote.Text" xml:space="preserve">
-    <value>Note: Default behavior is use the default switch.</value>
-    <comment>Note: Default behavior is use the default switch.</comment>
-  </data>
-  <data name="OpenButton.AutomationProperties.Name" xml:space="preserve">
-    <value>Open Virtual Machine Configuration File</value>
-    <comment>Open Virtual Machine Configuration File</comment>
-  </data>
-  <data name="OpenButtonTextBlock.Text" xml:space="preserve">
-    <value>Open Virtual Machine Configuration File</value>
-    <comment>Open Virtual Machine Configuration File</comment>
-  </data>
-  <data name="Plan9ShareDescription.Text" xml:space="preserve">
-    <value>Configure 9P shares over Hyper-V sockets. Linux guests can add, remove or change shares while running; busy mounts prevent removal. Automatic mounts use /media. Other guests require shutdown for changes.</value>
-  </data>
-  <data name="GuestUnknown.Content" xml:space="preserve">
-    <value>Unknown</value>
-  </data>
-  <data name="HostGpuLabel" xml:space="preserve">
-    <value>Available GPU-PV devices</value>
-  </data>
-  <data name="HostGpuHelp" xml:space="preserve">
-    <value>Select a host GPU to fill its device interface. Partition ID 65535 requests GPU-PV.</value>
-  </data>
-  <data name="NoHostGpus" xml:space="preserve">
-    <value>No GPU-PV interfaces found</value>
-  </data>
-  <data name="NoHostNetworks" xml:space="preserve">
-    <value>No host networks found</value>
-  </data>
-  <data name="NetworkIdLabel" xml:space="preserve">
-    <value>HCN network ID</value>
-  </data>
-  <data name="NetworkIdHelp" xml:space="preserve">
-    <value>Select an existing HCN network. Leave empty to use the legacy NAT switch settings.</value>
-  </data>
-  <data name="FirewallCreatorLabel" xml:space="preserve">
-    <value>Hyper-V firewall creator ID</value>
-  </data>
-  <data name="FirewallCreatorHelp" xml:space="preserve">
-    <value>Optional GUID of a registered Hyper-V firewall VM creator. Requires a firewall-enabled network.</value>
-  </data>
-  <data name="HostNetworkLabel" xml:space="preserve">
-    <value>Available HCN networks</value>
-  </data>
-  <data name="HostNetworkHelp" xml:space="preserve">
-    <value>Select the exact HCN network used by this adapter.</value>
-  </data>
-  <data name="HostNetworksTitle.Text" xml:space="preserve">
-    <value>Host network manager</value>
-  </data>
-  <data name="RefreshNetworks.Content" xml:space="preserve">
-    <value>Refresh</value>
-  </data>
-  <data name="InspectNetwork.Content" xml:space="preserve">
-    <value>Properties</value>
-  </data>
-  <data name="DeleteNetwork.Content" xml:space="preserve">
-    <value>Delete managed network</value>
-  </data>
-  <data name="NetworkName.Header" xml:space="preserve">
-    <value>New managed network name</value>
-  </data>
-  <data name="NetworkFirewall.Content" xml:space="preserve">
-    <value>Enable Hyper-V firewall</value>
-  </data>
-  <data name="CreateNetwork.Content" xml:space="preserve">
-    <value>Create managed network</value>
-  </data>
-  <data name="NetworkManagerNote.Text" xml:space="preserve">
-    <value>Refresh after creating a network. Add a NIC and choose the network to attach it.</value>
-  </data>
-  <data name="DeleteNetworkConfirm" xml:space="preserve">
-    <value>Delete the selected NanaBox-managed network? All endpoints must be disconnected.</value>
-  </data>
-  <data name="DiskCreate.Content" xml:space="preserve">
-    <value>Create VHD</value>
-  </data>
-  <data name="DiskResize.Content" xml:space="preserve">
-    <value>Expand VHD</value>
-  </data>
-  <data name="DiskCompact.Content" xml:space="preserve">
-    <value>Compact VHD</value>
-  </data>
-  <data name="GenerateCom1.Content" xml:space="preserve">
-    <value>Generate COM1 pipe</value>
-  </data>
-  <data name="GenerateCom2.Content" xml:space="preserve">
-    <value>Generate COM2 pipe</value>
-  </data>
-  <data name="ClearCom1.Content" xml:space="preserve">
-    <value>Disconnect COM1</value>
-  </data>
-  <data name="ClearCom2.Content" xml:space="preserve">
-    <value>Disconnect COM2</value>
-  </data>
-  <data name="TabGeneral.Header" xml:space="preserve">
-    <value>General</value>
-  </data>
-  <data name="TabSerial.Header" xml:space="preserve">
-    <value>Serial</value>
-  </data>
-  <data name="TabGpu.Header" xml:space="preserve">
-    <value>GPU</value>
-  </data>
-  <data name="TabNetwork.Header" xml:space="preserve">
-    <value>Network</value>
-  </data>
-  <data name="TabStorage.Header" xml:space="preserve">
-    <value>Storage</value>
-  </data>
-  <data name="TabSession.Header" xml:space="preserve">
-    <value>Session</value>
-  </data>
-  <data name="TabAdvanced.Header" xml:space="preserve">
-    <value>Advanced</value>
-  </data>
-  <data name="MirroredTitle.Text" xml:space="preserve">
-    <value>Mirrored networking</value>
-  </data>
-  <data name="MirroredEnabled.Content" xml:space="preserve">
-    <value>Enable HCN mirrored networking</value>
-  </data>
-  <data name="MirroredNote.Text" xml:space="preserve">
-    <value>Requires a compatible Windows host, WSL networking dependency and the NanaBox Guest Network Service in the guest. Reserve listening ports before starting the VM.</value>
-  </data>
-  <data name="MirroredFirewallCreator.Header" xml:space="preserve">
-    <value>Hyper-V firewall creator GUID (optional)</value>
-  </data>
-  <data name="MirroredTcpPorts.Header" xml:space="preserve">
-    <value>Reserved TCP ports (one per line)</value>
-  </data>
-  <data name="MirroredUdpPorts.Header" xml:space="preserve">
-    <value>Reserved UDP ports (one per line)</value>
-  </data>
-  <data name="MirroredPortsLabel" xml:space="preserve">
-    <value>Mirrored network port list</value>
-  </data>
-  <data name="TabHostManagement.Header" xml:space="preserve">
-    <value>Host management</value>
-  </data>
-  <data name="ManagedSwitchTitle.Text" xml:space="preserve">
-    <value>Hyper-V virtual switches</value>
-  </data>
-  <data name="ManagedSwitchNote.Text" xml:space="preserve">
-    <value>Create and remove NanaBox-managed switches. Connect a VM through the HCN network picker when the switch is exposed by HCN.</value>
-  </data>
-  <data name="ManagedSwitchesComboBox.Header" xml:space="preserve">
-    <value>Switches</value>
-  </data>
-  <data name="SwitchListButton.Content" xml:space="preserve">
-    <value>Refresh switches</value>
-  </data>
-  <data name="SwitchDeleteButton.Content" xml:space="preserve">
-    <value>Delete selected switch</value>
-  </data>
-  <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve">
-    <value>New switch name</value>
-  </data>
-  <data name="ManagedSwitchTypeComboBox.Header" xml:space="preserve">
-    <value>Switch type</value>
-  </data>
-  <data name="ManagedSwitchTypeComboBoxInternal.Content" xml:space="preserve">
-    <value>Internal</value>
-  </data>
-  <data name="ManagedSwitchTypeComboBoxPrivate.Content" xml:space="preserve">
-    <value>Private</value>
-  </data>
-  <data name="ManagedSwitchTypeComboBoxExternal.Content" xml:space="preserve">
-    <value>External</value>
-  </data>
-  <data name="PhysicalAdaptersComboBox.Header" xml:space="preserve">
-    <value>Physical adapter (external switch)</value>
-  </data>
-  <data name="AdapterListButton.Content" xml:space="preserve">
-    <value>Refresh adapters</value>
-  </data>
-  <data name="SwitchCreateButton.Content" xml:space="preserve">
-    <value>Create switch</value>
-  </data>
-  <data name="FirewallManagerTitle.Text" xml:space="preserve">
-    <value>Hyper-V firewall</value>
-  </data>
-  <data name="FirewallManagerNote.Text" xml:space="preserve">
-    <value>Create a dedicated firewall creator for NanaBox. Changes apply to every endpoint using that creator. External creators are read-only.</value>
-  </data>
-  <data name="FirewallCreatorsComboBox.Header" xml:space="preserve">
-    <value>Firewall creators</value>
-  </data>
-  <data name="CreatorListButton.Content" xml:space="preserve">
-    <value>Refresh</value>
-  </data>
-  <data name="FirewallInspectButton.Content" xml:space="preserve">
-    <value>Inspect</value>
-  </data>
-  <data name="UseCreatorButton.Content" xml:space="preserve">
-    <value>Use for mirrored networking</value>
-  </data>
-  <data name="FirewallCreatorNameTextBox.Header" xml:space="preserve">
-    <value>New creator name</value>
-  </data>
-  <data name="CreatorRegisterButton.Content" xml:space="preserve">
-    <value>Register creator</value>
-  </data>
-  <data name="FirewallInboundComboBox.Header" xml:space="preserve">
-    <value>Default inbound</value>
-  </data>
-  <data name="FirewallInboundComboBoxAllow.Content" xml:space="preserve">
-    <value>Allow</value>
-  </data>
-  <data name="FirewallInboundComboBoxBlock.Content" xml:space="preserve">
-    <value>Block</value>
-  </data>
-  <data name="FirewallOutboundComboBox.Header" xml:space="preserve">
-    <value>Default outbound</value>
-  </data>
-  <data name="FirewallOutboundComboBoxAllow.Content" xml:space="preserve">
-    <value>Allow</value>
-  </data>
-  <data name="FirewallOutboundComboBoxBlock.Content" xml:space="preserve">
-    <value>Block</value>
-  </data>
-  <data name="FirewallLoopbackCheckBox.Content" xml:space="preserve">
-    <value>Allow host/guest loopback</value>
-  </data>
-  <data name="FirewallMergeCheckBox.Content" xml:space="preserve">
-    <value>Merge host firewall policy</value>
-  </data>
-  <data name="FirewallConfigureButton.Content" xml:space="preserve">
-    <value>Apply firewall settings</value>
-  </data>
-  <data name="FirewallRulesComboBox.Header" xml:space="preserve">
-    <value>Existing firewall rules</value>
-  </data>
-  <data name="RuleEnableButton.Content" xml:space="preserve">
-    <value>Enable</value>
-  </data>
-  <data name="RuleDisableButton.Content" xml:space="preserve">
-    <value>Disable</value>
-  </data>
-  <data name="RuleDeleteButton.Content" xml:space="preserve">
-    <value>Delete</value>
-  </data>
-  <data name="FirewallRuleNameTextBox.Header" xml:space="preserve">
-    <value>New rule name</value>
-  </data>
-  <data name="FirewallDirectionComboBox.Header" xml:space="preserve">
-    <value>Direction</value>
-  </data>
-  <data name="FirewallDirectionComboBoxInbound.Content" xml:space="preserve">
-    <value>Inbound</value>
-  </data>
-  <data name="FirewallDirectionComboBoxOutbound.Content" xml:space="preserve">
-    <value>Outbound</value>
-  </data>
-  <data name="FirewallActionComboBox.Header" xml:space="preserve">
-    <value>Rule action</value>
-  </data>
-  <data name="FirewallActionComboBoxAllow.Content" xml:space="preserve">
-    <value>Allow</value>
-  </data>
-  <data name="FirewallActionComboBoxBlock.Content" xml:space="preserve">
-    <value>Block</value>
-  </data>
-  <data name="FirewallProtocolComboBox.Header" xml:space="preserve">
-    <value>Protocol</value>
-  </data>
-  <data name="FirewallProtocolComboBoxTCP.Content" xml:space="preserve">
-    <value>TCP</value>
-  </data>
-  <data name="FirewallProtocolComboBoxUDP.Content" xml:space="preserve">
-    <value>UDP</value>
-  </data>
-  <data name="FirewallPortsTextBox.Header" xml:space="preserve">
-    <value>Ports (comma-separated, 1–65535)</value>
-  </data>
-  <data name="RuleCreateButton.Content" xml:space="preserve">
-    <value>Create rule</value>
-  </data>
-  <data name="HostManagementResult.Header" xml:space="preserve">
-    <value>Operation result</value>
-  </data>
-  <data name="HostManagementConfirm" xml:space="preserve">
-    <value>Apply this host-wide change? Check all dependent VMs and network connections first.</value>
-  </data>
-  <data name="DiskManagerTitle.Text" xml:space="preserve">
-    <value>Virtual disk manager</value>
-  </data>
-  <data name="DiskPath.Header" xml:space="preserve">
-    <value>VHD/VHDX path</value>
-  </data>
-  <data name="DiskBrowse.Content" xml:space="preserve">
-    <value>Browse existing disk</value>
-  </data>
-  <data name="DiskSize.Header" xml:space="preserve">
-    <value>Capacity (MiB)</value>
-  </data>
-  <data name="DiskInspect.Content" xml:space="preserve">
-    <value>Inspect</value>
-  </data>
-  <data name="DiskResult.Header" xml:space="preserve">
-    <value>Operation result</value>
-  </data>
-  <data name="DiskOperationRunning" xml:space="preserve">
-    <value>Working…</value>
-  </data>
-  <data name="CheckCom1.Content" xml:space="preserve">
-    <value>Check COM1 pipe</value>
-  </data>
-  <data name="CheckCom2.Content" xml:space="preserve">
-    <value>Check COM2 pipe</value>
-  </data>
-  <data name="SerialPipeStatus.Header" xml:space="preserve">
-    <value>Pipe status</value>
-  </data>
-  <data name="SerialNotConfigured" xml:space="preserve">
-    <value>No pipe configured.</value>
-  </data>
-  <data name="SerialLocalPipeOnly" xml:space="preserve">
-    <value>Status is available for local named pipes only.</value>
-  </data>
-  <data name="SerialPipeReady" xml:space="preserve">
-    <value>Pipe is available.</value>
-  </data>
-  <data name="SerialPipeUnavailable" xml:space="preserve">
-    <value>Pipe is unavailable.</value>
-  </data>
-  <data name="MirroredAutoReserve.Content" xml:space="preserve">
-    <value>Automatically reserve guest listening ports</value>
-  </data>
-  <data name="DpiOverride.Content" xml:space="preserve">
-    <value>Override display scaling</value>
-  </data>
-  <data name="DpiScale.Header" xml:space="preserve">
-    <value>Display scaling (100–500%)</value>
-  </data>
-  <data name="DpiScale.AutomationProperties.Name" xml:space="preserve">
-    <value>Display scaling</value>
-  </data>
-  <data name="ContentResizing.Content" xml:space="preserve">
-    <value>Resize the enhanced-session desktop with the window</value>
-  </data>
-  <data name="ConnectionBar.Content" xml:space="preserve">
-    <value>Show connection bar in full screen</value>
-  </data>
-  <data name="ValidateConfiguration.Content" xml:space="preserve">
-    <value>Validate</value>
-  </data>
-  <data name="ConfigurationLoaded" xml:space="preserve">
-    <value>Configuration loaded.</value>
-  </data>
-  <data name="ConfigurationValid" xml:space="preserve">
-    <value>Configuration is valid. No changes have been saved.</value>
-  </data>
-  <data name="ConfigurationSaved" xml:space="preserve">
-    <value>Configuration saved.</value>
-  </data>
-  <data name="MirroredIgnoredPorts.Header" xml:space="preserve">
-    <value>Exclude from automatic port reservation (one per line)</value>
-  </data>
-  <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve">
-    <value>Network diagnostics</value>
-  </data>
-  <data name="NetworkPreflight.Content" xml:space="preserve">
-    <value>Check host</value>
-  </data>
-  <data name="NetworkStatus.Content" xml:space="preserve">
-    <value>Current status</value>
-  </data>
-  <data name="NetworkRetry.Content" xml:space="preserve">
-    <value>Retry sync</value>
-  </data>
-  <data name="NetworkCopy.Content" xml:space="preserve">
-    <value>Copy</value>
-  </data>
-  <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>Resource allocation</value></data>
-  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
-  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
-  <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
-  <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
-  <data name="MemoryOvercommitCheckBox.Content" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
-  <data name="MemoryOvercommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
-  <data name="DeferredCommitCheckBox.Content" xml:space="preserve"><value>Defer memory commit until first access</value></data>
+  <data name="AdapterListButton.Content" xml:space="preserve"><value>Refresh adapters</value></data>
+  <data name="AddGpuDeviceButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AddNetworkAdapterButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
+  <data name="AltEscHotkeyLabel.Text" xml:space="preserve"><value>Alt+Esc Hotkey</value></data>
+  <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value></data>
+  <data name="AltEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Alt+Esc Hotkey</value></data>
+  <data name="AltEscHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value></data>
+  <data name="AltShiftTabHotkeyLabel.Text" xml:space="preserve"><value>Alt+Shift+Tab Hotkey</value></data>
+  <data name="AltShiftTabHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</value></data>
+  <data name="AltShiftTabHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Alt+Shift+Tab Hotkey</value></data>
+  <data name="AltShiftTabHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB.</value></data>
+  <data name="AltSpaceHotkeyLabel.Text" xml:space="preserve"><value>Alt+Space Hotkey</value></data>
+  <data name="AltSpaceHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</value></data>
+  <data name="AltSpaceHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Alt+Space Hotkey</value></data>
+  <data name="AltSpaceHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE.</value></data>
+  <data name="AltTabHotkeyLabel.Text" xml:space="preserve"><value>Alt+Tab Hotkey</value></data>
+  <data name="AltTabHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</value></data>
+  <data name="AltTabHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Alt+Tab Hotkey</value></data>
+  <data name="AltTabHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB.</value></data>
+  <data name="ApplyButton.AutomationProperties.Name" xml:space="preserve"><value>Save changes</value></data>
+  <data name="ApplyButtonTextBlock.Text" xml:space="preserve"><value>Save changes</value></data>
+  <data name="AssignmentModeComboBox.AutomationProperties.HelpText" xml:space="preserve"><value>Choose whether graphics acceleration is disabled, automatic or uses selected cards.</value></data>
+  <data name="AssignmentModeComboBox.AutomationProperties.Name" xml:space="preserve"><value>Graphics acceleration</value></data>
+  <data name="AssignmentModeComboBox.ToolTipService.ToolTip" xml:space="preserve"><value>Choose whether graphics acceleration is disabled, automatic or uses selected cards.</value></data>
+  <data name="AssignmentModeLabel.Text" xml:space="preserve"><value>Graphics acceleration</value></data>
+  <data name="BaseBoardSerialNumberLabel.Text" xml:space="preserve"><value>Motherboard serial number</value></data>
+  <data name="BaseBoardSerialNumberTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The serial number of the baseboard of virtual machine.</value></data>
+  <data name="BaseBoardSerialNumberTextBox.AutomationProperties.Name" xml:space="preserve"><value>Motherboard serial number</value></data>
+  <data name="BaseBoardSerialNumberTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The serial number of the baseboard of virtual machine.</value></data>
+  <data name="BrowseScsiDevicePath" xml:space="preserve"><value>Browse for a disk or image file</value></data>
+  <data name="ChassisAssetTagLabel.Text" xml:space="preserve"><value>Chassis asset tag</value></data>
+  <data name="ChassisAssetTagTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The asset tag of the chassis of virtual machine.</value></data>
+  <data name="ChassisAssetTagTextBox.AutomationProperties.Name" xml:space="preserve"><value>Chassis asset tag</value></data>
+  <data name="ChassisAssetTagTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The asset tag of the chassis of virtual machine.</value></data>
+  <data name="ChassisSerialNumberLabel.Text" xml:space="preserve"><value>Chassis serial number</value></data>
+  <data name="ChassisSerialNumberTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The serial number of the chassis of virtual machine.</value></data>
+  <data name="ChassisSerialNumberTextBox.AutomationProperties.Name" xml:space="preserve"><value>Chassis serial number</value></data>
+  <data name="ChassisSerialNumberTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The serial number of the chassis of virtual machine.</value></data>
+  <data name="CheckCom1.Content" xml:space="preserve"><value>Check COM1 pipe</value></data>
+  <data name="CheckCom2.Content" xml:space="preserve"><value>Check COM2 pipe</value></data>
+  <data name="ChipsetInformationTitle.Text" xml:space="preserve"><value>Chipset Information</value></data>
+  <data name="ChipsetNote.Text" xml:space="preserve"><value>Note: You need Windows Server 2022 or later Host OS.</value></data>
+  <data name="ChipsetVersionLabel.Text" xml:space="preserve"><value>Version</value></data>
+  <data name="ChipsetVersionTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The version of virtual machine.</value></data>
+  <data name="ChipsetVersionTextBox.AutomationProperties.Name" xml:space="preserve"><value>Version</value></data>
+  <data name="ChipsetVersionTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The version of virtual machine.</value></data>
+  <data name="ChoiceComPort1Item.Content" xml:space="preserve"><value>COM1</value></data>
+  <data name="ChoiceComPort2Item.Content" xml:space="preserve"><value>COM2</value></data>
+  <data name="ChoiceDefaultItem.Content" xml:space="preserve"><value>Default</value></data>
+  <data name="ChoiceDefaultItem2.Content" xml:space="preserve"><value>Default</value></data>
+  <data name="ChoiceDisabledItem.Content" xml:space="preserve"><value>Disabled</value></data>
+  <data name="ChoiceDisabledItem2.Content" xml:space="preserve"><value>Disabled</value></data>
+  <data name="ChoiceListItem.Content" xml:space="preserve"><value>Selected GPUs</value></data>
+  <data name="ChoiceMirrorItem.Content" xml:space="preserve"><value>Mirror All GPUs</value></data>
+  <data name="ChoicePhysicalDevice" xml:space="preserve"><value>Physical Device</value></data>
+  <data name="ChoiceVirtualDisk" xml:space="preserve"><value>Virtual Hard Disk</value></data>
+  <data name="ChoiceVirtualImage" xml:space="preserve"><value>ISO Image</value></data>
+  <data name="ClearCom1.Content" xml:space="preserve"><value>Disconnect COM1</value></data>
+  <data name="ClearCom2.Content" xml:space="preserve"><value>Disconnect COM2</value></data>
+  <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode input (Linux)</value></data>
+  <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points.</value></data>
+  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host.</value></data>
+  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
+  <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>Native Unicode input (Windows)</value></data>
+  <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded.</value></data>
+  <data name="ComPort1Label.Text" xml:space="preserve"><value>COM1 pipe path</value></data>
+  <data name="ComPort1TextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The named pipe path of guest COM1 of virtual machine.</value></data>
+  <data name="ComPort1TextBox.AutomationProperties.Name" xml:space="preserve"><value>COM1 pipe path</value></data>
+  <data name="ComPort1TextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The named pipe path of guest COM1 of virtual machine.</value></data>
+  <data name="ComPort2Label.Text" xml:space="preserve"><value>COM2 pipe path</value></data>
+  <data name="ComPort2TextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The named pipe path of guest COM2 of virtual machine.</value></data>
+  <data name="ComPort2TextBox.AutomationProperties.Name" xml:space="preserve"><value>COM2 pipe path</value></data>
+  <data name="ComPort2TextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The named pipe path of guest COM2 of virtual machine.</value></data>
+  <data name="ComPortsTitle.Text" xml:space="preserve"><value>Serial Ports</value></data>
+  <data name="ConfigurationEditorOpened" xml:space="preserve"><value>The configuration file was opened in Notepad. Reload the settings after editing.</value></data>
+  <data name="ConfigurationFileTypeName" xml:space="preserve"><value>NanaBox Virtual Machine Configuration</value></data>
+  <data name="ConfigurationLoaded" xml:space="preserve"><value>Settings loaded.</value></data>
+  <data name="ConfigurationSaved" xml:space="preserve"><value>Configuration saved.</value></data>
+  <data name="ConfigurationValid" xml:space="preserve"><value>Configuration is valid. No changes have been saved.</value></data>
+  <data name="ConnectionBar.Content" xml:space="preserve"><value>Show connection bar in full screen</value></data>
+  <data name="ContentResizing.Content" xml:space="preserve"><value>Resize the enhanced-session desktop with the window</value></data>
+  <data name="CreateNetwork.Content" xml:space="preserve"><value>Create managed network</value></data>
+  <data name="CreateTitle" xml:space="preserve"><value>Create Virtual Machine - NanaBox</value></data>
+  <data name="CreatorListButton.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="CreatorRegisterButton.Content" xml:space="preserve"><value>Register creator</value></data>
+  <data name="CtrlAltDelHotkeyLabel.Text" xml:space="preserve"><value>Ctrl+Alt+Delete Hotkey</value></data>
+  <data name="CtrlAltDelHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</value></data>
+  <data name="CtrlAltDelHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Ctrl+Alt+Delete Hotkey</value></data>
+  <data name="CtrlAltDelHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS).</value></data>
+  <data name="CtrlEscHotkeyLabel.Text" xml:space="preserve"><value>Ctrl+Esc Hotkey</value></data>
+  <data name="CtrlEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</value></data>
+  <data name="CtrlEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Ctrl+Esc Hotkey</value></data>
+  <data name="CtrlEscHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC.</value></data>
   <data name="DeferredCommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Defer memory commit until first access</value></data>
-  <data name="StorageIopsMaximumTextBox.Header" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
-  <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
-  <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
-  <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
-  <data name="TabGuestTools.Header" xml:space="preserve"><value>Guest tools</value></data>
-  <data name="GuestToolsTitle.Text" xml:space="preserve"><value>Guest agent</value></data>
-  <data name="GuestToolsNote.Text" xml:space="preserve"><value>Install the NanaBox guest agent in the Windows or Linux VM, then start the VM to query it over Hyper-V sockets.</value></data>
+  <data name="DeferredCommitCheckBox.Content" xml:space="preserve"><value>Defer memory commit until first access</value></data>
+  <data name="DeleteNetwork.Content" xml:space="preserve"><value>Delete managed network</value></data>
+  <data name="DeleteNetworkConfirm" xml:space="preserve"><value>Delete the selected NanaBox-managed network? All endpoints must be disconnected.</value></data>
+  <data name="DeviceDescription.Text" xml:space="preserve"><value>Choose which host devices are accessible from the guest during an enhanced session.</value></data>
+  <data name="DeviceTitleTextBlock.Text" xml:space="preserve"><value>Devices</value></data>
+  <data name="DisableDpiScalingCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</value></data>
+  <data name="DisableDpiScalingCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Disable Basic Session DPI Scaling</value></data>
+  <data name="DisableDpiScalingCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true.</value></data>
+  <data name="DisableDpiScalingLabel.Text" xml:space="preserve"><value>Disable Basic Session DPI Scaling</value></data>
+  <data name="DiskBrowse.Content" xml:space="preserve"><value>Browse existing disk</value></data>
+  <data name="DiskCompact.Content" xml:space="preserve"><value>Compact VHD</value></data>
+  <data name="DiskCreate.Content" xml:space="preserve"><value>Create VHD</value></data>
+  <data name="DiskInspect.Content" xml:space="preserve"><value>Inspect</value></data>
+  <data name="DiskManagerTitle.Text" xml:space="preserve"><value>Virtual disk manager</value></data>
+  <data name="DiskOperationRunning" xml:space="preserve"><value>Working…</value></data>
+  <data name="DiskPath.Header" xml:space="preserve"><value>VHD/VHDX path</value></data>
+  <data name="DiskResize.Content" xml:space="preserve"><value>Expand VHD</value></data>
+  <data name="DiskResult.Header" xml:space="preserve"><value>Operation result</value></data>
+  <data name="DiskSize.Header" xml:space="preserve"><value>Capacity (MiB)</value></data>
+  <data name="DpiOverride.Content" xml:space="preserve"><value>Override display scaling</value></data>
+  <data name="DpiScale.AutomationProperties.Name" xml:space="preserve"><value>Display scaling</value></data>
+  <data name="DpiScale.Header" xml:space="preserve"><value>Display scaling (100–500%)</value></data>
+  <data name="DriveDescription.Text" xml:space="preserve"><value>Choose which host drives are accessible from the guest during an enhanced session.</value></data>
+  <data name="DriveTitleTextBlock.Text" xml:space="preserve"><value>Drives</value></data>
+  <data name="EnableHostDriverStoreCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value></data>
+  <data name="EnableHostDriverStoreCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share Host Driver Store</value></data>
+  <data name="EnableHostDriverStoreCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value></data>
+  <data name="EnableHostDriverStoreLabel.Text" xml:space="preserve"><value>Use host graphics drivers</value></data>
+  <data name="EnhancedSessionTitle.Text" xml:space="preserve"><value>Enhanced Session</value></data>
+  <data name="EnumerationFailed" xml:space="preserve"><value>Unable to refresh the redirection list.</value></data>
+  <data name="FamilyLabel.Text" xml:space="preserve"><value>Family</value></data>
+  <data name="FamilyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The family of virtual machine.</value></data>
+  <data name="FamilyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Family</value></data>
+  <data name="FamilyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The family of virtual machine.</value></data>
+  <data name="FirewallActionComboBox.Header" xml:space="preserve"><value>Rule action</value></data>
+  <data name="FirewallActionComboBoxAllow.Content" xml:space="preserve"><value>Allow</value></data>
+  <data name="FirewallActionComboBoxBlock.Content" xml:space="preserve"><value>Block</value></data>
+  <data name="FirewallConfigureButton.Content" xml:space="preserve"><value>Apply firewall settings</value></data>
+  <data name="FirewallCreatorHelp" xml:space="preserve"><value>Optional GUID of a registered Hyper-V firewall VM creator. Requires a firewall-enabled network.</value></data>
+  <data name="FirewallCreatorLabel" xml:space="preserve"><value>Hyper-V firewall creator ID</value></data>
+  <data name="FirewallCreatorNameTextBox.Header" xml:space="preserve"><value>New creator name</value></data>
+  <data name="FirewallCreatorsComboBox.Header" xml:space="preserve"><value>Firewall creators</value></data>
+  <data name="FirewallDirectionComboBox.Header" xml:space="preserve"><value>Direction</value></data>
+  <data name="FirewallDirectionComboBoxInbound.Content" xml:space="preserve"><value>Inbound</value></data>
+  <data name="FirewallDirectionComboBoxOutbound.Content" xml:space="preserve"><value>Outbound</value></data>
+  <data name="FirewallInboundComboBox.Header" xml:space="preserve"><value>Default inbound</value></data>
+  <data name="FirewallInboundComboBoxAllow.Content" xml:space="preserve"><value>Allow</value></data>
+  <data name="FirewallInboundComboBoxBlock.Content" xml:space="preserve"><value>Block</value></data>
+  <data name="FirewallInspectButton.Content" xml:space="preserve"><value>Inspect</value></data>
+  <data name="FirewallLoopbackCheckBox.Content" xml:space="preserve"><value>Allow host/guest loopback</value></data>
+  <data name="FirewallManagerNote.Text" xml:space="preserve"><value>Create a dedicated firewall creator for NanaBox. Changes apply to every endpoint using that creator. External creators are read-only.</value></data>
+  <data name="FirewallManagerTitle.Text" xml:space="preserve"><value>Hyper-V firewall</value></data>
+  <data name="FirewallMergeCheckBox.Content" xml:space="preserve"><value>Merge host firewall policy</value></data>
+  <data name="FirewallOutboundComboBox.Header" xml:space="preserve"><value>Default outbound</value></data>
+  <data name="FirewallOutboundComboBoxAllow.Content" xml:space="preserve"><value>Allow</value></data>
+  <data name="FirewallOutboundComboBoxBlock.Content" xml:space="preserve"><value>Block</value></data>
+  <data name="FirewallPortsTextBox.Header" xml:space="preserve"><value>Ports (comma-separated, 1–65535)</value></data>
+  <data name="FirewallProtocolComboBox.Header" xml:space="preserve"><value>Protocol</value></data>
+  <data name="FirewallProtocolComboBoxTCP.Content" xml:space="preserve"><value>TCP</value></data>
+  <data name="FirewallProtocolComboBoxUDP.Content" xml:space="preserve"><value>UDP</value></data>
+  <data name="FirewallRuleNameTextBox.Header" xml:space="preserve"><value>New rule name</value></data>
+  <data name="FirewallRulesComboBox.Header" xml:space="preserve"><value>Existing firewall rules</value></data>
+  <data name="FocusReleaseLeftHotkeyLabel.Text" xml:space="preserve"><value>Focus Release Hotkey (Left)</value></data>
+  <data name="FocusReleaseLeftHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</value></data>
+  <data name="FocusReleaseLeftHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Focus Release Hotkey (Left)</value></data>
+  <data name="FocusReleaseLeftHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow.</value></data>
+  <data name="FocusReleaseRightHotkeyLabel.Text" xml:space="preserve"><value>Focus Release Hotkey (Right)</value></data>
+  <data name="FocusReleaseRightHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</value></data>
+  <data name="FocusReleaseRightHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Focus Release Hotkey (Right)</value></data>
+  <data name="FocusReleaseRightHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow.</value></data>
+  <data name="FullScreenHotkeyLabel.Text" xml:space="preserve"><value>Full Screen Hotkey</value></data>
+  <data name="FullScreenHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</value></data>
+  <data name="FullScreenHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Full Screen Hotkey</value></data>
+  <data name="FullScreenHotkeyTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode.</value></data>
+  <data name="GeneralTitle.Text" xml:space="preserve"><value>General</value></data>
+  <data name="GenerateCom1.Content" xml:space="preserve"><value>Generate COM1 pipe</value></data>
+  <data name="GenerateCom2.Content" xml:space="preserve"><value>Generate COM2 pipe</value></data>
+  <data name="GpuDeviceDescription.Text" xml:space="preserve"><value>Choose which host graphics cards the virtual machine can use. The default partition selection works for most virtual machines.</value></data>
+  <data name="GpuDeviceDeviceInterfaceHelp" xml:space="preserve"><value>The device interface path of the selected GPU used for paravirtualization of virtual machine.</value></data>
+  <data name="GpuDeviceDeviceInterfaceLabel" xml:space="preserve"><value>Device Interface Path</value></data>
+  <data name="GpuDevicePartitionIdHelp" xml:space="preserve"><value>The partition ID of the selected GPU used for paravirtualization of virtual machine. It's actually an uint16 value. Set it 65535 for using GPU-PV  (paravirtualization) mode.</value></data>
+  <data name="GpuDevicePartitionIdLabel" xml:space="preserve"><value>Partition ID</value></data>
+  <data name="GpuDeviceTitle.Text" xml:space="preserve"><value>Selected GPUs</value></data>
+  <data name="GpuTitle.Text" xml:space="preserve"><value>GPU</value></data>
+  <data name="GuestBrowseDownload.Content" xml:space="preserve"><value>Choose destination</value></data>
+  <data name="GuestBrowseUpload.Content" xml:space="preserve"><value>Choose source file</value></data>
+  <data name="GuestCancel.Content" xml:space="preserve"><value>Cancel transfer</value></data>
+  <data name="GuestClockConfirm" xml:space="preserve"><value>Synchronize the guest clock to the host? Applications in the guest may be affected by a clock change.</value></data>
+  <data name="GuestClockNote.Text" xml:space="preserve"><value>Changing the guest clock requires explicit permission in the guest service.</value></data>
+  <data name="GuestClockQuery.Content" xml:space="preserve"><value>Check clock offset</value></data>
+  <data name="GuestClockSync.Content" xml:space="preserve"><value>Synchronize to host clock</value></data>
+  <data name="GuestClockTitle.Text" xml:space="preserve"><value>Guest clock</value></data>
+  <data name="GuestDiagnostics.Content" xml:space="preserve"><value>Network diagnostics</value></data>
+  <data name="GuestDownload.Content" xml:space="preserve"><value>Download from guest</value></data>
+  <data name="GuestExchangeNote.Text" xml:space="preserve"><value>Files are transferred into the configured exchange directory in the guest. Transfers verify SHA-256 before publishing the destination.</value></data>
+  <data name="GuestExchangeTitle.Text" xml:space="preserve"><value>File exchange</value></data>
+  <data name="GuestFileName.Header" xml:space="preserve"><value>Guest exchange filename</value></data>
+  <data name="GuestFileOverwrite.Content" xml:space="preserve"><value>Replace existing destination file</value></data>
+  <data name="GuestFilePath.Header" xml:space="preserve"><value>Local file path</value></data>
+  <data name="GuestFileRequired" xml:space="preserve"><value>Specify a local file path and a guest exchange filename.</value></data>
   <data name="GuestHeartbeat.Content" xml:space="preserve"><value>Check heartbeat</value></data>
   <data name="GuestInformation.Content" xml:space="preserve"><value>System information</value></data>
-  <data name="GuestDiagnostics.Content" xml:space="preserve"><value>Network diagnostics</value></data>
+  <data name="GuestOverwriteConfirm" xml:space="preserve"><value>Replace the destination if it already exists?</value></data>
+  <data name="GuestPlan9.Content" xml:space="preserve"><value>Inspect guest mounts</value></data>
+  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>Mount 9P</value></data>
+  <data name="GuestPlan9Name.Header" xml:space="preserve"><value>Share name</value></data>
+  <data name="GuestPlan9Note.Text" xml:space="preserve"><value>The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory.</value></data>
+  <data name="GuestPlan9Path.Header" xml:space="preserve"><value>Guest mount directory (optional)</value></data>
+  <data name="GuestPlan9Title.Text" xml:space="preserve"><value>Shared folders and GPU drivers</value></data>
+  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>Unmount 9P</value></data>
+  <data name="GuestStateFileLabel.Text" xml:space="preserve"><value>Guest state file</value></data>
+  <data name="GuestStateFileTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The path of guest state file for virtual machine.</value></data>
+  <data name="GuestStateFileTextBox.AutomationProperties.Name" xml:space="preserve"><value>Guest state file</value></data>
+  <data name="GuestStateFileTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The path of guest state file for virtual machine.</value></data>
+  <data name="GuestToolsNote.Text" xml:space="preserve"><value>Install the NanaBox guest agent in the Windows or Linux VM, then start the VM to query it over Hyper-V sockets.</value></data>
+  <data name="GuestToolsTitle.Text" xml:space="preserve"><value>Guest agent</value></data>
   <data name="GuestToolsUnavailable" xml:space="preserve"><value>Start the virtual machine to query the guest agent.</value></data>
-  <data name="GuestClockTitle.Text" xml:space="preserve">
-    <value>Guest clock</value>
-    <comment>Guest clock</comment>
-  </data>
-  <data name="GuestClockNote.Text" xml:space="preserve">
-    <value>Changing the guest clock requires explicit permission in the guest service.</value>
-    <comment>Changing the guest clock requires explicit permission in the guest service.</comment>
-  </data>
-  <data name="GuestClockQuery.Content" xml:space="preserve">
-    <value>Check clock offset</value>
-    <comment>Check clock offset</comment>
-  </data>
-  <data name="GuestClockSync.Content" xml:space="preserve">
-    <value>Synchronize to host clock</value>
-    <comment>Synchronize to host clock</comment>
-  </data>
-  <data name="GuestExchangeTitle.Text" xml:space="preserve">
-    <value>File exchange</value>
-    <comment>File exchange</comment>
-  </data>
-  <data name="GuestExchangeNote.Text" xml:space="preserve">
-    <value>Files are transferred into the configured exchange directory in the guest. Transfers verify SHA-256 before publishing the destination.</value>
-    <comment>Files are transferred into the configured exchange directory in the guest. Transfers verify SHA-256 before publishing the destination.</comment>
-  </data>
-  <data name="GuestFileName.Header" xml:space="preserve">
-    <value>Guest exchange filename</value>
-    <comment>Guest exchange filename</comment>
-  </data>
-  <data name="GuestFilePath.Header" xml:space="preserve">
-    <value>Local file path</value>
-    <comment>Local file path</comment>
-  </data>
-  <data name="GuestFileOverwrite.Content" xml:space="preserve">
-    <value>Replace existing destination file</value>
-    <comment>Replace existing destination file</comment>
-  </data>
-  <data name="GuestBrowseUpload.Content" xml:space="preserve">
-    <value>Choose source file</value>
-    <comment>Choose source file</comment>
-  </data>
-  <data name="GuestBrowseDownload.Content" xml:space="preserve">
-    <value>Choose destination</value>
-    <comment>Choose destination</comment>
-  </data>
-  <data name="GuestUpload.Content" xml:space="preserve">
-    <value>Upload to guest</value>
-    <comment>Upload to guest</comment>
-  </data>
-  <data name="GuestDownload.Content" xml:space="preserve">
-    <value>Download from guest</value>
-    <comment>Download from guest</comment>
-  </data>
-  <data name="GuestCancel.Content" xml:space="preserve">
-    <value>Cancel transfer</value>
-    <comment>Cancel transfer</comment>
-  </data>
-  <data name="GuestFileRequired" xml:space="preserve">
-    <value>Specify a local file path and a guest exchange filename.</value>
-    <comment>Specify a local file path and a guest exchange filename.</comment>
-  </data>
-  <data name="GuestClockConfirm" xml:space="preserve">
-    <value>Synchronize the guest clock to the host? Applications in the guest may be affected by a clock change.</value>
-    <comment>Synchronize the guest clock to the host? Applications in the guest may be affected by a clock change.</comment>
-  </data>
-  <data name="GuestOverwriteConfirm" xml:space="preserve">
-    <value>Replace the destination if it already exists?</value>
-    <comment>Replace the destination if it already exists?</comment>
-  </data>
-  <data name="TabVmms.Header" xml:space="preserve">
-    <value>Hyper-V VMs</value>
-  </data>
-  <data name="VmmsTitle.Text" xml:space="preserve">
-    <value>Hyper-V virtual machine manager</value>
-  </data>
-  <data name="VmmsNote.Text" xml:space="preserve">
-    <value>Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only.</value>
-  </data>
-  <data name="VmmsListButton.Content" xml:space="preserve">
-    <value>Refresh VMs</value>
-  </data>
-  <data name="HcsInventoryButton.Content" xml:space="preserve">
-    <value>HCS inventory</value>
-  </data>
-  <data name="VmmsMachinesComboBox.Header" xml:space="preserve">
-    <value>Registered VM</value>
-  </data>
-  <data name="VmmsInspectButton.Content" xml:space="preserve">
-    <value>Inspect selected VM and checkpoints</value>
-  </data>
-  <data name="VmmsActionComboBox.Header" xml:space="preserve">
-    <value>Operation</value>
-  </data>
-  <data name="VmmsFieldsNote.Text" xml:space="preserve">
-    <value>Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints.</value>
-  </data>
-  <data name="VmmsNameTextBox.Header" xml:space="preserve">
-    <value>VM or new checkpoint name</value>
-  </data>
-  <data name="VmmsGenerationComboBox.Header" xml:space="preserve">
-    <value>Generation (creation)</value>
-  </data>
-  <data name="VmmsMemoryTextBox.Header" xml:space="preserve">
-    <value>Startup memory (MiB)</value>
-  </data>
-  <data name="VmmsProcessorTextBox.Header" xml:space="preserve">
-    <value>Virtual processor count</value>
-  </data>
-  <data name="VmmsCheckpointsComboBox.Header" xml:space="preserve">
-    <value>Checkpoint</value>
-  </data>
-  <data name="VmmsPathTextBox.Header" xml:space="preserve">
-    <value>Configuration file or existing directory</value>
-  </data>
-  <data name="VmmsDestinationTextBox.Header" xml:space="preserve">
-    <value>Empty destination directory (import copy)</value>
-  </data>
-  <data name="VmmsExecuteButton.Content" xml:space="preserve">
-    <value>Execute selected operation</value>
-  </data>
-  <data name="VmmsResultTextBox.Header" xml:space="preserve">
-    <value>Operation result</value>
-  </data>
-  <data name="VmmsCreate.Content" xml:space="preserve">
-    <value>Create empty VM</value>
-  </data>
-  <data name="VmmsStart.Content" xml:space="preserve">
-    <value>Start</value>
-  </data>
-  <data name="VmmsShutdown.Content" xml:space="preserve">
-    <value>Shut down</value>
-  </data>
-  <data name="VmmsPowerOff.Content" xml:space="preserve">
-    <value>Power off</value>
-  </data>
-  <data name="VmmsPause.Content" xml:space="preserve">
-    <value>Pause</value>
-  </data>
-  <data name="VmmsResume.Content" xml:space="preserve">
-    <value>Resume</value>
-  </data>
-  <data name="VmmsSave.Content" xml:space="preserve">
-    <value>Save state</value>
-  </data>
-  <data name="VmmsRestart.Content" xml:space="preserve">
-    <value>Restart</value>
-  </data>
-  <data name="VmmsRename.Content" xml:space="preserve">
-    <value>Rename</value>
-  </data>
-  <data name="VmmsRemove.Content" xml:space="preserve">
-    <value>Remove VM configuration</value>
-  </data>
-  <data name="VmmsCheckpointCreate.Content" xml:space="preserve">
-    <value>Create checkpoint</value>
-  </data>
-  <data name="VmmsCheckpointRestore.Content" xml:space="preserve">
-    <value>Restore checkpoint</value>
-  </data>
-  <data name="VmmsCheckpointRemove.Content" xml:space="preserve">
-    <value>Delete checkpoint</value>
-  </data>
-  <data name="VmmsExport.Content" xml:space="preserve">
-    <value>Export VM</value>
-  </data>
-  <data name="VmmsImportRegister.Content" xml:space="preserve">
-    <value>Register existing VM</value>
-  </data>
-  <data name="VmmsImportCopy.Content" xml:space="preserve">
-    <value>Import copy with new ID</value>
-  </data>
-  <data name="VmmsMoveStorage.Content" xml:space="preserve">
-    <value>Move VM storage</value>
-  </data>
-  <data name="VmmsSetProcessor.Content" xml:space="preserve">
-    <value>Set processor count</value>
-  </data>
-  <data name="VmmsSetMemory.Content" xml:space="preserve">
-    <value>Set startup memory</value>
-  </data>
-  <data name="VmmsDynamicMemory.Content" xml:space="preserve">
-    <value>Enable dynamic memory</value>
-  </data>
-  <data name="VmmsStaticMemory.Content" xml:space="preserve">
-    <value>Disable dynamic memory</value>
-  </data>
-  <data name="VmmsMigrate.Content" xml:space="preserve">
-    <value>Migrate to another Hyper-V host</value>
-  </data>
-  <data name="VmmsReplicationEnable.Content" xml:space="preserve">
-    <value>Configure Hyper-V Replica</value>
-  </data>
-  <data name="VmmsReplicationStart.Content" xml:space="preserve">
-    <value>Start initial replication</value>
-  </data>
-  <data name="VmmsReplicationSuspend.Content" xml:space="preserve">
-    <value>Suspend replication</value>
-  </data>
-  <data name="VmmsReplicationResume.Content" xml:space="preserve">
-    <value>Resume replication</value>
-  </data>
-  <data name="VmmsReplicationRemove.Content" xml:space="preserve">
-    <value>Remove replication relationship</value>
-  </data>
-  <data name="VmmsMinimumMemoryTextBox.Header" xml:space="preserve">
-    <value>Minimum memory (MiB)</value>
-  </data>
-  <data name="VmmsMaximumMemoryTextBox.Header" xml:space="preserve">
-    <value>Maximum memory (MiB)</value>
-  </data>
-  <data name="VmmsMemoryBufferTextBox.Header" xml:space="preserve">
-    <value>Memory buffer (%)</value>
-  </data>
-  <data name="VmmsMemoryPriorityTextBox.Header" xml:space="preserve">
-    <value>Memory priority (0–100)</value>
-  </data>
-  <data name="VmmsRemoteHostTextBox.Header" xml:space="preserve">
-    <value>Destination host / replica server</value>
-  </data>
-  <data name="VmmsRemotePathTextBox.Header" xml:space="preserve">
-    <value>Destination storage path (optional)</value>
-  </data>
-  <data name="VmmsReplicaPortTextBox.Header" xml:space="preserve">
-    <value>Replica server port</value>
-  </data>
-  <data name="VmmsReplicaFrequencyTextBox.Header" xml:space="preserve">
-    <value>Replication interval (30, 300 or 900 seconds)</value>
-  </data>
-  <data name="VmmsReplicaHistoryTextBox.Header" xml:space="preserve">
-    <value>Additional recovery points (0–24)</value>
-  </data>
-  <data name="VmmsReplicaCertificateTextBox.Header" xml:space="preserve">
-    <value>Certificate thumbprint</value>
-  </data>
-  <data name="VmmsDynamicMemoryTitle.Text" xml:space="preserve">
-    <value>Dynamic memory</value>
-  </data>
-  <data name="VmmsRemoteTitle.Text" xml:space="preserve">
-    <value>Migration and replication</value>
-  </data>
-  <data name="VmmsRemoteNote.Text" xml:space="preserve">
-    <value>Configure migration or Replica on both hosts first. Use an absolute path on the destination host, or leave it empty for shared storage.</value>
-  </data>
-  <data name="VmmsReplicaAuthComboBox.Header" xml:space="preserve">
-    <value>Replica authentication</value>
-  </data>
-  <data name="VmmsReplicaCertificate.Content" xml:space="preserve">
-    <value>Certificate</value>
-  </data>
-  <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve">
-    <value>Compress replication traffic</value>
-  </data>
-  <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>Tunnel DNS through the host resolver (guest service required)</value></data>
-  <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS tunneling requires mirrored networking.</value></data>
-  <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>Advanced HCS creation settings</value></data>
-  <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS schema minor version (major 2)</value></data>
+  <data name="GuestTypeLabel.Text" xml:space="preserve"><value>Guest operating system</value></data>
+  <data name="GuestUnknown.Content" xml:space="preserve"><value>Unknown</value></data>
+  <data name="GuestUpload.Content" xml:space="preserve"><value>Upload to guest</value></data>
+  <data name="GuestVsmbMount.Content" xml:space="preserve"><value>Mount VSMB</value></data>
+  <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>Unmount VSMB</value></data>
+  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Native VSMB shares use NanaBox Guest Shares under ProgramData. Mount or unmount a configured share by name. WinFsp 9P shares use NanaBox Guest 9P; the optional mount directory applies only to 9P. Unmounting VSMB removes the local directory mapping while the host share remains configured.</value></data>
+  <data name="HcnCreate.Content" xml:space="preserve"><value>Create</value></data>
+  <data name="HcnDelete.Content" xml:space="preserve"><value>Delete</value></data>
+  <data name="HcnInspect.Content" xml:space="preserve"><value>Inspect</value></data>
+  <data name="HcnKind.Header" xml:space="preserve"><value>Resource type</value></data>
+  <data name="HcnKindEndpoint.Content" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>Load balancer</value></data>
+  <data name="HcnKindNamespace.Content" xml:space="preserve"><value>Namespace</value></data>
+  <data name="HcnKindNetwork.Content" xml:space="preserve"><value>Network</value></data>
+  <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN route</value></data>
+  <data name="HcnList.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="HcnModify.Content" xml:space="preserve"><value>Modify</value></data>
+  <data name="HcnName.Header" xml:space="preserve"><value>Network name (network creation)</value></data>
+  <data name="HcnNetworkId.Header" xml:space="preserve"><value>Parent network ID (endpoint creation)</value></data>
+  <data name="HcnResource.Header" xml:space="preserve"><value>Resource</value></data>
+  <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage HCN networks, standalone endpoints, namespaces, load balancers and SDN routes. Existing system resources are read-only. Resource modifications use native HCN JSON settings.</value></data>
+  <data name="HcnResult.Header" xml:space="preserve"><value>Operation result</value></data>
+  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN settings JSON</value></data>
+  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings.</value></data>
   <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>Enter additional VirtualMachine properties as JSON. Existing managed resources cannot be overwritten. The host validates feature support when creating the VM.</value></data>
-  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
-  <data name="NetworkAdvancedSettings.Header" xml:space="preserve">
-    <value>Advanced HCN settings (optional JSON)</value>
-  </data>
-  <data name="NetworkAdvancedNote.Text" xml:space="preserve">
-    <value>Leave empty for an ICS NAT network. Specify a Type and any supported HCN creation properties, such as Subnets, Policies, Dns and SchemaVersion. NanaBox assigns the name and ID.</value>
-  </data>
+  <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>Advanced HCS creation settings</value></data>
+  <data name="HcsInventoryButton.Content" xml:space="preserve"><value>HCS inventory</value></data>
+  <data name="HcsQueryTextBox.Header" xml:space="preserve"><value>Optional HCS property query (JSON)</value></data>
+  <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS schema minor version (major 2)</value></data>
+  <data name="HcsServicePropertiesButton.Content" xml:space="preserve"><value>HCS service properties</value></data>
+  <data name="HcsSystemPropertiesButton.Content" xml:space="preserve"><value>Selected HCS system properties</value></data>
+  <data name="HcsSystemsComboBox.Header" xml:space="preserve"><value>HCS compute system</value></data>
+  <data name="HorizontalResolutionLabel.Text" xml:space="preserve"><value>Horizontal Resolution</value></data>
+  <data name="HorizontalResolutionTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The horizontal resolution of the video monitor of virtual machine.</value></data>
+  <data name="HorizontalResolutionTextBox.AutomationProperties.Name" xml:space="preserve"><value>Horizontal Resolution</value></data>
+  <data name="HorizontalResolutionTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The horizontal resolution of the video monitor of virtual machine.</value></data>
+  <data name="HostGpuHelp" xml:space="preserve"><value>Select a host GPU to fill its device interface. Partition ID 65535 requests GPU-PV.</value></data>
+  <data name="HostGpuLabel" xml:space="preserve"><value>Available GPU-PV devices</value></data>
+  <data name="HostManagementConfirm" xml:space="preserve"><value>Apply this host-wide change? Check all dependent VMs and network connections first.</value></data>
+  <data name="HostManagementResult.Header" xml:space="preserve"><value>Operation result</value></data>
+  <data name="HostNetworkHelp" xml:space="preserve"><value>Select the exact HCN network used by this adapter.</value></data>
+  <data name="HostNetworkLabel" xml:space="preserve"><value>Available HCN networks</value></data>
+  <data name="HostNetworksPicker.Header" xml:space="preserve"><value>Available networks</value></data>
+  <data name="HostNetworksTitle.Text" xml:space="preserve"><value>Virtual networks on this computer</value></data>
+  <data name="InspectNetwork.Content" xml:space="preserve"><value>Properties</value></data>
+  <data name="InvalidValue" xml:space="preserve"><value>Invalid setting: %s</value></data>
+  <data name="KeyboardNote.Text" xml:space="preserve"><value>Note: You need to use the decimal value of the virtual-key code.</value></data>
+  <data name="KeyboardTitle.Text" xml:space="preserve"><value>Keyboard</value></data>
+  <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve"><value>New switch name</value></data>
+  <data name="ManagedSwitchNote.Text" xml:space="preserve"><value>Create and remove NanaBox-managed switches. Connect a VM through the HCN network picker when the switch is exposed by HCN.</value></data>
+  <data name="ManagedSwitchTitle.Text" xml:space="preserve"><value>Hyper-V virtual switches</value></data>
+  <data name="ManagedSwitchTypeComboBox.Header" xml:space="preserve"><value>Switch type</value></data>
+  <data name="ManagedSwitchTypeComboBoxExternal.Content" xml:space="preserve"><value>External</value></data>
+  <data name="ManagedSwitchTypeComboBoxInternal.Content" xml:space="preserve"><value>Internal</value></data>
+  <data name="ManagedSwitchTypeComboBoxPrivate.Content" xml:space="preserve"><value>Private</value></data>
+  <data name="ManagedSwitchesComboBox.Header" xml:space="preserve"><value>Switches</value></data>
+  <data name="ManufacturerLabel.Text" xml:space="preserve"><value>Manufacturer</value></data>
+  <data name="ManufacturerTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The manufacturer of virtual machine.</value></data>
+  <data name="ManufacturerTextBox.AutomationProperties.Name" xml:space="preserve"><value>Manufacturer</value></data>
+  <data name="ManufacturerTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The manufacturer of virtual machine.</value></data>
+  <data name="MemoryOvercommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
+  <data name="MemoryOvercommitCheckBox.Content" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
+  <data name="MemorySizeLabel.Text" xml:space="preserve"><value>Memory (MiB)</value></data>
+  <data name="MemorySizeTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>Choose how much memory is available to the guest, in MiB.</value></data>
+  <data name="MemorySizeTextBox.AutomationProperties.Name" xml:space="preserve"><value>Memory (MiB)</value></data>
+  <data name="MemorySizeTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>Choose how much memory is available to the guest, in MiB.</value></data>
+  <data name="MirroredAutoReserve.Content" xml:space="preserve"><value>Automatically reserve guest listening ports</value></data>
+  <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>Coordinate Linux application port binding with the host</value></data>
+  <data name="MirroredBindNote.Text" xml:space="preserve"><value>Install bind coordination in the guest and launch applications with nanabox-bind. Requires Linux 6.7 or newer.</value></data>
+  <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS tunneling requires mirrored networking.</value></data>
+  <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>Tunnel DNS through the host resolver (guest service required)</value></data>
+  <data name="MirroredEnabled.Content" xml:space="preserve"><value>Enable HCN mirrored networking</value></data>
+  <data name="MirroredFirewallCreator.Header" xml:space="preserve"><value>Hyper-V firewall creator GUID (optional)</value></data>
+  <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>Allow loopback through mirrored host IPv4 addresses</value></data>
+  <data name="MirroredIgnoredPorts.Header" xml:space="preserve"><value>Exclude from automatic port reservation (one per line)</value></data>
+  <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 localhost interoperability (GELNIC)</value></data>
+  <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged.</value></data>
+  <data name="MirroredNote.Text" xml:space="preserve"><value>Requires a compatible Windows host, WSL networking dependency and the NanaBox Guest Network Service in the guest. Reserve listening ports before starting the VM.</value></data>
+  <data name="MirroredPortsLabel" xml:space="preserve"><value>Mirrored network port list</value></data>
+  <data name="MirroredTcpPorts.Header" xml:space="preserve"><value>Reserved TCP ports (one per line)</value></data>
+  <data name="MirroredTitle.Text" xml:space="preserve"><value>Mirrored networking</value></data>
+  <data name="MirroredUdpPorts.Header" xml:space="preserve"><value>Reserved UDP ports (one per line)</value></data>
+  <data name="NameLabel.Text" xml:space="preserve"><value>Name</value></data>
+  <data name="NameTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The unique name of virtual machine.</value></data>
+  <data name="NameTextBox.AutomationProperties.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="NameTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The unique name of virtual machine.</value></data>
+  <data name="NamedCreateTitle" xml:space="preserve"><value>%s Create Virtual Machine - NanaBox</value></data>
+  <data name="NamedTitle" xml:space="preserve"><value>%s Settings - NanaBox</value></data>
+  <data name="NetworkAdapterConnectedHelp" xml:space="preserve"><value>Connect this adapter to the selected network.</value></data>
+  <data name="NetworkAdapterConnectedLabel" xml:space="preserve"><value>Connected</value></data>
+  <data name="NetworkAdapterDescription.Text" xml:space="preserve"><value>Add a network adapter and choose the network it connects to. The default switch provides internet access on most computers.</value></data>
+  <data name="NetworkAdapterMacAddressHelp" xml:space="preserve"><value>(Optional) The MAC address of the current network adapter.</value></data>
+  <data name="NetworkAdapterMacAddressLabel" xml:space="preserve"><value>MAC Address</value></data>
+  <data name="NetworkAdapterSuggestedSwitchIdHelp" xml:space="preserve"><value>(Optional) The switch GUID suggested for the current network adapter.</value></data>
+  <data name="NetworkAdapterSuggestedSwitchIdLabel" xml:space="preserve"><value>Network ID (advanced)</value></data>
+  <data name="NetworkAdapterSuggestedSwitchNameHelp" xml:space="preserve"><value>(Optional) The switch name suggested for the current network adapter.</value></data>
+  <data name="NetworkAdapterSuggestedSwitchNameLabel" xml:space="preserve"><value>Network name</value></data>
+  <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve"><value>(Optional) The switch subnet suggested for the current network adapter.</value></data>
+  <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve"><value>Network subnet (advanced)</value></data>
+  <data name="NetworkAdapterTitle.Text" xml:space="preserve"><value>Network Adapters</value></data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>Leave empty for an ICS NAT network. Specify a Type and any supported HCN creation properties, such as Subnets, Policies, Dns and SchemaVersion. NanaBox assigns the name and ID.</value></data>
+  <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>Advanced HCN settings (optional JSON)</value></data>
+  <data name="NetworkCopy.Content" xml:space="preserve"><value>Copy</value></data>
+  <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve"><value>Network diagnostics</value></data>
+  <data name="NetworkFirewall.Content" xml:space="preserve"><value>Enable Hyper-V firewall</value></data>
+  <data name="NetworkIdHelp" xml:space="preserve"><value>Select an existing HCN network. Leave empty to use the legacy NAT switch settings.</value></data>
+  <data name="NetworkIdLabel" xml:space="preserve"><value>HCN network ID</value></data>
+  <data name="NetworkManagerNote.Text" xml:space="preserve"><value>Refresh after creating a network. Add a NIC and choose the network to attach it.</value></data>
+  <data name="NetworkName.Header" xml:space="preserve"><value>New network name</value></data>
+  <data name="NetworkNote.Text" xml:space="preserve"><value>Note: Default behavior is use the default switch.</value></data>
+  <data name="NetworkPreflight.Content" xml:space="preserve"><value>Check host</value></data>
+  <data name="NetworkRetry.Content" xml:space="preserve"><value>Retry sync</value></data>
+  <data name="NetworkStatus.Content" xml:space="preserve"><value>Current status</value></data>
+  <data name="NoHostGpus" xml:space="preserve"><value>No GPU-PV interfaces found</value></data>
+  <data name="NoHostNetworks" xml:space="preserve"><value>No host networks found</value></data>
+  <data name="OpenButton.AutomationProperties.Name" xml:space="preserve"><value>Edit configuration file in Notepad</value></data>
+  <data name="OpenButtonTextBlock.Text" xml:space="preserve"><value>Edit file</value></data>
+  <data name="PhysicalAdaptersComboBox.Header" xml:space="preserve"><value>Physical adapter (external switch)</value></data>
+  <data name="Plan9AllowOptionsHelp" xml:space="preserve"><value>Allow additional options in the guest attach request.</value></data>
+  <data name="Plan9AllowOptionsLabel" xml:space="preserve"><value>Allow guest share options</value></data>
+  <data name="Plan9AllowSubPathsHelp" xml:space="preserve"><value>Allow a guest attach request to select a subpath.</value></data>
+  <data name="Plan9AllowSubPathsLabel" xml:space="preserve"><value>Allow subpaths</value></data>
+  <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>Restrict access to these file names. Leave empty to share the entire directory.</value></data>
+  <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>Allowed files (one per line)</value></data>
+  <data name="Plan9AutoMountHelp" xml:space="preserve"><value>Mount this share under /media using the guest service.</value></data>
+  <data name="Plan9AutoMountLabel" xml:space="preserve"><value>Automatically mount in Linux</value></data>
+  <data name="Plan9BrowseFolder" xml:space="preserve"><value>Choose host folder</value></data>
+  <data name="Plan9CaseSensitiveHelp" xml:space="preserve"><value>Create case-sensitive directories when supported by the host filesystem.</value></data>
+  <data name="Plan9CaseSensitiveLabel" xml:space="preserve"><value>Case-sensitive directories</value></data>
+  <data name="Plan9LinuxMetadataHelp" xml:space="preserve"><value>Allow the provider to store Linux file metadata.</value></data>
+  <data name="Plan9LinuxMetadataLabel" xml:space="preserve"><value>Linux metadata</value></data>
+  <data name="Plan9ShareDescription.Text" xml:space="preserve"><value>Configure 9P shares over Hyper-V sockets. Linux guests can add, remove or change shares while running; busy mounts prevent removal. Automatic mounts use /media. Other guests require shutdown for changes.</value></data>
+  <data name="Plan9ShareNameHelp" xml:space="preserve"><value>The guest access name of the current Plan 9 share.</value></data>
+  <data name="Plan9ShareNameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="Plan9SharePathHelp" xml:space="preserve"><value>The host path of the current Plan 9 share.</value></data>
+  <data name="Plan9SharePathLabel" xml:space="preserve"><value>Path</value></data>
+  <data name="Plan9SharePortHelp" xml:space="preserve"><value>The Hyper-V Socket port number of the current Plan 9 share.</value></data>
+  <data name="Plan9SharePortLabel" xml:space="preserve"><value>Port</value></data>
+  <data name="Plan9ShareReadOnlyHelp" xml:space="preserve"><value>(Optional) Set it true if you want to make the current Plan 9 share read-only.</value></data>
+  <data name="Plan9ShareReadOnlyLabel" xml:space="preserve"><value>Read-Only</value></data>
+  <data name="Plan9ShareTitle.Text" xml:space="preserve"><value>Plan 9 Shares</value></data>
+  <data name="Plan9UnlimitedConnectionsHelp" xml:space="preserve"><value>Allow multiple concurrent connections where supported by the host.</value></data>
+  <data name="Plan9UnlimitedConnectionsLabel" xml:space="preserve"><value>Unlimited connections</value></data>
+  <data name="Plan9UseShareRootIdentityHelp" xml:space="preserve"><value>Use the share root identity when opening files.</value></data>
+  <data name="Plan9UseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
+  <data name="PoliciesLabel.Text" xml:space="preserve"><value>Policies</value></data>
+  <data name="PoliciesNote.Text" xml:space="preserve"><value>Note: These policies need Windows 11 Version 24H2 or later Host OS.</value></data>
+  <data name="PoliciesTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The string array of policies of virtual machine.</value></data>
+  <data name="PoliciesTextBox.AutomationProperties.Name" xml:space="preserve"><value>Policies</value></data>
+  <data name="PoliciesTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The string array of policies of virtual machine.</value></data>
+  <data name="PoliciesTitle.Text" xml:space="preserve"><value>Policies</value></data>
+  <data name="PolicyExamplesTextBox.AutomationProperties.Name" xml:space="preserve"><value>Policy identifier examples (read-only)</value></data>
+  <data name="PolicyExamplesTextBox.Text" xml:space="preserve"><value>LegacyPcrMeasurement
+DisableSha384Pcr
+LegacyRteWidth
+LegacyTrustedLaunchMemoryMap
+LegacyApicSelectionLogic
+LegacyApicManganeseOverride
+LegacyGpaLayout
+ForceLegacyHcl
+ForceCurrentHcl
+UseExtendedMaxVpPerSocketLimit</value></data>
+  <data name="PolicyFormatNote.Text" xml:space="preserve"><value>Enter one policy per line.</value></data>
+  <data name="ProcessorCountLabel.Text" xml:space="preserve"><value>Virtual processors</value></data>
+  <data name="ProcessorCountTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>Choose how many virtual CPU cores are available to the guest.</value></data>
+  <data name="ProcessorCountTextBox.AutomationProperties.Name" xml:space="preserve"><value>Virtual processors</value></data>
+  <data name="ProcessorCountTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>Choose how many virtual CPU cores are available to the guest.</value></data>
+  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
+  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
+  <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
+  <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
+  <data name="ProductNameLabel.Text" xml:space="preserve"><value>Product Name</value></data>
+  <data name="ProductNameTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The product name of virtual machine.</value></data>
+  <data name="ProductNameTextBox.AutomationProperties.Name" xml:space="preserve"><value>Product Name</value></data>
+  <data name="ProductNameTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The product name of virtual machine.</value></data>
+  <data name="RedirectAudioCaptureCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share the microphone.</value></data>
+  <data name="RedirectAudioCaptureCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share the microphone</value></data>
+  <data name="RedirectAudioCaptureCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share the microphone.</value></data>
+  <data name="RedirectAudioCaptureLabel.Text" xml:space="preserve"><value>Share the microphone</value></data>
+  <data name="RedirectAudioCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Play guest audio on this computer.</value></data>
+  <data name="RedirectAudioCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Play guest audio on this computer</value></data>
+  <data name="RedirectAudioCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Play guest audio on this computer.</value></data>
+  <data name="RedirectAudioLabel.Text" xml:space="preserve"><value>Play guest audio on this computer</value></data>
+  <data name="RedirectClipboardCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share the clipboard.</value></data>
+  <data name="RedirectClipboardCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share the clipboard</value></data>
+  <data name="RedirectClipboardCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share the clipboard.</value></data>
+  <data name="RedirectClipboardLabel.Text" xml:space="preserve"><value>Share the clipboard</value></data>
+  <data name="RedirectDevicesCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share local devices.</value></data>
+  <data name="RedirectDevicesCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share local devices</value></data>
+  <data name="RedirectDevicesCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share local devices.</value></data>
+  <data name="RedirectDevicesLabel.Text" xml:space="preserve"><value>Share local devices</value></data>
+  <data name="RedirectDrivesCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share local drives.</value></data>
+  <data name="RedirectDrivesCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share local drives</value></data>
+  <data name="RedirectDrivesCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share local drives.</value></data>
+  <data name="RedirectDrivesLabel.Text" xml:space="preserve"><value>Share local drives</value></data>
+  <data name="RedirectDynamicDevicesCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share newly connected devices.</value></data>
+  <data name="RedirectDynamicDevicesCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share newly connected devices</value></data>
+  <data name="RedirectDynamicDevicesCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share newly connected devices.</value></data>
+  <data name="RedirectDynamicDevicesLabel.Text" xml:space="preserve"><value>Share newly connected devices</value></data>
+  <data name="RedirectDynamicDrivesCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share newly connected drives.</value></data>
+  <data name="RedirectDynamicDrivesCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share newly connected drives</value></data>
+  <data name="RedirectDynamicDrivesCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share newly connected drives.</value></data>
+  <data name="RedirectDynamicDrivesLabel.Text" xml:space="preserve"><value>Share newly connected drives</value></data>
+  <data name="RedirectKeyCombinationsCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Send keyboard shortcuts to the guest.</value></data>
+  <data name="RedirectKeyCombinationsCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Send keyboard shortcuts to the guest</value></data>
+  <data name="RedirectKeyCombinationsCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Send keyboard shortcuts to the guest.</value></data>
+  <data name="RedirectKeyCombinationsLabel.Text" xml:space="preserve"><value>Send keyboard shortcuts to the guest</value></data>
+  <data name="RedirectPOSDevicesCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share point-of-sale devices.</value></data>
+  <data name="RedirectPOSDevicesCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share point-of-sale devices</value></data>
+  <data name="RedirectPOSDevicesCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share point-of-sale devices.</value></data>
+  <data name="RedirectPOSDevicesLabel.Text" xml:space="preserve"><value>Share point-of-sale devices</value></data>
+  <data name="RedirectPortsCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share serial and parallel ports.</value></data>
+  <data name="RedirectPortsCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share serial and parallel ports</value></data>
+  <data name="RedirectPortsCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share serial and parallel ports.</value></data>
+  <data name="RedirectPortsLabel.Text" xml:space="preserve"><value>Share serial and parallel ports</value></data>
+  <data name="RedirectPrintersCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share printers.</value></data>
+  <data name="RedirectPrintersCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share printers</value></data>
+  <data name="RedirectPrintersCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share printers.</value></data>
+  <data name="RedirectPrintersLabel.Text" xml:space="preserve"><value>Share printers</value></data>
+  <data name="RedirectSmartCardsCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Share smart cards.</value></data>
+  <data name="RedirectSmartCardsCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Share smart cards</value></data>
+  <data name="RedirectSmartCardsCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Share smart cards.</value></data>
+  <data name="RedirectSmartCardsLabel.Text" xml:space="preserve"><value>Share smart cards</value></data>
+  <data name="ReferenceButton.AutomationProperties.Name" xml:space="preserve"><value>Configuration help</value></data>
+  <data name="ReferenceButtonTextBlock.Text" xml:space="preserve"><value>Help</value></data>
+  <data name="RefreshDeviceButton.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="RefreshDriveButton.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="RefreshNetworks.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="ReloadButton.AutomationProperties.Name" xml:space="preserve"><value>Reload configuration</value></data>
+  <data name="ReloadButtonTextBlock.Text" xml:space="preserve"><value>Reload</value></data>
+  <data name="Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="ReservedShareNote.Text" xml:space="preserve"><value>Note: If you have set the &quot;EnableHostDriverStore&quot; true, you should not use the names mentioned in &quot;EnableHostDriverStore&quot; related document for the current Plan 9 share.</value></data>
+  <data name="ReservedVirtualSmbShareNote.Text" xml:space="preserve"><value>Note: If you have set the &quot;EnableHostDriverStore&quot; true, you should not use the names mentioned in &quot;EnableHostDriverStore&quot; related document for the current Virtual SMB share.</value></data>
+  <data name="ResolutionNote.Text" xml:space="preserve"><value>Note: Only the Basic Session Mode is constrainted with this setting.</value></data>
+  <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>Resource allocation</value></data>
+  <data name="RuleCreateButton.Content" xml:space="preserve"><value>Create rule</value></data>
+  <data name="RuleDeleteButton.Content" xml:space="preserve"><value>Delete</value></data>
+  <data name="RuleDisableButton.Content" xml:space="preserve"><value>Disable</value></data>
+  <data name="RuleEnableButton.Content" xml:space="preserve"><value>Enable</value></data>
+  <data name="RuntimeNoticeText.Text" xml:space="preserve"><value>Some settings require the virtual machine to be shut down before they can be changed.</value></data>
+  <data name="RuntimeStateFileLabel.Text" xml:space="preserve"><value>Saved runtime state file</value></data>
+  <data name="RuntimeStateFileTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The path of runtime state file for virtual machine.</value></data>
+  <data name="RuntimeStateFileTextBox.AutomationProperties.Name" xml:space="preserve"><value>Saved runtime state file</value></data>
+  <data name="RuntimeStateFileTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The path of runtime state file for virtual machine.</value></data>
+  <data name="SKUNumberLabel.Text" xml:space="preserve"><value>SKU Number</value></data>
+  <data name="SKUNumberTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The sku number of virtual machine.</value></data>
+  <data name="SKUNumberTextBox.AutomationProperties.Name" xml:space="preserve"><value>SKU Number</value></data>
+  <data name="SKUNumberTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The sku number of virtual machine.</value></data>
+  <data name="ScsiDeviceDescription.Text" xml:space="preserve"><value>Attach a virtual disk or an ISO installation image. Use the virtual disk manager to create or resize disks.</value></data>
+  <data name="ScsiDevicePathHelp" xml:space="preserve"><value>The path of the current SCSI device.</value></data>
+  <data name="ScsiDevicePathLabel" xml:space="preserve"><value>Disk or ISO file</value></data>
+  <data name="ScsiDeviceTitle.Text" xml:space="preserve"><value>Virtual disks and optical drives</value></data>
+  <data name="ScsiDeviceTypeHelp" xml:space="preserve"><value>The type of the current SCSI device.</value></data>
+  <data name="ScsiDeviceTypeLabel" xml:space="preserve"><value>Type</value></data>
+  <data name="ScsiNote.Text" xml:space="preserve"><value>An optical drive can be left empty. Select an ISO file to insert a disc.</value></data>
+  <data name="SecureBootCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Check the boot loader signature during startup.</value></data>
+  <data name="SecureBootCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Secure Boot</value></data>
+  <data name="SecureBootCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Check the boot loader signature during startup.</value></data>
+  <data name="SecureBootLabel.Text" xml:space="preserve"><value>Secure Boot</value></data>
+  <data name="SerialLocalPipeOnly" xml:space="preserve"><value>Status is available for local named pipes only.</value></data>
+  <data name="SerialNotConfigured" xml:space="preserve"><value>No pipe configured.</value></data>
+  <data name="SerialNumberLabel.Text" xml:space="preserve"><value>Serial Number</value></data>
+  <data name="SerialNumberTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The serial number of virtual machine.</value></data>
+  <data name="SerialNumberTextBox.AutomationProperties.Name" xml:space="preserve"><value>Serial Number</value></data>
+  <data name="SerialNumberTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The serial number of virtual machine.</value></data>
+  <data name="SerialPipeReady" xml:space="preserve"><value>Pipe is available.</value></data>
+  <data name="SerialPipeStatus.Header" xml:space="preserve"><value>Pipe status</value></data>
+  <data name="SerialPipeUnavailable" xml:space="preserve"><value>Pipe is unavailable.</value></data>
+  <data name="SettingsContentText" xml:space="preserve"><value>The "Open With" dialog will pop up after you clicking "Confirm", you can choose your favorite editor to follow the "Configuration File Reference Documentation" to edit your virtual machine configuration file.</value></data>
+  <data name="SettingsInstructionText" xml:space="preserve"><value>Virtual Machine Settings Notice</value></data>
+  <data name="SettingsNavigationTitle.Text" xml:space="preserve"><value>Settings</value></data>
+  <data name="ShareNote.Text" xml:space="preserve"><value>Note: You cannot suspend the virtual machine properly if this option is enabled.</value></data>
+  <data name="ShareNote2.Text" xml:space="preserve"><value>Note: You cannot suspend the virtual machine properly if this option is enabled.</value></data>
+  <data name="ShareNote3.Text" xml:space="preserve"><value>Note: You cannot suspend the virtual machine properly if this option is enabled.</value></data>
+  <data name="StateFilesTitle.Text" xml:space="preserve"><value>State Files</value></data>
+  <data name="StateNote.Text" xml:space="preserve"><value>Note: The relative path is supported.</value></data>
+  <data name="StateNote2.Text" xml:space="preserve"><value>Note: The relative path is supported.</value></data>
+  <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
+  <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
+  <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
+  <data name="StorageIopsMaximumTextBox.Header" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
+  <data name="SwitchCreateButton.Content" xml:space="preserve"><value>Create switch</value></data>
+  <data name="SwitchDeleteButton.Content" xml:space="preserve"><value>Delete selected switch</value></data>
+  <data name="SwitchListButton.Content" xml:space="preserve"><value>Refresh switches</value></data>
+  <data name="TabAdvanced.Content" xml:space="preserve"><value>Advanced settings</value></data>
+  <data name="TabGeneral.Content" xml:space="preserve"><value>General &amp; system</value></data>
+  <data name="TabGpu.Content" xml:space="preserve"><value>Graphics</value></data>
+  <data name="TabGuestTools.Content" xml:space="preserve"><value>Guest tools</value></data>
+  <data name="TabHcn.Content" xml:space="preserve"><value>Network resources</value></data>
+  <data name="TabHostManagement.Content" xml:space="preserve"><value>Host networking</value></data>
+  <data name="TabNetwork.Content" xml:space="preserve"><value>Network</value></data>
+  <data name="TabSerial.Content" xml:space="preserve"><value>Serial ports</value></data>
+  <data name="TabSession.Content" xml:space="preserve"><value>Keyboard &amp; session</value></data>
+  <data name="TabShares.Content" xml:space="preserve"><value>Shared folders</value></data>
+  <data name="TabStorage.Content" xml:space="preserve"><value>Storage</value></data>
+  <data name="TabVmms.Content" xml:space="preserve"><value>Hyper-V manager</value></data>
+  <data name="Title" xml:space="preserve"><value>Virtual Machine Settings - NanaBox</value></data>
+  <data name="TpmCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Enable a virtual security chip for features such as Windows 11 and BitLocker.</value></data>
+  <data name="TpmCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Trusted Platform Module (TPM)</value></data>
+  <data name="TpmCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Enable a virtual security chip for features such as Windows 11 and BitLocker.</value></data>
+  <data name="TpmLabel.Text" xml:space="preserve"><value>Virtual TPM (Trusted Platform Module)</value></data>
+  <data name="TpmNote.Text" xml:space="preserve"><value>Note: You need Windows 11 Version 24H2 or later Host OS.</value></data>
+  <data name="UUIDLabel.Text" xml:space="preserve"><value>UUID</value></data>
+  <data name="UUIDTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>The universally unique identifier of virtual machine.</value></data>
+  <data name="UUIDTextBox.AutomationProperties.Name" xml:space="preserve"><value>UUID</value></data>
+  <data name="UUIDTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>The universally unique identifier of virtual machine.</value></data>
+  <data name="UefiConsoleComboBox.AutomationProperties.HelpText" xml:space="preserve"><value>The UEFI serial console setting of virtual machine.</value></data>
+  <data name="UefiConsoleComboBox.AutomationProperties.Name" xml:space="preserve"><value>UEFI serial console</value></data>
+  <data name="UefiConsoleComboBox.ToolTipService.ToolTip" xml:space="preserve"><value>The UEFI serial console setting of virtual machine.</value></data>
+  <data name="UefiConsoleLabel.Text" xml:space="preserve"><value>UEFI serial console</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>%s (not currently available)</value></data>
+  <data name="UseCreatorButton.Content" xml:space="preserve"><value>Use for mirrored networking</value></data>
+  <data name="ValidateConfiguration.Content" xml:space="preserve"><value>Check settings</value></data>
+  <data name="VerticalResolutionLabel.Text" xml:space="preserve"><value>Vertical Resolution</value></data>
+  <data name="VerticalResolutionTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) The vertical resolution of the video monitor of virtual machine.</value></data>
+  <data name="VerticalResolutionTextBox.AutomationProperties.Name" xml:space="preserve"><value>Vertical Resolution</value></data>
+  <data name="VerticalResolutionTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>(Optional) The vertical resolution of the video monitor of virtual machine.</value></data>
+  <data name="VideoMonitorTitle.Text" xml:space="preserve"><value>Display</value></data>
+  <data name="VirtualDiskPathTip" xml:space="preserve"><value>Please select a VHD or VHDX virtual hard disk</value></data>
+  <data name="VirtualImagePathTip" xml:space="preserve"><value>Please select an ISO image</value></data>
+  <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>Mount this share after GuestTool receives the host inventory. Disable to mount it on demand.</value></data>
+  <data name="VirtualSmbAutoMountLabel" xml:space="preserve"><value>Mount automatically in Windows</value></data>
+  <data name="VirtualSmbLiveNote.Text" xml:space="preserve"><value>Add exports to an existing VSMB device or change automatic mounting while Windows is running. Shut down the VM to remove or replace exports.</value></data>
+  <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>Use VSMB without direct mapping of host file pages into the guest. This can help compatibility with host filesystems that lack direct mapping support.</value></data>
+  <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>Disable direct file mapping</value></data>
+  <data name="VirtualSmbOptionCacheIoHelp" xml:space="preserve"><value>Force cached I/O for file opens. Mutually exclusive with non-cached I/O.</value></data>
+  <data name="VirtualSmbOptionCacheIoLabel" xml:space="preserve"><value>Cached I/O</value></data>
+  <data name="VirtualSmbOptionDefault" xml:space="preserve"><value>Default</value></data>
+  <data name="VirtualSmbOptionDisabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="VirtualSmbOptionEnabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksHelp" xml:space="preserve"><value>Disable opportunistic locks other than Level II.</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksLabel" xml:space="preserve"><value>Level II opportunistic locks only</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyHelp" xml:space="preserve"><value>Disable directory change notifications.</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyLabel" xml:space="preserve"><value>Disable directory notifications</value></data>
+  <data name="VirtualSmbOptionNoLocksHelp" xml:space="preserve"><value>Disable byte-range locking; applications relying on locking may be incompatible.</value></data>
+  <data name="VirtualSmbOptionNoLocksLabel" xml:space="preserve"><value>Disable byte-range locks</value></data>
+  <data name="VirtualSmbOptionNoOplocksHelp" xml:space="preserve"><value>Disable SMB opportunistic locks.</value></data>
+  <data name="VirtualSmbOptionNoOplocksLabel" xml:space="preserve"><value>Disable opportunistic locks</value></data>
+  <data name="VirtualSmbOptionNonCacheIoHelp" xml:space="preserve"><value>Force non-cached I/O for file opens. Mutually exclusive with cached I/O.</value></data>
+  <data name="VirtualSmbOptionNonCacheIoLabel" xml:space="preserve"><value>Non-cached I/O</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyHelp" xml:space="preserve"><value>Enable pseudo-directory change notifications.</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyLabel" xml:space="preserve"><value>Pseudo-directory notifications</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksHelp" xml:space="preserve"><value>Enable VSMB pseudo-opportunistic locks.</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksLabel" xml:space="preserve"><value>Pseudo-opportunistic locks</value></data>
+  <data name="VirtualSmbOptionShareReadHelp" xml:space="preserve"><value>Convert exclusive file opens to shared read access.</value></data>
+  <data name="VirtualSmbOptionShareReadLabel" xml:space="preserve"><value>Shared read access</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>Enable the HCS cloud file compatibility option.</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>Support cloud files</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>Opt-in: HCS can acquire the backup privilege when opening files. Enable only for trusted guests and exports.</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>Acquire backup privilege</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>Use the identity of the share root when opening files.</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
+  <data name="VirtualSmbShareDescription.Text" xml:space="preserve"><value>The Virtual SMB shares setting object array of virtual machine.</value></data>
+  <data name="VirtualSmbShareNameHelp" xml:space="preserve"><value>The guest access name of the current Virtual SMB share.</value></data>
+  <data name="VirtualSmbShareNameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="VirtualSmbSharePathHelp" xml:space="preserve"><value>The host path of the current Virtual SMB share.</value></data>
+  <data name="VirtualSmbSharePathLabel" xml:space="preserve"><value>Path</value></data>
+  <data name="VirtualSmbShareReadOnlyHelp" xml:space="preserve"><value>(Optional) Set it true if you want to make the current Virtual SMB share read-only.</value></data>
+  <data name="VirtualSmbShareReadOnlyLabel" xml:space="preserve"><value>Read-Only</value></data>
+  <data name="VirtualSmbShareTitle.Text" xml:space="preserve"><value>Virtual SMB Shares</value></data>
+  <data name="VirtualSmbShowOptions" xml:space="preserve"><value>Advanced VSMB options</value></data>
+  <data name="VirtualizationExtensionsCheckBox.AutomationProperties.HelpText" xml:space="preserve"><value>Enable this when running Hyper-V, WSL 2 or another hypervisor inside the guest.</value></data>
+  <data name="VirtualizationExtensionsCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Expose Virtualization Extensions</value></data>
+  <data name="VirtualizationExtensionsCheckBox.ToolTipService.ToolTip" xml:space="preserve"><value>Enable this when running Hyper-V, WSL 2 or another hypervisor inside the guest.</value></data>
+  <data name="VirtualizationExtensionsLabel.Text" xml:space="preserve"><value>Nested virtualization</value></data>
+  <data name="VmmsActionComboBox.Header" xml:space="preserve"><value>Operation</value></data>
+  <data name="VmmsAutomaticActions.Content" xml:space="preserve"><value>Configure automatic start and stop</value></data>
+  <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve"><value>Enable automatic checkpoints</value></data>
+  <data name="VmmsAutomaticDelayTextBox.Header" xml:space="preserve"><value>Automatic start delay (seconds)</value></data>
+  <data name="VmmsAutomaticStartComboBox.Header" xml:space="preserve"><value>Automatic start action</value></data>
+  <data name="VmmsAutomaticStartComboBoxNothing.Content" xml:space="preserve"><value>Do nothing</value></data>
+  <data name="VmmsAutomaticStartComboBoxStart.Content" xml:space="preserve"><value>Always start</value></data>
+  <data name="VmmsAutomaticStartComboBoxStartIfRunning.Content" xml:space="preserve"><value>Start if previously running</value></data>
+  <data name="VmmsAutomaticStopComboBox.Header" xml:space="preserve"><value>Automatic stop action</value></data>
+  <data name="VmmsAutomaticStopComboBoxSave.Content" xml:space="preserve"><value>Save state</value></data>
+  <data name="VmmsAutomaticStopComboBoxShutDown.Content" xml:space="preserve"><value>Shut down guest</value></data>
+  <data name="VmmsAutomaticStopComboBoxTurnOff.Content" xml:space="preserve"><value>Turn off</value></data>
+  <data name="VmmsCheckpointCreate.Content" xml:space="preserve"><value>Create checkpoint</value></data>
+  <data name="VmmsCheckpointExport.Content" xml:space="preserve"><value>Export selected checkpoint</value></data>
+  <data name="VmmsCheckpointPolicy.Content" xml:space="preserve"><value>Configure checkpoint policy</value></data>
+  <data name="VmmsCheckpointRemove.Content" xml:space="preserve"><value>Delete checkpoint</value></data>
+  <data name="VmmsCheckpointRename.Content" xml:space="preserve"><value>Rename selected checkpoint</value></data>
+  <data name="VmmsCheckpointRestore.Content" xml:space="preserve"><value>Restore checkpoint</value></data>
+  <data name="VmmsCheckpointTypeComboBox.Header" xml:space="preserve"><value>Checkpoint type</value></data>
+  <data name="VmmsCheckpointTypeComboBoxDisabled.Content" xml:space="preserve"><value>Disabled</value></data>
+  <data name="VmmsCheckpointTypeComboBoxProduction.Content" xml:space="preserve"><value>Production</value></data>
+  <data name="VmmsCheckpointTypeComboBoxProductionOnly.Content" xml:space="preserve"><value>Production only</value></data>
+  <data name="VmmsCheckpointTypeComboBoxStandard.Content" xml:space="preserve"><value>Standard</value></data>
+  <data name="VmmsCheckpointsComboBox.Header" xml:space="preserve"><value>Checkpoint</value></data>
+  <data name="VmmsControllerLocationTextBox.Header" xml:space="preserve"><value>Controller location</value></data>
+  <data name="VmmsControllerNumberTextBox.Header" xml:space="preserve"><value>Controller number</value></data>
+  <data name="VmmsControllerTypeComboBox.Header" xml:space="preserve"><value>Hard disk controller type</value></data>
+  <data name="VmmsCpuMaximumTextBox.Header" xml:space="preserve"><value>CPU maximum (%)</value></data>
+  <data name="VmmsCpuNestedCheckBox.Content" xml:space="preserve"><value>Expose virtualization extensions</value></data>
   <data name="VmmsCpuPolicy.Content" xml:space="preserve"><value>Set CPU allocation and nested virtualization</value></data>
+  <data name="VmmsCpuReserveTextBox.Header" xml:space="preserve"><value>CPU reserve (%)</value></data>
+  <data name="VmmsCpuWeightTextBox.Header" xml:space="preserve"><value>CPU relative weight</value></data>
+  <data name="VmmsCreate.Content" xml:space="preserve"><value>Create empty VM</value></data>
+  <data name="VmmsDeleteSavedState.Content" xml:space="preserve"><value>Discard saved state</value></data>
+  <data name="VmmsDestinationTextBox.Header" xml:space="preserve"><value>Empty destination directory (import copy)</value></data>
+  <data name="VmmsDeviceNameTextBox.Header" xml:space="preserve"><value>New network adapter name</value></data>
+  <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected.</value></data>
+  <data name="VmmsDevicePathTextBox.Header" xml:space="preserve"><value>VHD/VHDX or ISO path (empty to eject DVD)</value></data>
+  <data name="VmmsDeviceSwitchComboBox.Header" xml:space="preserve"><value>Destination virtual switch</value></data>
+  <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU, devices and integration services</value></data>
+  <data name="VmmsDevicesComboBox.Header" xml:space="preserve"><value>Selected device or integration service</value></data>
   <data name="VmmsDiskAttach.Content" xml:space="preserve"><value>Attach virtual hard disk</value></data>
   <data name="VmmsDiskDetach.Content" xml:space="preserve"><value>Detach selected hard disk</value></data>
+  <data name="VmmsDiskMaxIopsTextBox.Header" xml:space="preserve"><value>Maximum IOPS (0 = unlimited)</value></data>
+  <data name="VmmsDiskMinIopsTextBox.Header" xml:space="preserve"><value>Minimum IOPS</value></data>
   <data name="VmmsDiskQoS.Content" xml:space="preserve"><value>Set selected disk IOPS limits</value></data>
   <data name="VmmsDvdAdd.Content" xml:space="preserve"><value>Add DVD drive</value></data>
   <data name="VmmsDvdMount.Content" xml:space="preserve"><value>Mount ISO or eject selected DVD</value></data>
   <data name="VmmsDvdRemove.Content" xml:space="preserve"><value>Remove selected DVD drive</value></data>
-  <data name="VmmsNicAdd.Content" xml:space="preserve"><value>Add network adapter</value></data>
-  <data name="VmmsNicRemove.Content" xml:space="preserve"><value>Remove selected network adapter</value></data>
-  <data name="VmmsNicConnect.Content" xml:space="preserve"><value>Connect selected adapter to switch</value></data>
-  <data name="VmmsNicDisconnect.Content" xml:space="preserve"><value>Disconnect selected adapter</value></data>
-  <data name="VmmsNicMac.Content" xml:space="preserve"><value>Set selected adapter MAC address</value></data>
-  <data name="VmmsNicVlan.Content" xml:space="preserve"><value>Set selected adapter access VLAN</value></data>
-  <data name="VmmsNicGuard.Content" xml:space="preserve"><value>Set selected adapter network protection</value></data>
+  <data name="VmmsDynamicMemory.Content" xml:space="preserve"><value>Enable dynamic memory</value></data>
+  <data name="VmmsDynamicMemoryTitle.Text" xml:space="preserve"><value>Dynamic memory</value></data>
+  <data name="VmmsExecuteButton.Content" xml:space="preserve"><value>Execute selected operation</value></data>
+  <data name="VmmsExport.Content" xml:space="preserve"><value>Export VM</value></data>
+  <data name="VmmsFieldsNote.Text" xml:space="preserve"><value>Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints.</value></data>
+  <data name="VmmsGenerationComboBox.Header" xml:space="preserve"><value>Generation (creation)</value></data>
+  <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>Add GPU partition adapter</value></data>
+  <data name="VmmsGpuAutomatic" xml:space="preserve"><value>Automatic GPU selection</value></data>
+  <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>Maximum compute</value></data>
+  <data name="VmmsGpuMaxDecodeTextBox.Header" xml:space="preserve"><value>Maximum video decode</value></data>
+  <data name="VmmsGpuMaxEncodeTextBox.Header" xml:space="preserve"><value>Maximum video encode</value></data>
+  <data name="VmmsGpuMaxVRAMTextBox.Header" xml:space="preserve"><value>Maximum VRAM (bytes)</value></data>
+  <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>Minimum compute</value></data>
+  <data name="VmmsGpuMinDecodeTextBox.Header" xml:space="preserve"><value>Minimum video decode</value></data>
+  <data name="VmmsGpuMinEncodeTextBox.Header" xml:space="preserve"><value>Minimum video encode</value></data>
+  <data name="VmmsGpuMinVRAMTextBox.Header" xml:space="preserve"><value>Minimum VRAM (bytes)</value></data>
+  <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>Optimal compute</value></data>
+  <data name="VmmsGpuOptimalDecodeTextBox.Header" xml:space="preserve"><value>Optimal video decode</value></data>
+  <data name="VmmsGpuOptimalEncodeTextBox.Header" xml:space="preserve"><value>Optimal video encode</value></data>
+  <data name="VmmsGpuOptimalVRAMTextBox.Header" xml:space="preserve"><value>Optimal VRAM (bytes)</value></data>
+  <data name="VmmsGpuQuotaNote.Text" xml:space="preserve"><value>GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions.</value></data>
+  <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>Set selected GPU partition quotas</value></data>
+  <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>Remove selected GPU partition adapter</value></data>
+  <data name="VmmsGpuSourceComboBox.Header" xml:space="preserve"><value>Physical GPU for new partition</value></data>
+  <data name="VmmsImportCopy.Content" xml:space="preserve"><value>Import copy with new ID</value></data>
+  <data name="VmmsImportRegister.Content" xml:space="preserve"><value>Register existing VM</value></data>
+  <data name="VmmsInspectButton.Content" xml:space="preserve"><value>Inspect selected VM and checkpoints</value></data>
   <data name="VmmsIntegration.Content" xml:space="preserve"><value>Set selected integration service</value></data>
-  <data name="VmmsSecureBoot.Content" xml:space="preserve"><value>Set Secure Boot (Generation 2)</value></data>
-  <data name="VmmsCpuReserveTextBox.Header" xml:space="preserve"><value>CPU reserve (%)</value></data>
-  <data name="VmmsCpuMaximumTextBox.Header" xml:space="preserve"><value>CPU maximum (%)</value></data>
-  <data name="VmmsCpuWeightTextBox.Header" xml:space="preserve"><value>CPU relative weight</value></data>
-  <data name="VmmsDeviceNameTextBox.Header" xml:space="preserve"><value>New network adapter name</value></data>
-  <data name="VmmsDevicePathTextBox.Header" xml:space="preserve"><value>VHD/VHDX or ISO path (empty to eject DVD)</value></data>
-  <data name="VmmsControllerNumberTextBox.Header" xml:space="preserve"><value>Controller number</value></data>
-  <data name="VmmsControllerLocationTextBox.Header" xml:space="preserve"><value>Controller location</value></data>
-  <data name="VmmsDiskMinIopsTextBox.Header" xml:space="preserve"><value>Minimum IOPS</value></data>
-  <data name="VmmsDiskMaxIopsTextBox.Header" xml:space="preserve"><value>Maximum IOPS (0 = unlimited)</value></data>
-  <data name="VmmsNicMacTextBox.Header" xml:space="preserve"><value>Static MAC address (empty = dynamic)</value></data>
-  <data name="VmmsNicVlanTextBox.Header" xml:space="preserve"><value>Access VLAN ID (0 = untagged)</value></data>
-  <data name="VmmsCpuNestedCheckBox.Content" xml:space="preserve"><value>Expose virtualization extensions</value></data>
+  <data name="VmmsIntegrationEnabledCheckBox.Content" xml:space="preserve"><value>Enable selected integration service</value></data>
+  <data name="VmmsListButton.Content" xml:space="preserve"><value>Refresh VMs</value></data>
+  <data name="VmmsLocalKeyProtector.Content" xml:space="preserve"><value>Provision local key protector</value></data>
+  <data name="VmmsMachinesComboBox.Header" xml:space="preserve"><value>Registered VM</value></data>
+  <data name="VmmsMaximumMemoryTextBox.Header" xml:space="preserve"><value>Maximum memory (MiB)</value></data>
+  <data name="VmmsMemoryBufferTextBox.Header" xml:space="preserve"><value>Memory buffer (%)</value></data>
+  <data name="VmmsMemoryPriorityTextBox.Header" xml:space="preserve"><value>Memory priority (0–100)</value></data>
+  <data name="VmmsMemoryTextBox.Header" xml:space="preserve"><value>Startup memory (MiB)</value></data>
+  <data name="VmmsMigrate.Content" xml:space="preserve"><value>Migrate to another Hyper-V host</value></data>
+  <data name="VmmsMinimumMemoryTextBox.Header" xml:space="preserve"><value>Minimum memory (MiB)</value></data>
+  <data name="VmmsMoveStorage.Content" xml:space="preserve"><value>Move VM storage</value></data>
+  <data name="VmmsNameTextBox.Header" xml:space="preserve"><value>VM or new checkpoint name</value></data>
+  <data name="VmmsNicAdd.Content" xml:space="preserve"><value>Add network adapter</value></data>
+  <data name="VmmsNicConnect.Content" xml:space="preserve"><value>Connect selected adapter to switch</value></data>
   <data name="VmmsNicDhcpGuardCheckBox.Content" xml:space="preserve"><value>DHCP guard</value></data>
+  <data name="VmmsNicDisconnect.Content" xml:space="preserve"><value>Disconnect selected adapter</value></data>
+  <data name="VmmsNicGuard.Content" xml:space="preserve"><value>Set selected adapter network protection</value></data>
+  <data name="VmmsNicMac.Content" xml:space="preserve"><value>Set selected adapter MAC address</value></data>
+  <data name="VmmsNicMacTextBox.Header" xml:space="preserve"><value>Static MAC address (empty = dynamic)</value></data>
+  <data name="VmmsNicRemove.Content" xml:space="preserve"><value>Remove selected network adapter</value></data>
   <data name="VmmsNicRouterGuardCheckBox.Content" xml:space="preserve"><value>Router guard</value></data>
   <data name="VmmsNicSpoofCheckBox.Content" xml:space="preserve"><value>Allow MAC address spoofing</value></data>
-  <data name="VmmsIntegrationEnabledCheckBox.Content" xml:space="preserve"><value>Enable selected integration service</value></data>
+  <data name="VmmsNicVlan.Content" xml:space="preserve"><value>Set selected adapter access VLAN</value></data>
+  <data name="VmmsNicVlanTextBox.Header" xml:space="preserve"><value>Access VLAN ID (0 = untagged)</value></data>
+  <data name="VmmsNote.Text" xml:space="preserve"><value>Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only.</value></data>
+  <data name="VmmsPathTextBox.Header" xml:space="preserve"><value>Configuration file or existing directory</value></data>
+  <data name="VmmsPause.Content" xml:space="preserve"><value>Pause</value></data>
+  <data name="VmmsPowerOff.Content" xml:space="preserve"><value>Power off</value></data>
+  <data name="VmmsProcessorTextBox.Header" xml:space="preserve"><value>Virtual processor count</value></data>
+  <data name="VmmsRemoteHostTextBox.Header" xml:space="preserve"><value>Destination host / replica server</value></data>
+  <data name="VmmsRemoteNote.Text" xml:space="preserve"><value>Configure migration or Replica on both hosts first. Use an absolute path on the destination host, or leave it empty for shared storage.</value></data>
+  <data name="VmmsRemotePathTextBox.Header" xml:space="preserve"><value>Destination storage path (optional)</value></data>
+  <data name="VmmsRemoteTitle.Text" xml:space="preserve"><value>Migration and replication</value></data>
+  <data name="VmmsRemove.Content" xml:space="preserve"><value>Remove VM configuration</value></data>
+  <data name="VmmsRename.Content" xml:space="preserve"><value>Rename</value></data>
+  <data name="VmmsReplicaAuthComboBox.Header" xml:space="preserve"><value>Replica authentication</value></data>
+  <data name="VmmsReplicaCertificate.Content" xml:space="preserve"><value>Certificate</value></data>
+  <data name="VmmsReplicaCertificateTextBox.Header" xml:space="preserve"><value>Certificate thumbprint</value></data>
+  <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve"><value>Compress replication traffic</value></data>
+  <data name="VmmsReplicaFrequencyTextBox.Header" xml:space="preserve"><value>Replication interval (30, 300 or 900 seconds)</value></data>
+  <data name="VmmsReplicaHistoryTextBox.Header" xml:space="preserve"><value>Additional recovery points (0–24)</value></data>
+  <data name="VmmsReplicaPortTextBox.Header" xml:space="preserve"><value>Replica server port</value></data>
+  <data name="VmmsReplicationEnable.Content" xml:space="preserve"><value>Configure Hyper-V Replica</value></data>
+  <data name="VmmsReplicationRemove.Content" xml:space="preserve"><value>Remove replication relationship</value></data>
+  <data name="VmmsReplicationResume.Content" xml:space="preserve"><value>Resume replication</value></data>
+  <data name="VmmsReplicationStart.Content" xml:space="preserve"><value>Start initial replication</value></data>
+  <data name="VmmsReplicationSuspend.Content" xml:space="preserve"><value>Suspend replication</value></data>
+  <data name="VmmsRestart.Content" xml:space="preserve"><value>Restart</value></data>
+  <data name="VmmsResultTextBox.Header" xml:space="preserve"><value>Operation result</value></data>
+  <data name="VmmsResume.Content" xml:space="preserve"><value>Resume</value></data>
+  <data name="VmmsSave.Content" xml:space="preserve"><value>Save state</value></data>
+  <data name="VmmsSecureBoot.Content" xml:space="preserve"><value>Set Secure Boot (Generation 2)</value></data>
   <data name="VmmsSecureBootCheckBox.Content" xml:space="preserve"><value>Enable Secure Boot</value></data>
-  <data name="VmmsDevicesComboBox.Header" xml:space="preserve"><value>Selected device or integration service</value></data>
-  <data name="VmmsDeviceSwitchComboBox.Header" xml:space="preserve"><value>Destination virtual switch</value></data>
-  <data name="VmmsControllerTypeComboBox.Header" xml:space="preserve"><value>Hard disk controller type</value></data>
   <data name="VmmsSecureBootTemplateComboBox.Header" xml:space="preserve"><value>Secure Boot template</value></data>
-  <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU, devices and integration services</value></data>
-  <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected.</value></data>
-  <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 localhost interoperability (GELNIC)</value></data>
-  <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>Allow loopback through mirrored host IPv4 addresses</value></data>
-  <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged.</value></data>
-  <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>Coordinate Linux application port binding with the host</value></data>
-  <data name="MirroredBindNote.Text" xml:space="preserve"><value>Install bind coordination in the guest and launch applications with nanabox-bind. Requires Linux 6.7 or newer.</value></data>
-  <data name="TabHcn.Header" xml:space="preserve"><value>HCN resources</value></data>
-  <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage HCN networks, standalone endpoints, namespaces, load balancers and SDN routes. Existing system resources are read-only. Resource modifications use native HCN JSON settings.</value></data>
-  <data name="HcnKind.Header" xml:space="preserve"><value>Resource type</value></data>
-  <data name="HcnResource.Header" xml:space="preserve"><value>Resource</value></data>
-  <data name="HcnName.Header" xml:space="preserve"><value>Network name (network creation)</value></data>
-  <data name="HcnNetworkId.Header" xml:space="preserve"><value>Parent network ID (endpoint creation)</value></data>
-  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN settings JSON</value></data>
-  <data name="HcnList.Content" xml:space="preserve"><value>Refresh</value></data>
-  <data name="HcnInspect.Content" xml:space="preserve"><value>Inspect</value></data>
-  <data name="HcnCreate.Content" xml:space="preserve"><value>Create</value></data>
-  <data name="HcnModify.Content" xml:space="preserve"><value>Modify</value></data>
-  <data name="HcnDelete.Content" xml:space="preserve"><value>Delete</value></data>
-  <data name="HcnResult.Header" xml:space="preserve"><value>Operation result</value></data>
-  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings.</value></data>
-  <data name="HcnKindNetwork.Content" xml:space="preserve"><value>Network</value></data>
-  <data name="HcnKindEndpoint.Content" xml:space="preserve"><value>Endpoint</value></data>
-  <data name="HcnKindNamespace.Content" xml:space="preserve"><value>Namespace</value></data>
-  <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>Load balancer</value></data>
-  <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN route</value></data>
-  <data name="Plan9AutoMountLabel" xml:space="preserve"><value>Automatically mount in Linux</value></data>
-  <data name="Plan9AutoMountHelp" xml:space="preserve"><value>Mount this share under /media using the guest service.</value></data>
-  <data name="Plan9LinuxMetadataLabel" xml:space="preserve"><value>Linux metadata</value></data>
-  <data name="Plan9LinuxMetadataHelp" xml:space="preserve"><value>Allow the provider to store Linux file metadata.</value></data>
-  <data name="Plan9CaseSensitiveLabel" xml:space="preserve"><value>Case-sensitive directories</value></data>
-  <data name="Plan9CaseSensitiveHelp" xml:space="preserve"><value>Create case-sensitive directories when supported by the host filesystem.</value></data>
-  <data name="Plan9UseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
-  <data name="Plan9UseShareRootIdentityHelp" xml:space="preserve"><value>Use the share root identity when opening files.</value></data>
-  <data name="Plan9AllowOptionsLabel" xml:space="preserve"><value>Allow guest share options</value></data>
-  <data name="Plan9AllowOptionsHelp" xml:space="preserve"><value>Allow additional options in the guest attach request.</value></data>
-  <data name="Plan9AllowSubPathsLabel" xml:space="preserve"><value>Allow subpaths</value></data>
-  <data name="Plan9AllowSubPathsHelp" xml:space="preserve"><value>Allow a guest attach request to select a subpath.</value></data>
-  <data name="Plan9UnlimitedConnectionsLabel" xml:space="preserve"><value>Unlimited connections</value></data>
-  <data name="Plan9UnlimitedConnectionsHelp" xml:space="preserve"><value>Allow multiple concurrent connections where supported by the host.</value></data>
-  <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>Allowed files (one per line)</value></data>
-  <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>Restrict access to these file names. Leave empty to share the entire directory.</value></data>
-  <data name="GuestPlan9.Content" xml:space="preserve"><value>Inspect guest mounts</value></data>
-  <data name="GuestPlan9Title.Text" xml:space="preserve"><value>Shared folders and GPU drivers</value></data>
-  <data name="GuestPlan9Note.Text" xml:space="preserve"><value>The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory.</value></data>
-  <data name="GuestPlan9Name.Header" xml:space="preserve"><value>Share name</value></data>
-  <data name="GuestPlan9Path.Header" xml:space="preserve"><value>Guest mount directory (optional)</value></data>
-  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>Mount 9P</value></data>
-  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>Unmount 9P</value></data>
-  <data name="TabShares.Header" xml:space="preserve"><value>Shared folders</value></data>
-  <data name="Plan9BrowseFolder" xml:space="preserve"><value>Choose host folder</value></data>
-  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
-  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host.</value></data>
-  <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode input (Linux)</value></data>
-  <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points.</value></data>
-  <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>Native Unicode input (Windows)</value></data>
-  <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded.</value></data>
-  <data name="VmmsAutomaticActions.Content" xml:space="preserve">
-    <value>Configure automatic start and stop</value>
-  </data>
-  <data name="VmmsCheckpointPolicy.Content" xml:space="preserve">
-    <value>Configure checkpoint policy</value>
-  </data>
-  <data name="VmmsDeleteSavedState.Content" xml:space="preserve">
-    <value>Discard saved state</value>
-  </data>
-  <data name="VmmsCheckpointRename.Content" xml:space="preserve">
-    <value>Rename selected checkpoint</value>
-  </data>
-  <data name="VmmsCheckpointExport.Content" xml:space="preserve">
-    <value>Export selected checkpoint</value>
-  </data>
-  <data name="VmmsLocalKeyProtector.Content" xml:space="preserve">
-    <value>Provision local key protector</value>
-  </data>
-  <data name="VmmsTpmEnable.Content" xml:space="preserve">
-    <value>Enable virtual TPM (Generation 2)</value>
-  </data>
-  <data name="VmmsTpmDisable.Content" xml:space="preserve">
-    <value>Disable virtual TPM (Generation 2)</value>
-  </data>
-  <data name="VmmsAutomaticStartComboBox.Header" xml:space="preserve">
-    <value>Automatic start action</value>
-  </data>
-  <data name="VmmsAutomaticStartComboBoxNothing.Content" xml:space="preserve">
-    <value>Do nothing</value>
-  </data>
-  <data name="VmmsAutomaticStartComboBoxStartIfRunning.Content" xml:space="preserve">
-    <value>Start if previously running</value>
-  </data>
-  <data name="VmmsAutomaticStartComboBoxStart.Content" xml:space="preserve">
-    <value>Always start</value>
-  </data>
-  <data name="VmmsAutomaticStopComboBox.Header" xml:space="preserve">
-    <value>Automatic stop action</value>
-  </data>
-  <data name="VmmsAutomaticStopComboBoxTurnOff.Content" xml:space="preserve">
-    <value>Turn off</value>
-  </data>
-  <data name="VmmsAutomaticStopComboBoxSave.Content" xml:space="preserve">
-    <value>Save state</value>
-  </data>
-  <data name="VmmsAutomaticStopComboBoxShutDown.Content" xml:space="preserve">
-    <value>Shut down guest</value>
-  </data>
-  <data name="VmmsAutomaticDelayTextBox.Header" xml:space="preserve">
-    <value>Automatic start delay (seconds)</value>
-  </data>
-  <data name="VmmsCheckpointTypeComboBox.Header" xml:space="preserve">
-    <value>Checkpoint type</value>
-  </data>
-  <data name="VmmsCheckpointTypeComboBoxDisabled.Content" xml:space="preserve">
-    <value>Disabled</value>
-  </data>
-  <data name="VmmsCheckpointTypeComboBoxStandard.Content" xml:space="preserve">
-    <value>Standard</value>
-  </data>
-  <data name="VmmsCheckpointTypeComboBoxProduction.Content" xml:space="preserve">
-    <value>Production</value>
-  </data>
-  <data name="VmmsCheckpointTypeComboBoxProductionOnly.Content" xml:space="preserve">
-    <value>Production only</value>
-  </data>
-  <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve">
-    <value>Enable automatic checkpoints</value>
-  </data>
-  <data name="HcsSystemsComboBox.Header" xml:space="preserve">
-    <value>HCS compute system</value>
-  </data>
-  <data name="HcsQueryTextBox.Header" xml:space="preserve">
-    <value>Optional HCS property query (JSON)</value>
-  </data>
-  <data name="HcsServicePropertiesButton.Content" xml:space="preserve">
-    <value>HCS service properties</value>
-  </data>
-  <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
-    <value>Selected HCS system properties</value>
-  </data>
-  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Native VSMB shares use NanaBox Guest Shares under ProgramData. Mount or unmount a configured share by name. WinFsp 9P shares use NanaBox Guest 9P; the optional mount directory applies only to 9P. Unmounting VSMB removes the local directory mapping while the host share remains configured.</value></data>
-  <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>Add GPU partition adapter</value></data>
-  <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>Remove selected GPU partition adapter</value></data>
-  <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>Set selected GPU partition quotas</value></data>
-  <data name="VmmsGpuSourceComboBox.Header" xml:space="preserve"><value>Physical GPU for new partition</value></data>
-  <data name="VmmsGpuQuotaNote.Text" xml:space="preserve"><value>GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions.</value></data>
-  <data name="VmmsGpuAutomatic" xml:space="preserve"><value>Automatic GPU selection</value></data>
-  <data name="VmmsGpuMinVRAMTextBox.Header" xml:space="preserve"><value>Minimum VRAM (bytes)</value></data>
-  <data name="VmmsGpuOptimalVRAMTextBox.Header" xml:space="preserve"><value>Optimal VRAM (bytes)</value></data>
-  <data name="VmmsGpuMaxVRAMTextBox.Header" xml:space="preserve"><value>Maximum VRAM (bytes)</value></data>
-  <data name="VmmsGpuMinEncodeTextBox.Header" xml:space="preserve"><value>Minimum video encode</value></data>
-  <data name="VmmsGpuOptimalEncodeTextBox.Header" xml:space="preserve"><value>Optimal video encode</value></data>
-  <data name="VmmsGpuMaxEncodeTextBox.Header" xml:space="preserve"><value>Maximum video encode</value></data>
-  <data name="VmmsGpuMinDecodeTextBox.Header" xml:space="preserve"><value>Minimum video decode</value></data>
-  <data name="VmmsGpuOptimalDecodeTextBox.Header" xml:space="preserve"><value>Optimal video decode</value></data>
-  <data name="VmmsGpuMaxDecodeTextBox.Header" xml:space="preserve"><value>Maximum video decode</value></data>
-  <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>Minimum compute</value></data>
-  <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>Optimal compute</value></data>
-  <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>Maximum compute</value></data>
-  <data name="VirtualSmbAutoMountLabel" xml:space="preserve"><value>Mount automatically in Windows</value></data>
-  <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>Mount this share after GuestTool receives the host inventory. Disable to mount it on demand.</value></data>
-  <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>Disable direct file mapping</value></data>
-  <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>Use VSMB without direct mapping of host file pages into the guest. This can help compatibility with host filesystems that lack direct mapping support.</value></data>
-  <data name="GuestVsmbMount.Content" xml:space="preserve"><value>Mount VSMB</value></data>
-  <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>Unmount VSMB</value></data>
-  <data name="VirtualSmbShowOptions" xml:space="preserve"><value>Advanced VSMB options</value></data>
-  <data name="VirtualSmbOptionDefault" xml:space="preserve"><value>Default</value></data>
-  <data name="VirtualSmbOptionEnabled" xml:space="preserve"><value>Enabled</value></data>
-  <data name="VirtualSmbOptionDisabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="VirtualSmbOptionShareReadLabel" xml:space="preserve"><value>Shared read access</value></data>
-  <data name="VirtualSmbOptionShareReadHelp" xml:space="preserve"><value>Convert exclusive file opens to shared read access.</value></data>
-  <data name="VirtualSmbOptionCacheIoLabel" xml:space="preserve"><value>Cached I/O</value></data>
-  <data name="VirtualSmbOptionCacheIoHelp" xml:space="preserve"><value>Force cached I/O for file opens. Mutually exclusive with non-cached I/O.</value></data>
-  <data name="VirtualSmbOptionNonCacheIoLabel" xml:space="preserve"><value>Non-cached I/O</value></data>
-  <data name="VirtualSmbOptionNonCacheIoHelp" xml:space="preserve"><value>Force non-cached I/O for file opens. Mutually exclusive with cached I/O.</value></data>
-  <data name="VirtualSmbOptionNoOplocksLabel" xml:space="preserve"><value>Disable opportunistic locks</value></data>
-  <data name="VirtualSmbOptionNoOplocksHelp" xml:space="preserve"><value>Disable SMB opportunistic locks.</value></data>
-  <data name="VirtualSmbOptionForceLevelIIOplocksLabel" xml:space="preserve"><value>Level II opportunistic locks only</value></data>
-  <data name="VirtualSmbOptionForceLevelIIOplocksHelp" xml:space="preserve"><value>Disable opportunistic locks other than Level II.</value></data>
-  <data name="VirtualSmbOptionPseudoOplocksLabel" xml:space="preserve"><value>Pseudo-opportunistic locks</value></data>
-  <data name="VirtualSmbOptionPseudoOplocksHelp" xml:space="preserve"><value>Enable VSMB pseudo-opportunistic locks.</value></data>
-  <data name="VirtualSmbOptionNoLocksLabel" xml:space="preserve"><value>Disable byte-range locks</value></data>
-  <data name="VirtualSmbOptionNoLocksHelp" xml:space="preserve"><value>Disable byte-range locking; applications relying on locking may be incompatible.</value></data>
-  <data name="VirtualSmbOptionNoDirnotifyLabel" xml:space="preserve"><value>Disable directory notifications</value></data>
-  <data name="VirtualSmbOptionNoDirnotifyHelp" xml:space="preserve"><value>Disable directory change notifications.</value></data>
-  <data name="VirtualSmbOptionPseudoDirnotifyLabel" xml:space="preserve"><value>Pseudo-directory notifications</value></data>
-  <data name="VirtualSmbOptionPseudoDirnotifyHelp" xml:space="preserve"><value>Enable pseudo-directory change notifications.</value></data>
-  <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
-  <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>Use the identity of the share root when opening files.</value></data>
-  <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>Acquire backup privilege</value></data>
-  <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>Opt-in: HCS can acquire the backup privilege when opening files. Enable only for trusted guests and exports.</value></data>
-  <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>Support cloud files</value></data>
-  <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>Enable the HCS cloud file compatibility option.</value></data>
-  <data name="VirtualSmbLiveNote.Text" xml:space="preserve"><value>Add exports to an existing VSMB device or change automatic mounting while Windows is running. Shut down the VM to remove or replace exports.</value></data>
+  <data name="VmmsSetMemory.Content" xml:space="preserve"><value>Set startup memory</value></data>
+  <data name="VmmsSetProcessor.Content" xml:space="preserve"><value>Set processor count</value></data>
+  <data name="VmmsShutdown.Content" xml:space="preserve"><value>Shut down</value></data>
+  <data name="VmmsStart.Content" xml:space="preserve"><value>Start</value></data>
+  <data name="VmmsStaticMemory.Content" xml:space="preserve"><value>Disable dynamic memory</value></data>
+  <data name="VmmsTitle.Text" xml:space="preserve"><value>Hyper-V virtual machine manager</value></data>
+  <data name="VmmsTpmDisable.Content" xml:space="preserve"><value>Disable virtual TPM (Generation 2)</value></data>
+  <data name="VmmsTpmEnable.Content" xml:space="preserve"><value>Enable virtual TPM (Generation 2)</value></data>
 </root>

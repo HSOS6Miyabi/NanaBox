@@ -69,6 +69,7 @@ function Set-Check([string]$id,[bool]$value) {
 }
 function Select-Tab([string]$id) {
     $e = Find-Control $id
+    Scroll $e
     (Pattern $e ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
 }
 function Select-Choice([string]$id,[string]$choice) {
@@ -145,6 +146,15 @@ function Capture([string]$name) {
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
 try {
+    $status = Get-Text 'ConfigurationStatusTextBox'
+    if ($status -match 'VirtualMachineSettingsPage/|^\[') { throw "Unresolved settings resource: $status" }
+    foreach ($section in @('TabGeneral','TabGpu','TabStorage','TabNetwork','TabShares','TabSession','TabSerial','TabGuestTools','TabHostManagement','TabVmms','TabHcn','TabAdvanced')) {
+        Select-Tab $section
+        $item = Find-Control $section
+        if ($item.Current.IsOffscreen) { throw "Navigation item is not visible: $section" }
+        if ([string]::IsNullOrWhiteSpace($item.Current.Name) -or $item.Current.Name -match 'VirtualMachineSettingsPage/|^\[') { throw "Unresolved navigation label: $section" }
+    }
+    Select-Tab 'TabGeneral'
     if (-not $HostIntegration) {
         Invoke-Control 'OpenButton'
         $opened = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'OpenConfiguration'}

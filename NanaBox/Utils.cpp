@@ -958,8 +958,8 @@ winrt::handle ShowVirtualMachineSettingsWindow(
         }
         ::ShowXamlWindow(
             WindowHandle,
-            800,
-            600,
+            1040,
+            740,
             ParentWindowHandle);
 
         // Do not call MileXamlThreadUninitialize instead, because it will cause
