@@ -26,6 +26,20 @@ On a Windows guest with Python 3.12 or later installed for all users, run as adm
 
 Specify the installed interpreter's actual path. The startup task runs as SYSTEM. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
 
+## Guest tools
+
+In the VM settings, open Guest tools while the virtual machine is running. Heartbeat checks whether the installed agent responds. System information reports the guest OS, architecture, logical CPU count, UTC time, agent uptime and supported query capabilities. Network diagnostics reports the actual guest network configuration. The agent works over Hyper-V sockets independently of the VM network mode.
+
+From a Windows host with Python 3.12 or later:
+
+```powershell
+python gns.py query <runtime-vm-guid> Heartbeat
+python gns.py query <runtime-vm-guid> GuestInformation
+python gns.py query <runtime-vm-guid> Diagnostics
+```
+
+These read-only queries require the installed guest service. They do not execute guest shell commands or change the guest clock.
+
 ## Host requests
 
 Use Python 3.12+ on Windows. Send a request to the running HCS VM's runtime GUID:

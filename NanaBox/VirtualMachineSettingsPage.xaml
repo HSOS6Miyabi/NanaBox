@@ -1524,6 +1524,20 @@
           </StackPanel>
         </ScrollViewer>
       </PivotItem>
+      <PivotItem x:Uid="/VirtualMachineSettingsPage/TabGuestTools" Header="Guest tools" AutomationProperties.AutomationId="TabGuestTools">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="16,4,16,16" Spacing="8">
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestToolsTitle" Text="Guest agent" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestToolsNote" Text="Install the NanaBox guest agent in the Windows or Linux VM, then start the VM to query it over Hyper-V sockets." TextWrapping="Wrap" />
+            <StackPanel x:Name="GuestToolsCommands" Spacing="8">
+              <Button x:Uid="/VirtualMachineSettingsPage/GuestHeartbeat" Content="Check heartbeat" Tag="Heartbeat" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestHeartbeatButton" />
+              <Button x:Uid="/VirtualMachineSettingsPage/GuestInformation" Content="System information" Tag="GuestInformation" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestInformationButton" />
+              <Button x:Uid="/VirtualMachineSettingsPage/GuestDiagnostics" Content="Network diagnostics" Tag="Diagnostics" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDiagnosticsButton" />
+            </StackPanel>
+            <TextBox x:Name="GuestToolsResult" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" AutomationProperties.AutomationId="GuestToolsResult" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
     </Pivot>
     <Grid Grid.Row="2" Padding="12,6,12,8" ColumnSpacing="8">
       <Grid.ColumnDefinitions>

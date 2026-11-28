@@ -8,6 +8,7 @@
 namespace NanaBox
 {
     std::string CheckMirroredHostSupport();
+    std::string QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource);
     // Owns the HCN guest network service and the endpoints hot-added to one VM.
     class MirroredNetworking
     {

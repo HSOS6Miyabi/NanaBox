@@ -318,7 +318,9 @@ namespace winrt::NanaBox::implementation
         _In_ HWND WindowHandle,
         std::wstring const& ConfigurationFilePath,
         std::wstring const& Name,
-        _In_opt_ NanaBox::MainWindow* MainWindow) :
+        _In_opt_ NanaBox::MainWindow* MainWindow,
+        std::function<std::string(std::string const&)> GuestQuery) :
+        m_GuestQuery(std::move(GuestQuery)),
         m_WindowHandle(WindowHandle),
         m_ConfigurationFilePath(ConfigurationFilePath),
         m_MainWindow(MainWindow)
@@ -1511,6 +1513,60 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+
+    void VirtualMachineSettingsPage::GuestToolsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        if (this->m_GuestToolsRunning) return;
+        try
+        {
+            auto Resource = winrt::to_string(winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag()));
+            auto Query = this->m_GuestQuery;
+            if (!Query)
+            {
+                if (!this->m_MainWindow) throw winrt::hresult_error(E_FAIL, ::GetSettingsString(L"GuestToolsUnavailable"));
+                auto Id = this->m_MainWindow->GuestRuntimeId();
+                Query = [Id](std::string const& Type) { return ::NanaBox::QueryGuestTools(Id, Type); };
+            }
+            this->RunGuestToolsQuery(std::move(Resource), std::move(Query));
+        }
+        catch (...)
+        {
+            auto Error = Mile::WinRT::ToHResultError();
+            this->GuestToolsResult().Text(winrt::to_hstring(nlohmann::json{
+                {"Success", false}, {"Error", winrt::to_string(Error.message())}}.dump(2)));
+        }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunGuestToolsQuery(std::string Resource,
+        std::function<std::string(std::string const&)> Query)
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        this->m_GuestToolsRunning = true;
+        this->GuestToolsCommands().IsEnabled(false);
+        this->GuestToolsResult().Text(::GetSettingsString(L"DiskOperationRunning"));
+        std::string Result;
+        try
+        {
+            co_await winrt::resume_background();
+            Result = Query(Resource);
+        }
+        catch (...)
+        {
+            auto Error = Mile::WinRT::ToHResultError();
+            Result = nlohmann::json{{"Success", false}, {"ResourceType", Resource},
+                {"Error", winrt::to_string(Error.message())}}.dump(2);
+        }
+        try
+        {
+            co_await Foreground;
+            this->m_GuestToolsRunning = false;
+            this->GuestToolsCommands().IsEnabled(true);
+            this->GuestToolsResult().Text(winrt::to_hstring(Result));
+        }
+        catch (...) {}
+    }
 
     void VirtualMachineSettingsPage::NetworkDiagnosticsButtonClick(
         winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)

@@ -404,7 +404,8 @@ int WINAPI wWinMain(
             }
             catch (...) { return -1; }
         }
-        if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--edit-config"))
+        if (ArgumentCount >= 2 && (0 == ::_wcsicmp(Arguments[1], L"--edit-config") ||
+            0 == ::_wcsicmp(Arguments[1], L"--edit-config-test")))
         {
             if (ArgumentCount != 3) return ERROR_INVALID_PARAMETER;
             try
@@ -412,8 +413,20 @@ int WINAPI wWinMain(
                 std::wstring Path = ::GetAbsolutePath(Arguments[2]);
                 HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
                 if (!WindowHandle) return -1;
+                std::function<std::string(std::string const&)> GuestQuery;
+                if (0 == ::_wcsicmp(Arguments[1], L"--edit-config-test"))
+                    GuestQuery = [](std::string const& Resource)
+                    {
+                        if (Resource == "Diagnostics")
+                            throw winrt::hresult_error(E_FAIL, L"Injected guest query failure");
+                        nlohmann::json Data = {{"ProtocolVersion", 1}};
+                        if (Resource == "Heartbeat") Data["Alive"] = true;
+                        else if (Resource == "GuestInformation") Data["HostName"] = "mock-guest";
+                        else throw winrt::hresult_invalid_argument();
+                        return nlohmann::json{{"Success", true}, {"ResourceType", Resource}, {"Data", Data}}.dump(2);
+                    };
                 auto Page = winrt::make<winrt::NanaBox::implementation::VirtualMachineSettingsPage>(
-                    WindowHandle, Path);
+                    WindowHandle, Path, std::wstring(), nullptr, std::move(GuestQuery));
                 if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
                 {
                     ::DestroyWindow(WindowHandle);

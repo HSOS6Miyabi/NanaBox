@@ -1731,4 +1731,11 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
   <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
   <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
+  <data name="TabGuestTools.Header" xml:space="preserve"><value>Guest tools</value></data>
+  <data name="GuestToolsTitle.Text" xml:space="preserve"><value>Guest agent</value></data>
+  <data name="GuestToolsNote.Text" xml:space="preserve"><value>Install the NanaBox guest agent in the Windows or Linux VM, then start the VM to query it over Hyper-V sockets.</value></data>
+  <data name="GuestHeartbeat.Content" xml:space="preserve"><value>Check heartbeat</value></data>
+  <data name="GuestInformation.Content" xml:space="preserve"><value>System information</value></data>
+  <data name="GuestDiagnostics.Content" xml:space="preserve"><value>Network diagnostics</value></data>
+  <data name="GuestToolsUnavailable" xml:space="preserve"><value>Start the virtual machine to query the guest agent.</value></data>
 </root>

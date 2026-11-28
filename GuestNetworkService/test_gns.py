@@ -104,6 +104,50 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(reply['Data'], backend.diagnostics.return_value)
             backend.apply.assert_not_called()
 
+    def test_guest_information_and_heartbeat(self):
+        for resource in ('Heartbeat', 'GuestInformation'):
+            backend = Mock()
+            server, client = socket.socketpair()
+            with server, client:
+                client.settimeout(3)
+                worker = threading.Thread(target=gns.handle, args=(server, backend))
+                worker.start()
+                gns.send(client, {'Version': 1, 'ResourceType': resource, 'RequestType': 'Query', 'Settings': {}})
+                reply = gns.receive(client)
+                worker.join(2)
+                self.assertFalse(worker.is_alive())
+                self.assertTrue(reply['Success'])
+                data = reply['Data']
+                self.assertEqual(data['ProtocolVersion'], 1)
+                self.assertGreaterEqual(data['ServiceUptimeSeconds'], 0)
+                if resource == 'Heartbeat':
+                    self.assertIs(data['Alive'], True)
+                else:
+                    self.assertEqual(data['OperatingSystem'], platform.system())
+                    self.assertIn('Heartbeat', data['QueryCapabilities'])
+                    self.assertTrue(data['HostName'])
+                    self.assertTrue(data['UtcTime'])
+                self.assertFalse(backend.mock_calls)
+            with self.assertRaises(ValueError):
+                gns.normalize({'Version': 1, 'ResourceType': resource,
+                               'RequestType': 'Query', 'Settings': {'Unexpected': 1}})
+
+    def test_unencodable_or_oversized_response(self):
+        for value in ({'Large': 'x' * gns.LIMIT}, {'Invalid': object()}):
+            backend = Mock()
+            backend.diagnostics.return_value = value
+            server, client = socket.socketpair()
+            with server, client:
+                client.settimeout(3)
+                worker = threading.Thread(target=gns.handle, args=(server, backend))
+                worker.start()
+                gns.send(client, {'Version': 1, 'ResourceType': 'Diagnostics', 'RequestType': 'Query', 'Settings': {}})
+                reply = gns.receive(client)
+                worker.join(2)
+                self.assertFalse(worker.is_alive())
+                self.assertIs(reply['Success'], False)
+                self.assertIn('message limit', reply['Error'])
+
     def test_connectivity_request(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.bind(('127.0.0.1', 0))

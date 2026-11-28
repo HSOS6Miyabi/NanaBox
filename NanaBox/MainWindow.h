@@ -109,6 +109,14 @@ namespace NanaBox
         void ReloadVirtualMachineSettings(std::function<void(winrt::hstring)> Completion);
         void RequestNetworkDiagnostics(bool Retry, std::function<void(winrt::hstring)> Completion);
 
+        winrt::guid GuestRuntimeId() const
+        {
+            if (!this->m_VirtualMachineRunning || this->m_VirtualMachinePaused || this->m_PowerTransitionPending ||
+                this->m_VirtualMachineGuid.empty())
+                throw winrt::hresult_error(E_FAIL, L"The guest must be running.");
+            return winrt::guid(this->m_VirtualMachineGuid);
+        }
+
         void RdpClientOnDisconnected(
             _In_ LONG DisconnectReason);
 

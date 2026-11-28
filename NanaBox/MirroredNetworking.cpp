@@ -135,7 +135,8 @@ namespace
         }
     }
 
-    Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop)
+    Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop,
+        unsigned TimeoutSeconds = 90)
     {
         auto Body = Request.dump();
         if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
@@ -159,7 +160,7 @@ namespace
             CheckSocket(::getsockopt(Connection.Value, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&ConnectError), &Length));
             if (ConnectError) winrt::throw_hresult(HRESULT_FROM_WIN32(ConnectError));
         }
-        auto End = std::chrono::steady_clock::now() + std::chrono::seconds(90);
+        auto End = std::chrono::steady_clock::now() + std::chrono::seconds(TimeoutSeconds);
         auto Length = ::htonl(static_cast<u_long>(Body.size()));
         Transfer(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length), true, End, Stop);
         Transfer(Connection.Value, Body.data(), Body.size(), true, End, Stop);
@@ -1050,6 +1051,21 @@ std::string NanaBox::MirroredNetworking::Diagnostics() const
 void NanaBox::MirroredNetworking::RequestRefresh() noexcept
 {
     m_Impl->RequestRefresh();
+}
+
+std::string NanaBox::QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource)
+{
+    if (Resource != "Heartbeat" && Resource != "GuestInformation" && Resource != "Diagnostics")
+        throw winrt::hresult_invalid_argument();
+    RegisterGuestSocket();
+    WSADATA Data{};
+    auto Result = ::WSAStartup(MAKEWORD(2, 2), &Data);
+    if (Result) winrt::throw_hresult(HRESULT_FROM_WIN32(Result));
+    auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
+    std::atomic<bool> Stop{false};
+    auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", Resource},
+        {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, Resource == "Diagnostics" ? 40 : 15);
+    return Json{{"Success", true}, {"ResourceType", Resource}, {"Data", Reply}}.dump(2);
 }
 
 std::string NanaBox::CheckMirroredHostSupport()

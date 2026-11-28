@@ -13,7 +13,7 @@ $config = Join-Path $OutputDirectory 'ui-test.7b'
 $initial = @{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} | ConvertTo-Json -Depth 10
 [IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($true)))
 
-$process = Start-Process -FilePath $Executable -ArgumentList ('--edit-config "' + $config + '"') -PassThru
+$process = Start-Process -FilePath $Executable -ArgumentList ('--edit-config-test "' + $config + '"') -PassThru
 $root = [System.Windows.Automation.AutomationElement]::RootElement
 $pidCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, [int]$process.Id)
 $desc = [System.Windows.Automation.TreeScope]::Descendants
@@ -157,6 +157,15 @@ try {
     Set-Check 'SecureBootCheckBox' $true
     Set-Check 'TpmCheckBox' $true
     Set-Check 'VirtualizationExtensionsCheckBox' $true
+    Select-Tab 'TabGuestTools'
+    Invoke-Control 'GuestHeartbeatButton'
+    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+    Invoke-Control 'GuestInformationButton'
+    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
+    Invoke-Control 'GuestDiagnosticsButton'
+    $null = Wait-Result 'GuestToolsResult' {param($v) -not $v.Success -and $v.ResourceType -eq 'Diagnostics' -and $v.Error -like '*Injected guest query failure*'}
+    Invoke-Control 'GuestHeartbeatButton'
+    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
     Select-Tab 'TabSerial'
     Invoke-Control 'GenerateCom1'
     $pipe1 = Get-Text 'ComPort1TextBox'

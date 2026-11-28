@@ -1,5 +1,8 @@
 """NanaBox guest network configuration protocol (Python 3.12+ on Windows)."""
 import argparse
+import datetime
+import os
+import time
 import ipaddress
 import json
 import pathlib
@@ -13,6 +16,8 @@ import sys
 PORT = 27453
 SERVICE = f'{PORT:08x}-facb-11e6-bd58-64006a7986d3'
 LIMIT = 256 * 1024
+STARTED = time.monotonic()
+QUERY_CAPABILITIES = ('Heartbeat', 'GuestInformation', 'Diagnostics', 'Connectivity')
 
 
 def read_exact(sock, length):
@@ -54,8 +59,11 @@ def number(value, low, high):
 def normalize(request):
     if not isinstance(request, dict) or type(request.get('Version')) is not int or request['Version'] != 1:
         raise ValueError('Unsupported protocol version')
-    if request.get('ResourceType') == 'Diagnostics' and request.get('RequestType') == 'Query' and request.get('Settings') == {}:
-        return '', 'Diagnostics', 'Query', {}
+    resource = request.get('ResourceType')
+    if resource in ('Heartbeat', 'GuestInformation', 'Diagnostics') and request.get('RequestType') == 'Query':
+        if request.get('Settings') != {}:
+            raise ValueError('Query settings must be an empty object')
+        return '', resource, 'Query', {}
     if request.get('ResourceType') == 'Connectivity' and request.get('RequestType') == 'Query':
         s = request['Settings']
         if not isinstance(s, dict):
@@ -676,12 +684,32 @@ class WindowsBackend:
                      text=True, capture_output=True, check=True, timeout=30)
 
 
+def guest_information():
+    return {
+        'HostName': socket.gethostname(),
+        'OperatingSystem': platform.system(),
+        'Release': platform.release(),
+        'Version': platform.version(),
+        'Architecture': platform.machine(),
+        'LogicalProcessorCount': os.cpu_count(),
+        'UtcTime': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'ServiceUptimeSeconds': max(0, int(time.monotonic() - STARTED)),
+        'ProtocolVersion': 1,
+        'QueryCapabilities': list(QUERY_CAPABILITIES),
+    }
+
+
 def handle(sock, backend):
     try:
         request = receive(sock)
         target, resource, action, settings = normalize(request)
         response = {'Version': 1, 'Success': True}
-        if resource == 'Diagnostics':
+        if resource == 'Heartbeat':
+            response['Data'] = {'Alive': True, 'ProtocolVersion': 1,
+                                'ServiceUptimeSeconds': max(0, int(time.monotonic() - STARTED))}
+        elif resource == 'GuestInformation':
+            response['Data'] = guest_information()
+        elif resource == 'Diagnostics':
             response['Data'] = backend.diagnostics()
         elif resource == 'Connectivity':
             with socket.create_connection((settings['Address'], settings['Port']), timeout=5) as connection:
@@ -695,7 +723,11 @@ def handle(sock, backend):
         if isinstance(detail, bytes):
             detail = detail.decode('utf-8', errors='replace')
         response = {'Version': 1, 'Success': False, 'Error': detail[:4000]}
-    send(sock, response)
+    try:
+        send(sock, response)
+    except (TypeError, ValueError, OverflowError):
+        # Encoding and size validation precede transmission of the frame.
+        send(sock, {'Version': 1, 'Success': False, 'Error': 'Guest response cannot be encoded or exceeds the message limit'})
 
 
 def serve():
@@ -725,7 +757,7 @@ def serve():
 def host_send(vm_id, request):
     normalize(request)
     with socket.socket(socket.AF_HYPERV, socket.SOCK_STREAM, socket.HV_PROTOCOL_RAW) as conn:
-        conn.settimeout(45)
+        conn.settimeout(90)
         conn.connect((vm_id, SERVICE))
         send(conn, request)
         return receive(conn)
@@ -738,12 +770,17 @@ def main():
     host = commands.add_parser('send')
     host.add_argument('vm_id', help='HCS runtime VM ID')
     host.add_argument('request', type=pathlib.Path, help='JSON request')
+    query = commands.add_parser('query', help='Query guest agent information')
+    query.add_argument('vm_id', help='HCS runtime VM ID')
+    query.add_argument('resource', choices=QUERY_CAPABILITIES[:3])
     options = cli.parse_args()
     if options.command == 'serve':
         serve()
     else:
         import uuid
-        result = host_send(str(uuid.UUID(options.vm_id)), json.loads(options.request.read_text(encoding='utf-8-sig')))
+        request = ({'Version': 1, 'ResourceType': options.resource, 'RequestType': 'Query', 'Settings': {}}
+                   if options.command == 'query' else json.loads(options.request.read_text(encoding='utf-8-sig')))
+        result = host_send(str(uuid.UUID(options.vm_id)), request)
         print(json.dumps(result, ensure_ascii=False))
         return 0 if result.get('Success') is True else 1
     return 0

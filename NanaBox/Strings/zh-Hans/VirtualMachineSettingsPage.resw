@@ -1731,4 +1731,11 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>存储 IOPS 上限（0 表示默认值）</value></data>
   <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>存储带宽上限（字节/秒，0 表示默认值）</value></data>
   <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>存储带宽上限（字节/秒，0 表示默认值）</value></data>
+  <data name="TabGuestTools.Header" xml:space="preserve"><value>客户机工具</value></data>
+  <data name="GuestToolsTitle.Text" xml:space="preserve"><value>客户机服务</value></data>
+  <data name="GuestToolsNote.Text" xml:space="preserve"><value>在 Windows 或 Linux 虚拟机中安装 NanaBox 客户机服务，然后启动虚拟机，通过 Hyper-V Socket 查询客户机状态。</value></data>
+  <data name="GuestHeartbeat.Content" xml:space="preserve"><value>检查心跳</value></data>
+  <data name="GuestInformation.Content" xml:space="preserve"><value>系统信息</value></data>
+  <data name="GuestDiagnostics.Content" xml:space="preserve"><value>网络诊断</value></data>
+  <data name="GuestToolsUnavailable" xml:space="preserve"><value>请先启动虚拟机，再查询客户机服务。</value></data>
 </root>

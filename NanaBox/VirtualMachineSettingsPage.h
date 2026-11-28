@@ -7,6 +7,7 @@
 #include "HostCompute.h"
 
 #include <string>
+#include <functional>
 #include <vector>
 
 namespace NanaBox
@@ -40,7 +41,8 @@ namespace winrt::NanaBox::implementation
             _In_ HWND WindowHandle = nullptr,
             std::wstring const& ConfigurationFilePath = std::wstring(),
             std::wstring const& Name = std::wstring(),
-            _In_opt_ NanaBox::MainWindow* MainWindow = nullptr);
+            _In_opt_ NanaBox::MainWindow* MainWindow = nullptr,
+            std::function<std::string(std::string const&)> GuestQuery = {});
 
         ~VirtualMachineSettingsPage();
 
@@ -71,6 +73,10 @@ namespace winrt::NanaBox::implementation
         void RefreshDeviceButtonClick(
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
+
+        void GuestToolsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
+        winrt::fire_and_forget RunGuestToolsQuery(std::string Resource,
+            std::function<std::string(std::string const&)> Query);
 
         void NetworkDiagnosticsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         winrt::fire_and_forget RunHostPreflight();
@@ -150,6 +156,8 @@ namespace winrt::NanaBox::implementation
             winrt::TextBox Name = nullptr;
         };
 
+        bool m_GuestToolsRunning = false;
+        std::function<std::string(std::string const&)> m_GuestQuery;
         bool m_DiskOperationRunning = false;
         bool m_HostManagementRunning = false;
         bool m_NetworkManagementRunning = false;
