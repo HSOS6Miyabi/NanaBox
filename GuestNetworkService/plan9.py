@@ -12,6 +12,7 @@ import stat
 import struct
 import sys
 import tempfile
+import time
 
 PORT = 27456
 LIMIT = 256 * 1024
@@ -179,6 +180,7 @@ class Manager:
         self.unmount = unmount
         self.prepare = prepare
         self.statefile = self.root / 'state.json'
+        self.retry_at = {}
 
     @contextlib.contextmanager
     def locked(self):
@@ -241,7 +243,10 @@ class Manager:
 
     def attach(self, state, item, target, manual=False):
         key = item['Name']
-        target = str(pathlib.Path(target))
+        path = pathlib.Path(target)
+        if not path.is_absolute() or '..' in path.parts:
+            raise ValueError('Choose an absolute mount directory')
+        target = '/' + str(path).lstrip('/')
         if key in state['Mounted']:
             record = state['Mounted'][key]
             if record['Share'] != item or record['Target'] != target:
@@ -278,16 +283,20 @@ class Manager:
         with self.locked():
             state = self.load()
             previous = state['Shares']
-            state['Shares'] = new_shares
-            state['Suppressed'] = [key for key in state['Suppressed']
-                                   if key in new_shares and previous.get(key) == new_shares[key]]
-            self.save(state)
+            if previous != new_shares:
+                state['Shares'] = new_shares
+                state['Suppressed'] = [key for key in state['Suppressed']
+                                       if key in new_shares and previous.get(key) == new_shares[key]]
+                self.retry_at = {key: deadline for key, deadline in self.retry_at.items()
+                                 if key in new_shares and previous.get(key) == new_shares[key]}
+                self.save(state)
             return self.status(state)
 
-    def reconcile(self):
+    def reconcile(self, max_mounts=None):
         with self.locked():
             state = self.load()
             errors = {}
+            attempted = 0
             for key, record in list(state['Mounted'].items()):
                 try:
                     item = state['Shares'].get(key)
@@ -307,13 +316,26 @@ class Manager:
             for key, item in state['Shares'].items():
                 if not item['AutoMount'] or key in state['Suppressed'] or key in state['Mounted'] or key in errors:
                     continue
+                if max_mounts is not None:
+                    if time.monotonic() < self.retry_at.get(key, 0):
+                        if key in state['Errors']:
+                            errors[key] = state['Errors'][key]
+                        continue
+                    if attempted >= max_mounts:
+                        if key in state['Errors']:
+                            errors[key] = state['Errors'][key]
+                        continue
+                attempted += 1
                 try:
                     self.media.mkdir(mode=0o755, exist_ok=True)
                     self.attach(state, item, self.media / key)
+                    self.retry_at.pop(key, None)
                 except Exception as exc:
                     errors[key] = str(exc)[:500]
-            state['Errors'] = errors
-            self.save(state)
+                    self.retry_at[key] = time.monotonic() + 15
+            if state['Errors'] != errors:
+                state['Errors'] = errors
+                self.save(state)
 
     def status(self, state=None):
         if state is None:
@@ -360,6 +382,7 @@ class Manager:
             self.attach(state, item, target, manual=True)
             state['Suppressed'] = [value for value in state['Suppressed'] if value != key]
             state['Errors'].pop(key, None)
+            self.retry_at.pop(key, None)
             self.save(state)
             return self.status(state)
 
@@ -466,7 +489,7 @@ def serve(manager):
                     except (OSError, EOFError, ValueError) as exc:
                         print(exc, file=sys.stderr)
             try:
-                manager.reconcile()
+                manager.reconcile(max_mounts=1)
             except Exception as exc:
                 print(f'Plan 9 reconciliation: {exc}', file=sys.stderr)
 

@@ -695,7 +695,9 @@ try {
     Set-Check 'ContentResizingCheckBox' $false
     Set-Check 'ConnectionBarCheckBox' $false
     Set-Text 'PoliciesTextBox' 'test-policy'
+    Select-Tab 'TabShares'
     Invoke-Control 'AddPlan9ShareButton'
+    Invoke-ModalAction $process.Id 'Plan9Browse' { Invoke-NativeDialogButton $process.Id 2 }
     Set-Text 'Plan9SharePortLabel' '564'
     Set-Text 'Plan9SharePathLabel' 'C:\Temp'
     Set-Text 'Plan9ShareNameLabel' 'test-share'
@@ -767,7 +769,7 @@ try {
     Invoke-Control 'NetworkRemove'
     Select-Tab 'TabStorage'
     Invoke-Control 'ScsiRemove'
-    Select-Tab 'TabAdvanced'
+    Select-Tab 'TabShares'
     Invoke-Control 'Plan9Remove'
     Invoke-Control 'SmbRemove'
     $saved = Save-Config

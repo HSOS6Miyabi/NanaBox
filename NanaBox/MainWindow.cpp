@@ -1224,7 +1224,8 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
         NanaBox::ComputeSystemUpdateGpu(
             this->m_VirtualMachine,
             Configuration.Gpu);
-        this->m_Configuration.Gpu = Configuration.Gpu;
+        this->m_Configuration.Gpu.AssignmentMode = Configuration.Gpu.AssignmentMode;
+        this->m_Configuration.Gpu.SelectedDevices = Configuration.Gpu.SelectedDevices;
     }
     catch (...)
     {

@@ -2923,6 +2923,38 @@ namespace winrt::NanaBox::implementation
             L"Plan9SharePathHelp",
             winrt::to_hstring(Configuration.Path),
             false);
+        winrt::Windows::UI::Xaml::Controls::Button Browse;
+        Browse.Content(winrt::box_value(::GetSettingsString(L"Plan9BrowseFolder")));
+        winrt::AutomationProperties::SetAutomationId(Browse, L"Plan9Browse");
+        Browse.Click([Weak = this->get_weak(), Target = winrt::make_weak(Row.Path)](
+            winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+        {
+            auto Instance = Weak.get();
+            auto Path = Target.get();
+            if (!Instance || !Path) return;
+            try
+            {
+                winrt::com_ptr<IFileOpenDialog> Dialog;
+                winrt::check_hresult(::CoCreateInstance(CLSID_FileOpenDialog, nullptr,
+                    CLSCTX_INPROC_SERVER, IID_PPV_ARGS(Dialog.put())));
+                DWORD Options = 0;
+                winrt::check_hresult(Dialog->GetOptions(&Options));
+                winrt::check_hresult(Dialog->SetOptions(Options | FOS_PICKFOLDERS |
+                    FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR | FOS_DONTADDTORECENT));
+                winrt::check_hresult(Dialog->SetTitle(::GetSettingsString(L"Plan9BrowseFolder").c_str()));
+                auto Result = Dialog->Show(Instance->m_WindowHandle);
+                if (Result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+                winrt::check_hresult(Result);
+                winrt::com_ptr<IShellItem> Item;
+                winrt::check_hresult(Dialog->GetResult(Item.put()));
+                LPWSTR Selected = nullptr;
+                winrt::check_hresult(Item->GetDisplayName(SIGDN_FILESYSPATH, &Selected));
+                auto Free = Mile::ScopeExitTaskHandler([&]() { ::CoTaskMemFree(Selected); });
+                Path.Text(winrt::hstring(Selected));
+            }
+            catch (...) { ::ShowSettingsError(Instance->m_WindowHandle); }
+        });
+        Row.Container.Children().Append(Browse);
         Row.Name = ::AddSettingTextBox(
             Row.Container,
             L"Plan9ShareNameLabel",

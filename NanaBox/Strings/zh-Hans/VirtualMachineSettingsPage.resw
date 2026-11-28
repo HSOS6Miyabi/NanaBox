@@ -1449,4 +1449,6 @@
   <data name="GuestPlan9Path.Header" xml:space="preserve"><value>客户机挂载目录（可选）</value></data>
   <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>挂载共享</value></data>
   <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>卸载共享</value></data>
+  <data name="TabShares.Header" xml:space="preserve"><value>共享目录</value></data>
+  <data name="Plan9BrowseFolder" xml:space="preserve"><value>选择宿主机目录</value></data>
 </root>

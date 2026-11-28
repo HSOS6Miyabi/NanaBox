@@ -94,6 +94,25 @@ class MountTests(unittest.TestCase):
         self.manager.reconcile()
         self.assertEqual(self.rows, {})
 
+    def test_bounded_mount_retry(self):
+        self.manager.update({'Projects': descriptor(), 'Second': descriptor('Second')})
+        original = self.manager.mount
+
+        def fail_first(item, target):
+            if item['Name'] == 'Projects':
+                raise OSError('server unavailable')
+            original(item, target)
+
+        self.manager.mount = fail_first
+        self.manager.reconcile(max_mounts=1)
+        self.assertIn('server unavailable', self.manager.status()['Shares'][0]['Error'])
+        self.manager.reconcile(max_mounts=1)
+        self.assertIn(str(self.root / 'media' / 'Second'), self.rows)
+        self.manager.mount = original
+        self.manager.retry_at.clear()
+        self.manager.reconcile(max_mounts=1)
+        self.assertIn(str(self.root / 'media' / 'Projects'), self.rows)
+
     def test_prepare_remove(self):
         self.manager.update({'Projects': descriptor()})
         self.manager.reconcile()

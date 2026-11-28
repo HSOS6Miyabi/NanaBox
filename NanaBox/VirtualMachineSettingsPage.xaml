@@ -1566,6 +1566,12 @@
                   TextWrapping="NoWrap" AutomationProperties.AutomationId="PolicyExamplesTextBox" />
               </ScrollViewer>
             </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+      <PivotItem x:Uid="/VirtualMachineSettingsPage/TabShares" Header="Shared folders" AutomationProperties.AutomationId="TabShares">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="16,4,16,16" Spacing="12">
             <StackPanel x:Name="Plan9ShareSection" Spacing="4">
               <TextBlock
                 x:Uid="/VirtualMachineSettingsPage/Plan9ShareTitle"
