@@ -7,17 +7,17 @@
         static Ip Parse(std::string const& text)
         {
             Ip ip;
-            if (text.empty() || text.find('\0') != std::string::npos) Fail("Invalid IP address");
+            if (text.empty() || text.find('\0') != std::string::npos) GuestFail("Invalid IP address");
             if (inet_pton(AF_INET, text.c_str(), ip.Bytes.data()) == 1) ip.Family = 4;
             else if (inet_pton(AF_INET6, text.c_str(), ip.Bytes.data()) == 1) ip.Family = 6;
-            else Fail("Invalid IP address");
+            else GuestFail("Invalid IP address");
             return ip;
         }
         std::string Text() const
         {
             char out[INET6_ADDRSTRLEN]{};
             if (!inet_ntop(Family == 4 ? AF_INET : AF_INET6, Bytes.data(), out, sizeof(out)))
-                Fail("Cannot format IP address");
+                GuestFail("Cannot format IP address");
             return out;
         }
         unsigned Bits() const { return Family == 4 ? 32u : 128u; }
@@ -47,9 +47,9 @@
         {
             auto part = text.substr(slash + 1);
             if (part.empty() || !std::all_of(part.begin(), part.end(), [](char c){ return c >= '0' && c <= '9'; }) ||
-                part.size() > 3) Fail("Invalid network prefix");
+                part.size() > 3) GuestFail("Invalid network prefix");
             prefix = static_cast<unsigned>(std::stoul(part));
-            if (prefix > ip.Bits()) Fail("Invalid network prefix");
+            if (prefix > ip.Bits()) GuestFail("Invalid network prefix");
         }
         for (unsigned i = prefix; i < ip.Bits(); ++i)
             ip.Bytes[i/8] &= static_cast<unsigned char>(~(0x80u >> (i % 8)));
@@ -65,15 +65,15 @@
         {
             for (unsigned i = 0; i < 2; ++i)
             {
-                if (pos >= text.size()) Fail("Invalid MAC address");
+                if (pos >= text.size()) GuestFail("Invalid MAC address");
                 auto c = text[pos++];
                 if (c >= 'A' && c <= 'F') c = static_cast<char>(c - 'A' + 'a');
-                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) Fail("Invalid MAC address");
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) GuestFail("Invalid MAC address");
                 out += c;
             }
             if (pair != 5 && pos < text.size() && (text[pos] == '-' || text[pos] == ':')) ++pos;
         }
-        if (pos != text.size()) Fail("Invalid MAC address");
+        if (pos != text.size()) GuestFail("Invalid MAC address");
         return out;
     }
 
@@ -81,7 +81,7 @@
     {
         if (v.is_string()) return v.get<std::string>();
         if (v.is_number_integer()) return v.dump();
-        Fail("Unexpected numeric network property");
+        GuestFail("Unexpected numeric network property");
     }
 
     bool Boolean(Json const& value, char const* key, bool fallback = false)
@@ -120,11 +120,11 @@
     Json NormalizeResource(std::string const& resource, std::string const& action, Json const& s)
     {
         if (!s.is_object() || (action != "Add" && action != "Remove" && action != "Update"))
-            Fail("Invalid network operation");
+            GuestFail("Invalid network operation");
         if (resource == "IPAddress")
         {
             auto ip = Ip::Parse(s.at("Address").get<std::string>());
-            if (ip.Zero() || ip.Loopback() || ip.Multicast()) Fail("Invalid interface address");
+            if (ip.Zero() || ip.Loopback() || ip.Multicast()) GuestFail("Invalid interface address");
             Json out = {{"Address", ip.Text()}, {"Family", ip.Family},
                 {"Prefix", Integer(s.at("OnLinkPrefixLength"), 0, ip.Bits())}};
             if (Boolean(s, "Mirrored")) out["Mirrored"] = true;
@@ -136,7 +136,7 @@
             auto ip = Ip::Parse(destination.substr(0, destination.find('/')));
             auto hopText = s.value("NextHop", std::string());
             auto hop = Ip::Parse(hopText.empty() ? (ip.Family == 4 ? "0.0.0.0" : "::") : hopText);
-            if (hop.Family != ip.Family || hop.Multicast() || hop.Loopback()) Fail("Invalid next hop");
+            if (hop.Family != ip.Family || hop.Multicast() || hop.Loopback()) GuestFail("Invalid next hop");
             return {{"Family", ip.Family}, {"Destination", destination}, {"NextHop", hop.Text()},
                 {"Metric", Integer(s.contains("Metric") ? s.at("Metric") : Json(0), 0, UINT32_MAX)}};
         }
@@ -152,7 +152,7 @@
         {
             auto start = Integer(s.at("Start"), 1024, 65535);
             auto end = Integer(s.at("End"), start, 65535);
-            if (end - start + 1 < 255) Fail("Dynamic port range must contain at least 255 ports");
+            if (end - start + 1 < 255) GuestFail("Dynamic port range must contain at least 255 ports");
             return {{"Start", start}, {"End", end}};
         }
         if (resource == "DNS")
@@ -165,7 +165,7 @@
                 servers = Words(text);
             }
             if (!servers.is_array() || servers.size() > 16 || (servers.empty() && action != "Remove"))
-                Fail("Invalid DNS server list");
+                GuestFail("Invalid DNS server list");
             Json out = {{"Servers", Json::array()}};
             for (auto const& value : servers) out["Servers"].push_back(Ip::Parse(value.get<std::string>()).Text());
             if (s.contains("Suffix"))
@@ -173,7 +173,7 @@
                 auto suffix = s.at("Suffix").get<std::string>();
                 while (!suffix.empty() && suffix.back() == '.') suffix.pop_back();
                 for (auto& c : suffix) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c-'A'+'a');
-                if (suffix.size() > 253) Fail("Invalid DNS suffix");
+                if (suffix.size() > 253) GuestFail("Invalid DNS suffix");
                 if (!suffix.empty())
                 {
                     for (std::size_t start = 0;;)
@@ -183,7 +183,7 @@
                         if (label.empty() || label.size() > 63 || label.front() == '-' || label.back() == '-' ||
                             !std::all_of(label.begin(), label.end(), [](char c)
                             { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'; }))
-                            Fail("Invalid DNS suffix");
+                            GuestFail("Invalid DNS suffix");
                         if (end == std::string::npos) break;
                         start = end + 1;
                     }
@@ -195,37 +195,37 @@
         if (resource == "Reconcile" && action == "Update")
         {
             auto interface = NormalizeResource("Interface","Update",s.at("Interface"));
-            if (!Boolean(interface,"Mirrored")) Fail("Reconcile requires a dedicated mirrored interface");
+            if (!Boolean(interface,"Mirrored")) GuestFail("Reconcile requires a dedicated mirrored interface");
             auto const& addresses = s.at("Addresses");
             auto const& routes = s.at("Routes");
             if (!addresses.is_array() || !routes.is_array() || addresses.size() > 256 || routes.size() > 4096)
-                Fail("Invalid network snapshot size");
+                GuestFail("Invalid network snapshot size");
             Json a = Json::array(), r = Json::array();
             std::set<std::string> ak, rk;
             for (auto const& raw : addresses)
             {
                 auto v = NormalizeResource("IPAddress","Update",raw);
-                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) Fail("IPv6 requires MTU 1280");
-                if (!ak.insert(AddressKey(v)).second) Fail("Duplicate address");
+                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
+                if (!ak.insert(AddressKey(v)).second) GuestFail("Duplicate address");
                 a.push_back(v);
             }
             for (auto const& raw : routes)
             {
                 auto v = NormalizeResource("Route","Update",raw);
-                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) Fail("IPv6 requires MTU 1280");
-                if (!rk.insert(RouteKey(v)).second) Fail("Duplicate route");
+                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
+                if (!rk.insert(RouteKey(v)).second) GuestFail("Duplicate route");
                 r.push_back(v);
             }
             auto const& dnsRaw = s.at("DNS");
             auto dns = NormalizeResource("DNS",dnsRaw.value("ServerList",Json::array()).empty() ? "Remove" : "Update",dnsRaw);
             if (!Boolean(interface,"Connected") && (!a.empty() || !r.empty() || !dns.at("Servers").empty()))
-                Fail("Disconnected adapter must have an empty network configuration");
+                GuestFail("Disconnected adapter must have an empty network configuration");
             std::sort(r.begin(),r.end(),[](auto const& l,auto const& q){return RouteOrder(l)<RouteOrder(q);});
             return {{"Interface",interface},{"Addresses",a},{"Routes",r},{"DNS",dns},
                 {"PortRange",NormalizeResource("PortRange","Update",s.at("PortRange"))},
                 {"DiscoverPorts",Boolean(s,"DiscoverPorts")},{"DnsTunnel",Boolean(s,"DnsTunnel")}};
         }
-        Fail("Unsupported network resource or operation");
+        GuestFail("Unsupported network resource or operation");
     }
 
     using Arguments = std::vector<std::string>;
@@ -235,14 +235,14 @@
     std::string RunNetworkCommand(Arguments const& args)
     {
         if (args.empty() || (args[0] != "ip" && args[0] != "sysctl" && args[0] != "resolvectl"))
-            Fail("Unsupported network command");
+            GuestFail("Unsupported network command");
         std::vector<char*> argv;
         for (auto const& arg : args) argv.push_back(const_cast<char*>(arg.c_str()));
         argv.push_back(nullptr);
         int pipefd[2]{};
-        if (pipe2(pipefd,O_CLOEXEC)) Fail("Cannot create command pipe");
+        if (pipe2(pipefd,O_CLOEXEC)) GuestFail("Cannot create command pipe");
         auto child = fork();
-        if (child < 0) { close(pipefd[0]);close(pipefd[1]);Fail("Cannot start network command"); }
+        if (child < 0) { close(pipefd[0]);close(pipefd[1]);GuestFail("Cannot start network command"); }
         if (child == 0)
         {
             close(pipefd[0]);
@@ -274,13 +274,13 @@
             pollfd fd{process.Pipe,POLLIN,0};
             auto n = poll(&fd,1,100);
             if (n<0 && errno==EINTR) continue;
-            if (n<0) Fail("Network command output poll failed");
+            if (n<0) GuestFail("Network command output poll failed");
             if (!n) continue;
             auto count = read(process.Pipe,buffer.data(),buffer.size());
             if (count<0 && errno==EINTR) continue;
-            if (count<0) Fail("Cannot read network command output");
+            if (count<0) GuestFail("Cannot read network command output");
             if (!count) break;
-            if (output.size()+static_cast<std::size_t>(count)>4*1024*1024) Fail("Network command output too large");
+            if (output.size()+static_cast<std::size_t>(count)>4*1024*1024) GuestFail("Network command output too large");
             output.append(buffer.data(),static_cast<std::size_t>(count));
         }
         while (!Stop && Mono::now()<end)
@@ -293,16 +293,16 @@
                 if (!WIFEXITED(status) || WEXITSTATUS(status)) throw std::runtime_error("Network command failed: "+output.substr(0,2000));
                 return output;
             }
-            if(n<0 && errno!=EINTR) Fail("Cannot wait for network command");
+            if(n<0 && errno!=EINTR) GuestFail("Cannot wait for network command");
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        Fail("Network command deadline expired");
+        GuestFail("Network command deadline expired");
     }
 
     std::string ReadText(fs::path const& path)
     {
         std::ifstream file(path);
-        if(!file) Fail("Cannot read guest network state");
+        if(!file) GuestFail("Cannot read guest network state");
         return std::string(std::istreambuf_iterator<char>(file),{});
     }
 
@@ -373,7 +373,7 @@
         static std::string Zero(int family){return family==4?"0.0.0.0":"::";}
         static std::uint64_t Table(std::uint64_t index)
         {
-            if(!index || index>0x7fffffff)Fail("Invalid policy routing interface index");
+            if(!index || index>0x7fffffff)GuestFail("Invalid policy routing interface index");
             return TableBase+index;
         }
         static bool Protocol(Json const& v)
@@ -383,7 +383,7 @@
         Json Link(std::string const& dev)
         {
             auto rows=Read({"ip","-j","link","show","dev",dev});
-            if(rows.size()!=1)Fail("Mirrored link not found");
+            if(rows.size()!=1)GuestFail("Mirrored link not found");
             return rows.at(0);
         }
         static bool Up(Json const& link)
@@ -419,7 +419,7 @@
                     if(table && TableId(row)!=std::to_string(table))continue;
                     auto type=row.contains("type")?Scalar(row.at("type")):"unicast";
                     if(table && (!Protocol(row)||(type!="1"&&type!="unicast")))
-                        Fail("Policy routing table contains an unmanaged route");
+                        GuestFail("Policy routing table contains an unmanaged route");
                     if(type!="1"&&type!="unicast")continue;
                     auto dest=row.value("dst",std::string("default"));
                     if(dest=="default")dest=Zero(family)+"/0";
@@ -428,7 +428,7 @@
                     for(auto const& hop:hops)
                     {
                         auto owner=hop.value("dev",row.value("dev",dev));
-                        if(owner!=dev){if(table)Fail("Policy route belongs to another adapter");continue;}
+                        if(owner!=dev){if(table)GuestFail("Policy route belongs to another adapter");continue;}
                         Json v={{"Family",family},{"Destination",NetworkPrefix(dest)},
                             {"NextHop",Ip::Parse(hop.value("gateway",Zero(family))).Text()},
                             {"Metric",row.value("metric",std::uint64_t(0))}};
@@ -502,7 +502,7 @@
                 }
                 auto rows=Rules(family);
                 for(auto const& row:rows)
-                    if(TableId(row)==std::to_string(table)&&!Protocol(row))Fail("Policy routing table has an unmanaged rule");
+                    if(TableId(row)==std::to_string(table)&&!Protocol(row))GuestFail("Policy routing table has an unmanaged rule");
                 auto current=Routes(dev,false,table,family);
                 for(auto const& row:rows)if(TableId(row)==std::to_string(table))
                 {
@@ -514,11 +514,11 @@
                 for(auto const& rule:wanted)if(!actual.count(rule))ChangeRule(family,"add",table,rule);
                 actual.clear();
                 for(auto const& row:Rules(family))if(TableId(row)==std::to_string(table))
-                    if(!Protocol(row)||!actual.insert(RuleKey(row)).second)Fail("Guest policy rules did not converge");
-                if(actual!=wanted)Fail("Guest policy rules did not converge");
+                    if(!Protocol(row)||!actual.insert(RuleKey(row)).second)GuestFail("Guest policy rules did not converge");
+                if(actual!=wanted)GuestFail("Guest policy rules did not converge");
                 auto after=Routes(dev,false,table,family);
-                if(after.size()!=desired.size())Fail("Guest policy routes did not converge");
-                for(auto const& route:desired)if(!after.count(route.first))Fail("Guest policy routes did not converge");
+                if(after.size()!=desired.size())GuestFail("Guest policy routes did not converge");
+                for(auto const& route:desired)if(!after.count(route.first))GuestFail("Guest policy routes did not converge");
             }
         }
         void ReapRules()
@@ -538,7 +538,7 @@
         {
             auto text=Run({"resolvectl",command,dev});
             auto colon=text.find(':');
-            if(colon==std::string::npos)Fail("Cannot read guest resolver settings");
+            if(colon==std::string::npos)GuestFail("Cannot read guest resolver settings");
             auto values=Words(text.substr(colon+1));
             if(command=="dns")for(auto& v:values)v=Ip::Parse(v.substr(0,v.find('%'))).Text();
             return values;
@@ -566,7 +566,7 @@
                 }catch(...){}
             }
             if(found.size()!=1||found[0].empty()||found[0].front()=='-'||
-                found[0].find_first_of("/\r\n")!=std::string::npos)Fail("Expected exactly one matching hardware adapter");
+                found[0].find_first_of("/\r\n")!=std::string::npos)GuestFail("Expected exactly one matching hardware adapter");
             return found[0];
         }
         Json Diagnostics()
@@ -614,7 +614,7 @@
                 if(action=="Remove")Run({"resolvectl","revert",dev});
                 else SetResolver("dns",dev,s.at("Servers").get<std::vector<std::string>>());
             }
-            else Fail("Unsupported network operation");
+            else GuestFail("Unsupported network operation");
         }
         Json Reconcile(std::string const& target,Json const& s)
         {
@@ -661,13 +661,13 @@
                 Apply(target,"PortRange","Update",ports);
             if(!Boolean(interface,"Connected")&&Up(Link(dev)))Run({"ip","link","set","dev",dev,"down"});
             actual=Addresses(dev);current=Routes(dev);link=Link(dev);
-            if(actual.size()!=addresses.size())Fail("Guest addresses did not converge");
-            for(auto const& a:addresses)if(!actual.count(a.first))Fail("Guest addresses did not converge");
-            for(auto const& r:routes)if(!current.count(r.first))Fail("Guest routes did not converge");
-            for(auto const& r:Routes(dev,true))if(!routes.count(r.first))Fail("Stale managed route remains");
-            if(Up(link)!=Boolean(interface,"Connected")||link.at("mtu")!=interface.at("Mtu"))Fail("Guest link state did not converge");
+            if(actual.size()!=addresses.size())GuestFail("Guest addresses did not converge");
+            for(auto const& a:addresses)if(!actual.count(a.first))GuestFail("Guest addresses did not converge");
+            for(auto const& r:routes)if(!current.count(r.first))GuestFail("Guest routes did not converge");
+            for(auto const& r:Routes(dev,true))if(!routes.count(r.first))GuestFail("Stale managed route remains");
+            if(Up(link)!=Boolean(interface,"Connected")||link.at("mtu")!=interface.at("Mtu"))GuestFail("Guest link state did not converge");
             if(Resolver("dns",dev)!=dns || (suffix&&Resolver("domain",dev)!=domains) ||
-                Words(Run({"sysctl","-n","net.ipv4.ip_local_port_range"}))!=range)Fail("Guest resolver or port range did not converge");
+                Words(Run({"sysctl","-n","net.ipv4.ip_local_port_range"}))!=range)GuestFail("Guest resolver or port range did not converge");
             return {{"PolicyRoutingTable",table},{"ListeningPorts",Boolean(s,"DiscoverPorts")&&Boolean(interface,"Connected")?
                 ListeningPorts(s.at("Addresses")):Json::array()}};
         }
@@ -693,23 +693,23 @@
         auto encoded=Encode(commandBytes);
         wchar_t system[MAX_PATH]{};
         auto length=GetSystemDirectoryW(system,MAX_PATH);
-        if(!length||length>=MAX_PATH)Fail("Cannot find Windows system directory");
+        if(!length||length>=MAX_PATH)GuestFail("Cannot find Windows system directory");
         auto app=std::wstring(system)+L"\\WindowsPowerShell\\v1.0\\powershell.exe";
         auto command=L"\""+app+L"\" -NoProfile -NonInteractive -EncodedCommand "+std::wstring(encoded.begin(),encoded.end());
-        if(command.size()>=32767)Fail("Windows network command is too large");
+        if(command.size()>=32767)GuestFail("Windows network command is too large");
         SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};
         ProcessHandle inRead,inWrite,outRead,outWrite,errRead,errWrite;
         if(!CreatePipe(&inRead.Value,&inWrite.Value,&security,0)||
            !CreatePipe(&outRead.Value,&outWrite.Value,&security,0)||
-           !CreatePipe(&errRead.Value,&errWrite.Value,&security,0))Fail("Cannot create Windows command pipes");
+           !CreatePipe(&errRead.Value,&errWrite.Value,&security,0))GuestFail("Cannot create Windows command pipes");
         if(!SetHandleInformation(inWrite.Value,HANDLE_FLAG_INHERIT,0)||
            !SetHandleInformation(outRead.Value,HANDLE_FLAG_INHERIT,0)||
-           !SetHandleInformation(errRead.Value,HANDLE_FLAG_INHERIT,0))Fail("Cannot protect Windows command pipes");
+           !SetHandleInformation(errRead.Value,HANDLE_FLAG_INHERIT,0))GuestFail("Cannot protect Windows command pipes");
         STARTUPINFOW startup{};startup.cb=sizeof(startup);startup.dwFlags=STARTF_USESTDHANDLES;
         startup.hStdInput=inRead.Value;startup.hStdOutput=outWrite.Value;startup.hStdError=errWrite.Value;
         PROCESS_INFORMATION pi{};
         if(!CreateProcessW(app.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,nullptr,&startup,&pi))
-            Fail("Cannot start Windows network management command");
+            GuestFail("Cannot start Windows network management command");
         ProcessHandle child;child.Value=pi.hProcess;
         CloseHandle(pi.hThread);inRead.Close();outWrite.Close();errWrite.Close();
         auto body=input.dump();
@@ -743,13 +743,13 @@
             if(!PeekNamedPipe(handle,nullptr,0,nullptr,&available,nullptr))
             {
                 if(GetLastError()==ERROR_BROKEN_PIPE)return false;
-                Fail("Cannot read Windows network command");
+                GuestFail("Cannot read Windows network command");
             }
             if(!available)return false;
             char buffer[8192];DWORD n=0;
             if(!ReadFile(handle,buffer,std::min<DWORD>(available,static_cast<DWORD>(sizeof(buffer))),&n,nullptr))
-                Fail("Cannot read Windows network command");
-            if(result.size()+n>4*1024*1024)Fail("Windows network command output too large");
+                GuestFail("Cannot read Windows network command");
+            if(result.size()+n>4*1024*1024)GuestFail("Windows network command output too large");
             result.append(buffer,n);
             return n!=0;
         };
@@ -763,7 +763,7 @@
                 if(!drain(outRead.Value,output)&&!drain(errRead.Value,errors))break;
             }
         }
-        if(WaitForSingleObject(child.Value,1000)!=WAIT_OBJECT_0)Fail("Windows network command deadline expired");
+        if(WaitForSingleObject(child.Value,1000)!=WAIT_OBJECT_0)GuestFail("Windows network command deadline expired");
         if(writer.joinable())writer.join();
         DWORD status=0;
         if(!GetExitCodeProcess(child.Value,&status)||status||!writeOk)
@@ -786,7 +786,7 @@
     {
         Fields(settings,{"Address","Port"});
         auto ip=Ip::Parse(settings.at("Address").get<std::string>());
-        if(ip.Zero()||ip.Multicast())Fail("Invalid connectivity target");
+        if(ip.Zero()||ip.Multicast())GuestFail("Invalid connectivity target");
         auto port=Integer(settings.at("Port"),1,65535);
         sockaddr_storage remote{};
         int size=0;
@@ -805,37 +805,37 @@
         }
 #ifdef _WIN32
         auto sock=socket(family,SOCK_STREAM,IPPROTO_TCP);
-        if(sock==INVALID_SOCKET)Fail("Cannot open connectivity socket");
+        if(sock==INVALID_SOCKET)GuestFail("Cannot open connectivity socket");
         struct CloseSocket{SOCKET S;~CloseSocket(){closesocket(S);}} cleanup{sock};
         u_long enabled=1;
-        if(ioctlsocket(sock,FIONBIO,&enabled))Fail("Cannot configure connectivity socket");
+        if(ioctlsocket(sock,FIONBIO,&enabled))GuestFail("Cannot configure connectivity socket");
         if(connect(sock,reinterpret_cast<sockaddr*>(&remote),size))
         {
-            if(WSAGetLastError()!=WSAEWOULDBLOCK)Fail("Guest TCP connection failed");
+            if(WSAGetLastError()!=WSAEWOULDBLOCK)GuestFail("Guest TCP connection failed");
             fd_set writable,errors;
             FD_ZERO(&writable);FD_SET(sock,&writable);FD_ZERO(&errors);FD_SET(sock,&errors);
             timeval timeout{5,0};
-            if(select(0,nullptr,&writable,&errors,&timeout)<=0)Fail("Guest TCP connection timed out");
+            if(select(0,nullptr,&writable,&errors,&timeout)<=0)GuestFail("Guest TCP connection timed out");
             int error=0,length=sizeof(error);
             if(getsockopt(sock,SOL_SOCKET,SO_ERROR,reinterpret_cast<char*>(&error),&length)||error)
-                Fail("Guest TCP connection failed");
+                GuestFail("Guest TCP connection failed");
         }
         int length=sizeof(remote);
 #else
         auto sock=socket(family,SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC,IPPROTO_TCP);
-        if(sock<0)Fail("Cannot open connectivity socket");
+        if(sock<0)GuestFail("Cannot open connectivity socket");
         struct CloseSocket{int S;~CloseSocket(){close(S);}} cleanup{sock};
         if(connect(sock,reinterpret_cast<sockaddr*>(&remote),static_cast<socklen_t>(size)))
         {
-            if(errno!=EINPROGRESS)Fail("Guest TCP connection failed");
+            if(errno!=EINPROGRESS)GuestFail("Guest TCP connection failed");
             pollfd fd{sock,POLLOUT,0};
-            if(poll(&fd,1,5000)<=0)Fail("Guest TCP connection timed out");
+            if(poll(&fd,1,5000)<=0)GuestFail("Guest TCP connection timed out");
             int error=0;socklen_t length=sizeof(error);
-            if(getsockopt(sock,SOL_SOCKET,SO_ERROR,&error,&length)||error)Fail("Guest TCP connection failed");
+            if(getsockopt(sock,SOL_SOCKET,SO_ERROR,&error,&length)||error)GuestFail("Guest TCP connection failed");
         }
         socklen_t length=sizeof(remote);
 #endif
-        if(getsockname(sock,reinterpret_cast<sockaddr*>(&remote),&length))Fail("Cannot query local connection address");
+        if(getsockname(sock,reinterpret_cast<sockaddr*>(&remote),&length))GuestFail("Cannot query local connection address");
         Ip local;local.Family=ip.Family;
         if(family==AF_INET)std::memcpy(local.Bytes.data(),&reinterpret_cast<sockaddr_in*>(&remote)->sin_addr,4);
         else std::memcpy(local.Bytes.data(),&reinterpret_cast<sockaddr_in6*>(&remote)->sin6_addr,16);
@@ -857,7 +857,7 @@
 #ifndef _WIN32
             if(!state.empty())Loopback=std::make_unique<LoopbackRouting>(state);
 #else
-            if(!state.empty())Fail("GELNIC routing requires Linux");
+            if(!state.empty())GuestFail("GELNIC routing requires Linux");
 #endif
         }
         void EnableDns(){DnsEnabled=true;}
@@ -870,9 +870,9 @@
             if(resource=="LoopbackReconcile"&&action=="Update")
             {
 #ifdef _WIN32
-                Fail("GELNIC routing requires Linux");
+                GuestFail("GELNIC routing requires Linux");
 #else
-                if(!Loopback)Fail("GELNIC routing is not enabled");
+                if(!Loopback)GuestFail("GELNIC routing is not enabled");
                 if(!settings.at("Enabled").get<bool>())
                 {
                     Fields(settings,{"Enabled"});Loopback->Clear();return {{"Loopback",false}};
@@ -880,7 +880,7 @@
                 auto targetMac=Mac(settings.at("AdapterMac").get<std::string>());
                 auto gelnic=Backend.Adapter(targetMac);
                 auto const& rawInterfaces=settings.at("Interfaces");
-                if(!rawInterfaces.is_array()||rawInterfaces.size()>128)Fail("Invalid loopback interface inventory");
+                if(!rawInterfaces.is_array()||rawInterfaces.size()>128)GuestFail("Invalid loopback interface inventory");
                 std::map<std::string,std::vector<std::string>> interfaces;
                 std::set<std::string> uniqueAddresses;
                 for(auto const& entry:rawInterfaces)
@@ -888,18 +888,18 @@
                     auto dev=Backend.Adapter(Mac(entry.at("AdapterMac").get<std::string>()));
                     auto const& addresses=entry.at("Addresses");
                     if(!addresses.is_array()||addresses.size()>256||dev==gelnic||interfaces.count(dev))
-                        Fail("Invalid loopback interface");
+                        GuestFail("Invalid loopback interface");
                     auto& values=interfaces[dev];
                     for(auto const& address:addresses)
                     {
                         auto ip=Ip::Parse(address.get<std::string>());
                         if(ip.Family!=4||ip.Zero()||ip.Loopback()||ip.Multicast()||(ip.Bytes[0]==169&&ip.Bytes[1]==254)||
-                            !uniqueAddresses.insert(ip.Text()).second)Fail("Invalid mirrored loopback address");
+                            !uniqueAddresses.insert(ip.Text()).second)GuestFail("Invalid mirrored loopback address");
                         values.push_back(ip.Text());
                     }
                 }
                 auto ports=settings.value("LocalPorts",Json::array());
-                if(!ports.is_array()||ports.size()>256)Fail("Invalid local-only port list");
+                if(!ports.is_array()||ports.size()>256)GuestFail("Invalid local-only port list");
                 std::set<unsigned> local;
                 for(auto const& value:ports)local.insert(static_cast<unsigned>(Integer(value,1,65535)));
                 auto result=Loopback->Reconcile(gelnic,interfaces,local);
@@ -920,7 +920,7 @@
                 bool tunnel=Boolean(normalized,"DnsTunnel");
                 if(tunnel)
                 {
-                    if(!DnsEnabled)Fail("DNS tunneling is not enabled in this network service");
+                    if(!DnsEnabled)GuestFail("DNS tunneling is not enabled in this network service");
 #ifdef _WIN32
                     normalized["DNS"]["Servers"]=Boolean(normalized.at("Interface"),"Connected")?
                         Json::array({"127.0.0.1"}):Json::array();
@@ -986,7 +986,7 @@
         for(auto family:{"-4","-6"})
         {
             auto routes=Json::parse(RunNetworkCommand({"ip",family,"-j","route","show","table",table}));
-            if(routes.size()!=2)Fail("Native policy table routes missing");
+            if(routes.size()!=2)GuestFail("Native policy table routes missing");
         }
         RunNetworkCommand({"ip","-4","address","add","198.18.0.10/24","dev","nb-test1","noprefixroute"});
         RunNetworkCommand({"ip","-4","route","add","198.18.0.0/24","dev","nb-test1","proto","242"});
@@ -994,7 +994,7 @@
         auto checkRoute=[&](Arguments args,std::string const& expected)
         {
             auto rows=Json::parse(RunNetworkCommand(args));
-            if(rows.empty()||rows.at(0).at("dev")!=expected)Fail("Native source or interface routing failed");
+            if(rows.empty()||rows.at(0).at("dev")!=expected)GuestFail("Native source or interface routing failed");
         };
         checkRoute({"ip","-4","-j","route","get","203.0.113.8","from","192.0.2.10"},"nb-test0");
         checkRoute({"ip","-4","-j","route","get","203.0.113.8"},"nb-test1");
@@ -1003,22 +1003,22 @@
         bool refused=false;
         try{backend.Reconcile("00155d123456",desired);}catch(...){refused=true;}
         RunNetworkCommand({"ip","-4","rule","del","pref","19000","from","203.0.113.1/32","lookup",table,"protocol","99"});
-        if(!refused)Fail("Foreign routing table was accepted");
+        if(!refused)GuestFail("Foreign routing table was accepted");
         RunNetworkCommand({"ip","-4","route","del","default","via","192.0.2.1","dev","nb-test0","metric","10","proto","242"});
         RunNetworkCommand({"ip","-4","address","del","192.0.2.10/24","dev","nb-test0"});
         LinuxNetwork restarted(runner,root);
         restarted.Reconcile("00155d123456",desired);
         restarted.Reconcile("00155d123456",desired);
         if(dns!=std::vector<std::string>{"192.0.2.53"}||domains!=std::vector<std::string>{"example.test"})
-            Fail("Native DNS reconciliation failed");
+            GuestFail("Native DNS reconciliation failed");
         raw["Interface"]["Connected"]=false;
         raw["Addresses"]=Json::array();raw["Routes"]=Json::array();
         raw["DNS"]={{"ServerList",Json::array()},{"Suffix",""}};
         restarted.Reconcile("00155d123456",NormalizeResource("Reconcile","Update",raw));
-        if(!dns.empty()||!domains.empty())Fail("Native DNS cleanup failed");
+        if(!dns.empty()||!domains.empty())GuestFail("Native DNS cleanup failed");
         auto other=RunNetworkCommand({"ip","-4","route","show","dev","nb-test1","proto","242"});
         if(other.find("198.18.0.0/24")==std::string::npos||other.find("default via 198.18.0.1")==std::string::npos)
-            Fail("Unrelated adapter routes were removed");
+            GuestFail("Unrelated adapter routes were removed");
         std::cout<<"Native Linux mirrored network integration passed\n";
     }
 #endif
@@ -1027,10 +1027,10 @@
     {
 #ifdef _WIN32
         WSADATA data{};
-        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Cleanup{~Cleanup(){WSACleanup();}} cleanup;
 #endif
-        if(Mac("00-15-5D-12-34-56")!="00155d123456")Fail("MAC normalization failed");
+        if(Mac("00-15-5D-12-34-56")!="00155d123456")GuestFail("MAC normalization failed");
         Json settings={{"Interface",{{"Connected",true},{"NlMtu",1500},{"Mirrored",true}}},
             {"Addresses",Json::array({{{"Address","192.0.2.10"},{"OnLinkPrefixLength",24}}})},
             {"Routes",Json::array({{{"DestinationPrefix","0.0.0.0/0"},{"NextHop","192.0.2.1"},{"Metric",10}},
@@ -1039,12 +1039,12 @@
             {"PortRange",{{"Start",49152},{"End",53247}}}};
         auto normalized=NormalizeResource("Reconcile","Update",settings);
         if(normalized.at("Routes").at(0).at("Destination")!="192.0.2.0/24" ||
-            normalized.at("DNS").at("Suffix")!="corp.example")Fail("Route or DNS normalization failed");
+            normalized.at("DNS").at("Suffix")!="corp.example")GuestFail("Route or DNS normalization failed");
         settings["Routes"].push_back(settings["Routes"].at(0));
         bool refused=false;
         try{(void)NormalizeResource("Reconcile","Update",settings);}catch(...){refused=true;}
-        if(!refused)Fail("Duplicate route accepted");
+        if(!refused)GuestFail("Duplicate route accepted");
         refused=false;
         try{(void)NormalizeResource("IPAddress","Add",{{"Address","127.0.0.1"},{"OnLinkPrefixLength",8}});}catch(...){refused=true;}
-        if(!refused)Fail("Invalid interface address accepted");
+        if(!refused)GuestFail("Invalid interface address accepted");
     }

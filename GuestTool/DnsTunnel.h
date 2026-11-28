@@ -5,7 +5,7 @@
     std::size_t DnsQuestionEnd(DnsBytes const& packet)
     {
         if(packet.size()<17||packet.size()>65535||(packet[2]&0xf8)||packet[4]!=0||packet[5]!=1||
-            packet[6]||packet[7]||packet[8]||packet[9])Fail("Invalid DNS query");
+            packet[6]||packet[7]||packet[8]||packet[9])GuestFail("Invalid DNS query");
         std::size_t offset=12;
         while(offset<packet.size()&&offset<267)
         {
@@ -18,7 +18,7 @@
             if(length>63||offset+length>=packet.size())break;
             offset+=length;
         }
-        Fail("Invalid DNS question");
+        GuestFail("Invalid DNS question");
     }
 
     DnsBytes DnsFailure(DnsBytes const& packet)
@@ -111,15 +111,15 @@
             auto s=std::make_unique<Socket>(socket(AF_INET,kind,0));
             BOOL exclusive=TRUE;
             if(s->Value==InvalidSocket||setsockopt(s->Value,SOL_SOCKET,SO_EXCLUSIVEADDRUSE,
-                reinterpret_cast<char*>(&exclusive),sizeof(exclusive)))Fail("Cannot create exclusive DNS listener");
+                reinterpret_cast<char*>(&exclusive),sizeof(exclusive)))GuestFail("Cannot create exclusive DNS listener");
 #else
             auto s=std::make_unique<Socket>(socket(AF_INET,kind|SOCK_CLOEXEC,0));
-            if(s->Value==InvalidSocket)Fail("Cannot open DNS listener");
+            if(s->Value==InvalidSocket)GuestFail("Cannot open DNS listener");
 #endif
             sockaddr_in address{};address.sin_family=AF_INET;address.sin_port=htons(static_cast<unsigned short>(port));
             address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
-            if(bind(s->Value,reinterpret_cast<sockaddr*>(&address),sizeof(address)))Fail("Cannot bind loopback DNS listener");
-            if(kind==SOCK_STREAM&&listen(s->Value,32))Fail("Cannot listen on local DNS socket");
+            if(bind(s->Value,reinterpret_cast<sockaddr*>(&address),sizeof(address)))GuestFail("Cannot bind loopback DNS listener");
+            if(kind==SOCK_STREAM&&listen(s->Value,32))GuestFail("Cannot listen on local DNS socket");
             Nonblocking(s->Value);return s;
         }
         void LocalTcp(SocketType socket)
@@ -202,7 +202,7 @@
                 socklen_t length=sizeof(actual);
 #endif
                 if(getsockname(Tcp->Value,reinterpret_cast<sockaddr*>(&actual),&length))
-                    Fail("Cannot inspect DNS listener");
+                    GuestFail("Cannot inspect DNS listener");
                 LocalPort=ntohs(actual.sin_port);
                 Udp=LocalSocket(SOCK_DGRAM,LocalPort);
                 if(listenHost)Host=OpenParentListener(27454,4);
@@ -282,10 +282,10 @@
                     unsigned char tcp=job->Tcp?1:0;Io(socket,&tcp,1,true,end);
                     WritePacket(socket,job->Packet,end);
                     Io(socket,&length,sizeof(length),false,end);length=ntohl(length);
-                    if(length>65535)Fail("Invalid DNS response length");
+                    if(length>65535)GuestFail("Invalid DNS response length");
                     auto response=ReadPacket(socket,length,end);
                     if(!response.empty()&&(response.size()<12||response[0]!=job->Packet[0]||
-                        response[1]!=job->Packet[1]||!(response[2]&0x80)))Fail("Invalid DNS response");
+                        response[1]!=job->Packet[1]||!(response[2]&0x80)))GuestFail("Invalid DNS response");
                     Complete(job,std::move(response));guard.Finished=true;
                 }
             }
@@ -308,36 +308,36 @@
     {
 #ifdef _WIN32
         WSADATA data{};
-        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Wsa{~Wsa(){WSACleanup();}} wsa;
 #endif
         DnsBytes packet={0x12,0x34,1,0,0,1,0,0,0,0,0,0,1,'a',0,0,1,0,1};
         auto failure=DnsFailure(packet);
-        if(failure.size()!=packet.size()||failure[3]!=0x82)Fail("DNS failure reply malformed");
+        if(failure.size()!=packet.size()||failure[3]!=0x82)GuestFail("DNS failure reply malformed");
         auto invalid=packet;invalid[12]=0xc0;
         bool rejected=false;
         try{DnsQuestionEnd(invalid);}catch(...){rejected=true;}
-        if(!rejected)Fail("Compressed DNS query accepted");
+        if(!rejected)GuestFail("Compressed DNS query accepted");
         DnsTunnel tunnel(0,false);
-        if(tunnel.Resolve(packet,false)!=failure)Fail("Disconnected DNS tunnel did not return SERVFAIL");
+        if(tunnel.Resolve(packet,false)!=failure)GuestFail("Disconnected DNS tunnel did not return SERVFAIL");
 
         // Use a loopback TCP connection to exercise the real host frame protocol
         // on both operating systems without requiring Hyper-V.
         Socket listener(socket(AF_INET,SOCK_STREAM,IPPROTO_TCP));
         sockaddr_in address{};address.sin_family=AF_INET;address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
         if(listener.Value==InvalidSocket||bind(listener.Value,reinterpret_cast<sockaddr*>(&address),sizeof(address))||
-            listen(listener.Value,1))Fail("Cannot create mock DNS host");
+            listen(listener.Value,1))GuestFail("Cannot create mock DNS host");
 #ifdef _WIN32
         int length=sizeof(address);
 #else
         socklen_t length=sizeof(address);
 #endif
-        if(getsockname(listener.Value,reinterpret_cast<sockaddr*>(&address),&length))Fail("Cannot get mock DNS port");
+        if(getsockname(listener.Value,reinterpret_cast<sockaddr*>(&address),&length))GuestFail("Cannot get mock DNS port");
         Socket host(socket(AF_INET,SOCK_STREAM,IPPROTO_TCP));
         if(host.Value==InvalidSocket||connect(host.Value,reinterpret_cast<sockaddr*>(&address),sizeof(address)))
-            Fail("Cannot connect mock DNS host");
+            GuestFail("Cannot connect mock DNS host");
         Socket channel(accept(listener.Value,nullptr,nullptr));
-        if(channel.Value==InvalidSocket)Fail("Cannot accept mock DNS host");
+        if(channel.Value==InvalidSocket)GuestFail("Cannot accept mock DNS host");
         Nonblocking(host.Value);
         std::exception_ptr workerError;
         auto answer=packet;answer[2]=0x81;answer[3]=0x80;
@@ -346,7 +346,7 @@
         try
         {
             for(unsigned i=0;i<100&&!tunnel.Channels();++i)std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            if(!tunnel.Channels())Fail("Mock DNS channel did not start");
+            if(!tunnel.Channels())GuestFail("Mock DNS channel did not start");
             worker=std::thread([&]()
             {
                 try
@@ -358,7 +358,7 @@
                         size=ntohl(size);if(!size)continue;
                         DnsBytes frame(size);Transfer(host.Value,reinterpret_cast<char*>(frame.data()),frame.size(),false,end);
                         if(frame.size()!=packet.size()+1||frame[0]!=i||!std::equal(packet.begin(),packet.end(),frame.begin()+1))
-                            Fail("DNS host request framing mismatch");
+                            GuestFail("DNS host request framing mismatch");
                         size=htonl(static_cast<std::uint32_t>(answer.size()));
                         Transfer(host.Value,reinterpret_cast<char*>(&size),sizeof(size),true,end);
                         Transfer(host.Value,reinterpret_cast<char*>(answer.data()),answer.size(),true,end);
@@ -370,25 +370,25 @@
             local.sin_port=htons(static_cast<unsigned short>(tunnel.PortNumber()));
             Socket udp(socket(AF_INET,SOCK_DGRAM,0));
             if(udp.Value==InvalidSocket||connect(udp.Value,reinterpret_cast<sockaddr*>(&local),sizeof(local)))
-                Fail("Cannot connect local DNS UDP");
+                GuestFail("Cannot connect local DNS UDP");
             Nonblocking(udp.Value);
             auto end=Mono::now()+std::chrono::seconds(8);
             Transfer(udp.Value,reinterpret_cast<char*>(packet.data()),packet.size(),true,end);
             DnsBytes result(answer.size());
             Transfer(udp.Value,reinterpret_cast<char*>(result.data()),result.size(),false,end);
-            if(result!=answer)Fail("DNS UDP reply mismatch");
+            if(result!=answer)GuestFail("DNS UDP reply mismatch");
             Socket tcp(socket(AF_INET,SOCK_STREAM,IPPROTO_TCP));
             if(tcp.Value==InvalidSocket||connect(tcp.Value,reinterpret_cast<sockaddr*>(&local),sizeof(local)))
-                Fail("Cannot connect local DNS TCP");
+                GuestFail("Cannot connect local DNS TCP");
             Nonblocking(tcp.Value);
             auto size=htons(static_cast<unsigned short>(packet.size()));
             end=Mono::now()+std::chrono::seconds(8);
             Transfer(tcp.Value,reinterpret_cast<char*>(&size),sizeof(size),true,end);
             Transfer(tcp.Value,reinterpret_cast<char*>(packet.data()),packet.size(),true,end);
             Transfer(tcp.Value,reinterpret_cast<char*>(&size),sizeof(size),false,end);
-            if(ntohs(size)!=answer.size())Fail("DNS TCP length mismatch");
+            if(ntohs(size)!=answer.size())GuestFail("DNS TCP length mismatch");
             Transfer(tcp.Value,reinterpret_cast<char*>(result.data()),result.size(),false,end);
-            if(result!=answer)Fail("DNS TCP reply mismatch");
+            if(result!=answer)GuestFail("DNS TCP reply mismatch");
             worker.join();if(workerError)std::rethrow_exception(workerError);
         }
         catch(...)

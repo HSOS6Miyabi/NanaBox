@@ -75,7 +75,7 @@ namespace
     const auto Started = Mono::now();
     std::atomic<bool> Stop{false};
 
-    [[noreturn]] void Fail(char const* message)
+    [[noreturn]] void GuestFail(char const* message)
     {
         throw std::runtime_error(message);
     }
@@ -83,16 +83,16 @@ namespace
     std::uint64_t Integer(Json const& value, std::uint64_t min, std::uint64_t max)
     {
         if (!value.is_number_integer() || (!value.is_number_unsigned() && value.get<std::int64_t>() < 0))
-            Fail("Expected an unsigned integer");
+            GuestFail("Expected an unsigned integer");
         auto number = value.get<std::uint64_t>();
-        if (number < min || number > max) Fail("Integer outside allowed range");
+        if (number < min || number > max) GuestFail("Integer outside allowed range");
         return number;
     }
 
     void Fields(Json const& value, std::initializer_list<char const*> keys)
     {
-        if (!value.is_object() || value.size() != keys.size()) Fail("Invalid request fields");
-        for (auto key : keys) if (!value.contains(key)) Fail("Missing request field");
+        if (!value.is_object() || value.size() != keys.size()) GuestFail("Invalid request fields");
+        for (auto key : keys) if (!value.contains(key)) GuestFail("Missing request field");
     }
 
     bool HexString(std::string_view value, std::size_t length)
@@ -119,14 +119,14 @@ namespace
         std::array<unsigned char, 16> bytes{};
 #ifdef _WIN32
         if (BCryptGenRandom(nullptr, bytes.data(), static_cast<ULONG>(bytes.size()),
-            BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0) Fail("Cannot generate transfer token");
+            BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0) GuestFail("Cannot generate transfer token");
 #else
         std::size_t offset = 0;
         while (offset < bytes.size())
         {
             auto n = getrandom(bytes.data() + offset, bytes.size() - offset, 0);
             if (n < 0 && errno == EINTR) continue;
-            if (n <= 0) Fail("Cannot generate transfer token");
+            if (n <= 0) GuestFail("Cannot generate transfer token");
             offset += static_cast<std::size_t>(n);
         }
 #endif
@@ -137,20 +137,20 @@ namespace
     {
         auto name = value.get<std::string>();
         if (name.empty() || name.size() > 240 || name.front() == '.' ||
-            name.back() == ' ' || name.back() == '.') Fail("Invalid filename");
+            name.back() == ' ' || name.back() == '.') GuestFail("Invalid filename");
         for (unsigned char c : name)
             if (c < 32 || c == 127 || std::string_view("/\\:*?\"<>|").find(static_cast<char>(c)) != std::string_view::npos)
-                Fail("Invalid filename");
+                GuestFail("Invalid filename");
         auto stem = name.substr(0, name.find('.'));
         for (auto& c : stem) if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
         while (!stem.empty() && stem.back() == ' ') stem.pop_back();
         if (stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL" ||
-            stem == "CONIN$" || stem == "CONOUT$") Fail("Reserved filename");
+            stem == "CONIN$" || stem == "CONOUT$") GuestFail("Reserved filename");
         if (stem.rfind("COM", 0) == 0 || stem.rfind("LPT", 0) == 0)
         {
             auto n = stem.substr(3);
             if ((n.size() == 1 && n[0] >= '0' && n[0] <= '9') ||
-                n == "\xc2\xb9" || n == "\xc2\xb2" || n == "\xc2\xb3") Fail("Reserved filename");
+                n == "\xc2\xb9" || n == "\xc2\xb2" || n == "\xc2\xb3") GuestFail("Reserved filename");
         }
         return name;
     }
@@ -175,7 +175,7 @@ namespace
     std::vector<unsigned char> Decode(std::string const& text)
     {
         if (text.empty() || text.size() % 4 || text.size() > (Chunk + 2) / 3 * 4)
-            Fail("Invalid base64 chunk length");
+            GuestFail("Invalid base64 chunk length");
         std::vector<unsigned char> bytes;
         bytes.reserve(text.size() / 4 * 3);
         for (std::size_t i = 0; i < text.size(); i += 4)
@@ -187,22 +187,22 @@ namespace
                 n <<= 6;
                 if (c == '=')
                 {
-                    if (j < 2 || i + 4 != text.size()) Fail("Invalid base64 padding");
+                    if (j < 2 || i + 4 != text.size()) GuestFail("Invalid base64 padding");
                     ++pad;
                 }
                 else
                 {
                     auto v = Alphabet.find(c);
-                    if (pad || v == std::string_view::npos) Fail("Invalid base64 character");
+                    if (pad || v == std::string_view::npos) GuestFail("Invalid base64 character");
                     n |= static_cast<unsigned>(v);
                 }
             }
-            if ((pad == 1 && (n & 0xffu)) || (pad == 2 && (n & 0xffffu))) Fail("Noncanonical base64 padding");
+            if ((pad == 1 && (n & 0xffu)) || (pad == 2 && (n & 0xffffu))) GuestFail("Noncanonical base64 padding");
             bytes.push_back(static_cast<unsigned char>(n >> 16));
             if (pad < 2) bytes.push_back(static_cast<unsigned char>(n >> 8));
             if (!pad) bytes.push_back(static_cast<unsigned char>(n));
         }
-        if (bytes.empty() || bytes.size() > Chunk) Fail("Invalid transfer chunk size");
+        if (bytes.empty() || bytes.size() > Chunk) GuestFail("Invalid transfer chunk size");
         return bytes;
     }
 
@@ -227,19 +227,19 @@ namespace
             try
             {
                 if (BCryptOpenAlgorithmProvider(&Algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0)
-                    Fail("Cannot initialize SHA-256");
+                    GuestFail("Cannot initialize SHA-256");
                 DWORD size = 0, actual = 0;
                 if (BCryptGetProperty(Algorithm, BCRYPT_OBJECT_LENGTH, reinterpret_cast<PUCHAR>(&size),
-                    sizeof(size), &actual, 0) < 0) Fail("Cannot allocate SHA-256");
+                    sizeof(size), &actual, 0) < 0) GuestFail("Cannot allocate SHA-256");
                 Object.resize(size);
                 if (BCryptCreateHash(Algorithm, &Hash, Object.data(), size, nullptr, 0, 0) < 0)
-                    Fail("Cannot create SHA-256");
+                    GuestFail("Cannot create SHA-256");
             }
             catch (...) { Close(); throw; }
 #else
             Hash = EVP_MD_CTX_new();
             if (!Hash || EVP_DigestInit_ex(Hash, EVP_sha256(), nullptr) != 1)
-            { EVP_MD_CTX_free(Hash); Fail("Cannot initialize SHA-256"); }
+            { EVP_MD_CTX_free(Hash); GuestFail("Cannot initialize SHA-256"); }
 #endif
         }
         ~Digest()
@@ -257,9 +257,9 @@ namespace
             if (bytes.empty()) return;
 #ifdef _WIN32
             if (BCryptHashData(Hash, const_cast<PUCHAR>(bytes.data()), static_cast<ULONG>(bytes.size()), 0) < 0)
-                Fail("SHA-256 update failed");
+                GuestFail("SHA-256 update failed");
 #else
-            if (EVP_DigestUpdate(Hash, bytes.data(), bytes.size()) != 1) Fail("SHA-256 update failed");
+            if (EVP_DigestUpdate(Hash, bytes.data(), bytes.size()) != 1) GuestFail("SHA-256 update failed");
 #endif
         }
         std::string Finish()
@@ -267,11 +267,11 @@ namespace
             std::array<unsigned char, 32> out{};
 #ifdef _WIN32
             if (BCryptFinishHash(Hash, out.data(), static_cast<ULONG>(out.size()), 0) < 0)
-                Fail("SHA-256 finalization failed");
+                GuestFail("SHA-256 finalization failed");
 #else
             unsigned size = 0;
             if (EVP_DigestFinal_ex(Hash, out.data(), &size) != 1 || size != out.size())
-                Fail("SHA-256 finalization failed");
+                GuestFail("SHA-256 finalization failed");
 #endif
             return Hex(out.data(), out.size());
         }
@@ -313,11 +313,11 @@ namespace
             Value = CreateFileW(path.c_str(), upload ? GENERIC_WRITE : GENERIC_READ,
                 upload ? 0 : FILE_SHARE_READ, nullptr, upload ? CREATE_NEW : OPEN_EXISTING,
                 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-            if (Value == INVALID_HANDLE_VALUE) Fail("Cannot open regular exchange file");
+            if (Value == INVALID_HANDLE_VALUE) GuestFail("Cannot open regular exchange file");
 #else
             Value = open(path.c_str(), (upload ? O_CREAT | O_EXCL | O_WRONLY : O_RDONLY | O_NONBLOCK) |
                 O_NOFOLLOW | O_CLOEXEC, 0600);
-            if (Value < 0) Fail("Cannot open regular exchange file");
+            if (Value < 0) GuestFail("Cannot open regular exchange file");
 #endif
             (void)Info();
         }
@@ -327,13 +327,13 @@ namespace
             BY_HANDLE_FILE_INFORMATION info{};
             if (!GetFileInformationByHandle(Value, &info) || GetFileType(Value) != FILE_TYPE_DISK ||
                 (info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
-                Fail("Exchange file is not a regular file");
+                GuestFail("Exchange file is not a regular file");
             return {(static_cast<std::uint64_t>(info.nFileSizeHigh) << 32) | info.nFileSizeLow,
                 (static_cast<std::uint64_t>(info.ftLastWriteTime.dwHighDateTime) << 32) | info.ftLastWriteTime.dwLowDateTime,
                 0, (static_cast<std::uint64_t>(info.nFileIndexHigh) << 32) | info.nFileIndexLow, info.dwVolumeSerialNumber};
 #else
             struct stat info{};
-            if (fstat(Value, &info) || !S_ISREG(info.st_mode) || info.st_size < 0) Fail("Exchange file is not regular");
+            if (fstat(Value, &info) || !S_ISREG(info.st_mode) || info.st_size < 0) GuestFail("Exchange file is not regular");
             return {static_cast<std::uint64_t>(info.st_size), static_cast<std::uint64_t>(info.st_mtim.tv_sec),
                 static_cast<std::uint64_t>(info.st_mtim.tv_nsec), static_cast<std::uint64_t>(info.st_ino),
                 static_cast<std::uint64_t>(info.st_dev)};
@@ -347,11 +347,11 @@ namespace
 #ifdef _WIN32
                 DWORD n = 0;
                 if (!WriteFile(Value, data.data() + offset, static_cast<DWORD>(data.size() - offset), &n, nullptr) || !n)
-                    Fail("Exchange file write failed");
+                    GuestFail("Exchange file write failed");
 #else
                 auto n = write(Value, data.data() + offset, data.size() - offset);
                 if (n < 0 && errno == EINTR) continue;
-                if (n <= 0) Fail("Exchange file write failed");
+                if (n <= 0) GuestFail("Exchange file write failed");
 #endif
                 offset += static_cast<std::size_t>(n);
             }
@@ -365,11 +365,11 @@ namespace
 #ifdef _WIN32
                 DWORD n = 0;
                 if (!ReadFile(Value, data.data() + offset, static_cast<DWORD>(length - offset), &n, nullptr) || !n)
-                    Fail("Exchange file was truncated or unreadable");
+                    GuestFail("Exchange file was truncated or unreadable");
 #else
                 auto n = read(Value, data.data() + offset, length - offset);
                 if (n < 0 && errno == EINTR) continue;
-                if (n <= 0) Fail("Exchange file was truncated or unreadable");
+                if (n <= 0) GuestFail("Exchange file was truncated or unreadable");
 #endif
                 offset += static_cast<std::size_t>(n);
             }
@@ -378,9 +378,9 @@ namespace
         void Flush()
         {
 #ifdef _WIN32
-            if (!FlushFileBuffers(Value)) Fail("Cannot flush exchange file");
+            if (!FlushFileBuffers(Value)) GuestFail("Cannot flush exchange file");
 #else
-            if (fsync(Value)) Fail("Cannot flush exchange file");
+            if (fsync(Value)) GuestFail("Cannot flush exchange file");
 #endif
         }
     };
@@ -393,50 +393,50 @@ namespace
         if (attributes == INVALID_FILE_ATTRIBUTES)
         {
             if (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND) return false;
-            Fail("Cannot inspect exchange file");
+            GuestFail("Cannot inspect exchange file");
         }
         if (attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))
-            Fail("Exchange path is not a regular file");
+            GuestFail("Exchange path is not a regular file");
 #else
         struct stat info{};
         if (lstat(path.c_str(), &info))
         {
             if (errno == ENOENT) return false;
-            Fail("Cannot inspect exchange file");
+            GuestFail("Cannot inspect exchange file");
         }
-        if (!S_ISREG(info.st_mode)) Fail("Exchange path is not a regular file");
+        if (!S_ISREG(info.st_mode)) GuestFail("Exchange path is not a regular file");
 #endif
         return true;
     }
 
     void CheckRoot(fs::path const& root)
     {
-        if (!root.is_absolute()) Fail("Exchange root must be absolute");
+        if (!root.is_absolute()) GuestFail("Exchange root must be absolute");
 #ifdef _WIN32
         auto attrs = GetFileAttributesW(root.c_str());
         if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY) ||
-            (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) Fail("Unsafe exchange root");
+            (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) GuestFail("Unsafe exchange root");
 #else
         struct stat info{};
         if (lstat(root.c_str(), &info) || !S_ISDIR(info.st_mode) || info.st_uid != geteuid() ||
-            (info.st_mode & 0022)) Fail("Unsafe exchange root ownership or permissions");
+            (info.st_mode & 0022)) GuestFail("Unsafe exchange root ownership or permissions");
 #endif
     }
 
     void Publish(fs::path const& from, fs::path const& to, bool overwrite)
     {
-        if (RegularOrAbsent(to) && !overwrite) Fail("Destination already exists");
+        if (RegularOrAbsent(to) && !overwrite) GuestFail("Destination already exists");
 #ifdef _WIN32
         if (!MoveFileExW(from.c_str(), to.c_str(), MOVEFILE_WRITE_THROUGH |
-            (overwrite ? MOVEFILE_REPLACE_EXISTING : 0))) Fail("Cannot publish exchange file");
+            (overwrite ? MOVEFILE_REPLACE_EXISTING : 0))) GuestFail("Cannot publish exchange file");
 #else
         if (overwrite)
         {
-            if (rename(from.c_str(), to.c_str())) Fail("Cannot publish exchange file");
+            if (rename(from.c_str(), to.c_str())) GuestFail("Cannot publish exchange file");
         }
         else
         {
-            if (link(from.c_str(), to.c_str())) Fail("Cannot publish exchange file without replacement");
+            if (link(from.c_str(), to.c_str())) GuestFail("Cannot publish exchange file without replacement");
             // Publication succeeded. Session destruction retries temporary cleanup.
             (void)unlink(from.c_str());
         }
@@ -499,10 +499,10 @@ namespace
                 bool upload = action == "BeginUpload";
                 if (upload) Fields(settings, {"Name", "Size", "Overwrite"});
                 else Fields(settings, {"Name"});
-                if (Sessions.size() >= 16) Fail("Too many active file transfers");
+                if (Sessions.size() >= 16) GuestFail("Too many active file transfers");
                 auto name = Filename(settings.at("Name"));
                 auto token = Token();
-                if (Sessions.count(token)) Fail("Duplicate transfer token");
+                if (Sessions.count(token)) GuestFail("Duplicate transfer token");
                 auto session = std::make_unique<Session>();
                 session->Name = name;
                 session->Target = Root / fs::u8path(name);
@@ -511,18 +511,18 @@ namespace
                 {
                     session->Size = Integer(settings.at("Size"), 0, MaxFile);
                     session->Overwrite = settings.at("Overwrite").get<bool>();
-                    if (RegularOrAbsent(session->Target) && !session->Overwrite) Fail("Destination already exists");
+                    if (RegularOrAbsent(session->Target) && !session->Overwrite) GuestFail("Destination already exists");
                     session->Temporary = Root / (".nanabox-upload-" + token);
                     session->Stream.Open(session->Temporary, true);
                     session->OwnTemporary = true;
                 }
                 else
                 {
-                    if (!RegularOrAbsent(session->Target)) Fail("Source file does not exist");
+                    if (!RegularOrAbsent(session->Target)) GuestFail("Source file does not exist");
                     session->Stream.Open(session->Target, false);
                     session->Original = session->Stream.Info();
                     session->Size = session->Original.Size;
-                    if (session->Size > MaxFile) Fail("Source file exceeds maximum size");
+                    if (session->Size > MaxFile) GuestFail("Source file exceeds maximum size");
                 }
                 auto size = session->Size;
                 Sessions.emplace(token, std::move(session));
@@ -532,22 +532,22 @@ namespace
             else if (action == "Read") Fields(settings, {"Token", "Offset", "Length"});
             else if (action == "Commit") Fields(settings, {"Token", "Sha256"});
             else if (action == "Abort" || action == "FinishDownload") Fields(settings, {"Token"});
-            else Fail("Unsupported file transfer operation");
+            else GuestFail("Unsupported file transfer operation");
             auto token = settings.at("Token").get<std::string>();
-            if (!HexString(token, 32)) Fail("Invalid transfer token");
+            if (!HexString(token, 32)) GuestFail("Invalid transfer token");
             if (action == "Abort") { Sessions.erase(token); return {{"Aborted", true}}; }
             auto it = Sessions.find(token);
-            if (it == Sessions.end()) Fail("Unknown or expired transfer token");
+            if (it == Sessions.end()) GuestFail("Unknown or expired transfer token");
             auto& session = *it->second;
             session.Touched = Mono::now();
             if (action == "Write" || action == "Read")
             {
-                if ((action == "Write") != session.Upload) Fail("Incorrect transfer direction");
-                if (Integer(settings.at("Offset"), 0, MaxFile) != session.Offset) Fail("Unexpected transfer offset");
+                if ((action == "Write") != session.Upload) GuestFail("Incorrect transfer direction");
+                if (Integer(settings.at("Offset"), 0, MaxFile) != session.Offset) GuestFail("Unexpected transfer offset");
                 if (session.Upload)
                 {
                     auto data = Decode(settings.at("Data").get<std::string>());
-                    if (data.size() > session.Size - session.Offset) Fail("Chunk exceeds declared file size");
+                    if (data.size() > session.Size - session.Offset) GuestFail("Chunk exceeds declared file size");
                     try { session.Stream.Write(data); session.Sha.Update(data); }
                     catch (...) { Sessions.erase(it); throw; }
                     session.Offset += data.size();
@@ -564,21 +564,21 @@ namespace
                 }
                 catch (...) { Sessions.erase(it); throw; }
             }
-            if ((action == "Commit") != session.Upload) Fail("Incorrect transfer direction");
+            if ((action == "Commit") != session.Upload) GuestFail("Incorrect transfer direction");
             // Move the session out before finalization so any failure cleans it up.
             auto final = std::move(it->second);
             Sessions.erase(it);
-            if (final->Offset != final->Size) Fail("Incomplete transfer");
+            if (final->Offset != final->Size) GuestFail("Incomplete transfer");
             auto hash = final->Sha.Finish();
             if (final->Upload)
             {
                 auto expected = settings.at("Sha256").get<std::string>();
-                if (!HexString(expected, 64) || expected != hash) Fail("SHA-256 mismatch");
+                if (!HexString(expected, 64) || expected != hash) GuestFail("SHA-256 mismatch");
                 final->Stream.Flush();
                 final->Stream.Close();
                 Publish(final->Temporary, final->Target, final->Overwrite);
             }
-            else if (!(final->Original == final->Stream.Info())) Fail("Source changed during download");
+            else if (!(final->Original == final->Stream.Info())) GuestFail("Source changed during download");
             return {{"Name", final->Name}, {"Size", final->Size}, {"Sha256", hash}};
         }
     };
@@ -596,11 +596,11 @@ namespace
         ticks.QuadPart = (milliseconds + 11644473600000ull) * 10000ull;
         FILETIME file{ticks.LowPart, ticks.HighPart};
         SYSTEMTIME value{};
-        if (!FileTimeToSystemTime(&file, &value) || !SetSystemTime(&value)) Fail("Cannot set guest UTC time");
+        if (!FileTimeToSystemTime(&file, &value) || !SetSystemTime(&value)) GuestFail("Cannot set guest UTC time");
 #else
         timespec value{static_cast<time_t>(milliseconds / 1000),
             static_cast<long>((milliseconds % 1000) * 1000000)};
-        if (clock_settime(CLOCK_REALTIME, &value)) Fail("Cannot set guest UTC time");
+        if (clock_settime(CLOCK_REALTIME, &value)) GuestFail("Cannot set guest UTC time");
 #endif
     }
 
@@ -619,7 +619,7 @@ namespace
         gmtime_r(&time, &tm);
 #endif
         char value[40]{};
-        if (!std::strftime(value, sizeof(value), "%Y-%m-%dT%H:%M:%SZ", &tm)) Fail("Cannot format UTC time");
+        if (!std::strftime(value, sizeof(value), "%Y-%m-%dT%H:%M:%SZ", &tm)) GuestFail("Cannot format UTC time");
         return value;
     }
 
@@ -629,10 +629,10 @@ namespace
         if (input.empty()) return {};
         auto n = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, input.data(),
             static_cast<int>(input.size()), nullptr, 0, nullptr, nullptr);
-        if (!n) Fail("Invalid UTF-16");
+        if (!n) GuestFail("Invalid UTF-16");
         std::string value(static_cast<std::size_t>(n), '\0');
         if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, input.data(),
-            static_cast<int>(input.size()), value.data(), n, nullptr, nullptr)) Fail("Invalid UTF-16");
+            static_cast<int>(input.size()), value.data(), n, nullptr, nullptr)) GuestFail("Invalid UTF-16");
         return value;
     }
 #endif
@@ -667,7 +667,7 @@ namespace
         }
 #else
         utsname info{};
-        if (uname(&info)) Fail("Cannot query guest system information");
+        if (uname(&info)) GuestFail("Cannot query guest system information");
         name = info.nodename; os = info.sysname; release = info.release; version = info.version; arch = info.machine;
 #endif
         return {{"HostName", name}, {"OperatingSystem", os}, {"Release", release}, {"Version", version},
@@ -697,8 +697,8 @@ namespace
         {
             try
             {
-                if (!request.is_object()) Fail("Invalid GuestTool request");
-                if (Integer(request.at("Version"), 1, 1) != 1) Fail("Unsupported protocol");
+                if (!request.is_object()) GuestFail("Invalid GuestTool request");
+                if (Integer(request.at("Version"), 1, 1) != 1) GuestFail("Unsupported protocol");
                 auto resource = request.at("ResourceType").get<std::string>();
                 auto action = request.at("RequestType").get<std::string>();
                 auto const& settings = request.at("Settings");
@@ -724,19 +724,19 @@ namespace
                     {
                         Fields(settings, {"UnixMilliseconds"});
                         auto value = Integer(settings.at("UnixMilliseconds"), 946684800000ull, 4102444800000ull);
-                        if (!Clock) Fail("Clock synchronization is disabled");
+                        if (!Clock) GuestFail("Clock synchronization is disabled");
                         SetClock(value);
                     }
-                    else Fail("Unsupported clock operation");
+                    else GuestFail("Unsupported clock operation");
                     result = {{"UnixMilliseconds", Now()}, {"ClockSetEnabled", Clock}};
                 }
                 else if (resource == "FileExchange")
                 {
-                    if (!Files) Fail("File exchange is disabled");
+                    if (!Files) GuestFail("File exchange is disabled");
                     result = Files->Request(action, settings);
                 }
                 else if (Net) result = Net->Dispatch(resource,action,request);
-                else Fail("Unsupported GuestTool resource or operation");
+                else GuestFail("Unsupported GuestTool resource or operation");
                 return {{"Version", 1}, {"Success", true}, {"Data", result}};
             }
             catch (std::exception const& e)
@@ -780,12 +780,12 @@ namespace
             FD_ZERO(&except); FD_SET(s, &except);
             timeval timeout{0, 100000};
             auto n = select(0, writing ? nullptr : &ready, writing ? &ready : nullptr, &except, &timeout);
-            if (n == SOCKET_ERROR) Fail("Guest socket select failed");
+            if (n == SOCKET_ERROR) GuestFail("Guest socket select failed");
 #else
             pollfd fd{s, static_cast<short>(writing ? POLLOUT : POLLIN), 0};
             auto n = poll(&fd, 1, 100);
             if (n < 0 && errno == EINTR) continue;
-            if (n < 0) Fail("Guest socket poll failed");
+            if (n < 0) GuestFail("Guest socket poll failed");
 #endif
             if (n > 0) return true;
         }
@@ -796,10 +796,10 @@ namespace
     {
 #ifdef _WIN32
         u_long enabled = 1;
-        if (ioctlsocket(socket, FIONBIO, &enabled)) Fail("Cannot configure guest socket");
+        if (ioctlsocket(socket, FIONBIO, &enabled)) GuestFail("Cannot configure guest socket");
 #else
         auto flags = fcntl(socket, F_GETFL);
-        if (flags < 0 || fcntl(socket, F_SETFL, flags | O_NONBLOCK)) Fail("Cannot configure guest socket");
+        if (flags < 0 || fcntl(socket, F_SETFL, flags | O_NONBLOCK)) GuestFail("Cannot configure guest socket");
 #endif
     }
 
@@ -808,7 +808,7 @@ namespace
     {
         while (size)
         {
-            if (!Wait(s, writing, end, closing)) Fail("Guest socket deadline expired");
+            if (!Wait(s, writing, end, closing)) GuestFail("Guest socket deadline expired");
 #ifdef _WIN32
             auto n = writing ? send(s, bytes, static_cast<int>(size), 0) : recv(s, bytes, static_cast<int>(size), 0);
             if (n == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) continue;
@@ -816,7 +816,7 @@ namespace
             auto n = writing ? send(s, bytes, size, MSG_NOSIGNAL) : recv(s, bytes, size, 0);
             if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) continue;
 #endif
-            if (n <= 0) Fail("Incomplete guest socket message");
+            if (n <= 0) GuestFail("Incomplete guest socket message");
             bytes += n; size -= static_cast<std::size_t>(n);
         }
     }
@@ -826,7 +826,7 @@ namespace
         std::uint32_t size = 0;
         Transfer(s, reinterpret_cast<char*>(&size), sizeof(size), false, end);
         size = ntohl(size);
-        if (!size || size > MaxFrame) Fail("Invalid guest frame length");
+        if (!size || size > MaxFrame) GuestFail("Invalid guest frame length");
         std::string body(size, '\0');
         Transfer(s, body.data(), body.size(), false, end);
         return Json::parse(body);
@@ -864,7 +864,7 @@ namespace
         sockaddr_vm address{};address.svm_family=AF_VSOCK;address.svm_cid=VMADDR_CID_ANY;address.svm_port=port;
 #endif
         if(server->Value==InvalidSocket||bind(server->Value,reinterpret_cast<sockaddr*>(&address),sizeof(address))||
-            listen(server->Value,backlog))Fail("Cannot listen on GuestTool Hyper-V socket");
+            listen(server->Value,backlog))GuestFail("Cannot listen on GuestTool Hyper-V socket");
         Nonblocking(server->Value);return server;
     }
 
@@ -890,7 +890,7 @@ namespace
     {
 #ifdef _WIN32
         WSADATA data{};
-        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Wsa{~Wsa(){WSACleanup();}} cleanup;
 #endif
         auto server=OpenParentListener(network?27453u:Port,8);
@@ -902,12 +902,12 @@ namespace
         {
             CheckBindSupport();
             auto* group=getgrnam("nanabox-bind");
-            if(!group)Fail("Missing nanabox-bind group");
+            if(!group)GuestFail("Missing nanabox-bind group");
             coordinator=std::make_unique<BindCoordinator>("/run/nanabox-gns/bind.sock");
             coordinator->Start(true,group->gr_gid);
         }
 #else
-        if(bindCoordination)Fail("Bind coordination requires Linux");
+        if(bindCoordination)GuestFail("Bind coordination requires Linux");
 #endif
         while(!Stop)
         {
@@ -929,18 +929,18 @@ namespace
 #ifdef _WIN32
     Json HostRequest(std::wstring vmId,Json const& request)
     {
-        if(vmId.empty())Fail("Missing VM runtime GUID");
+        if(vmId.empty())GuestFail("Missing VM runtime GUID");
         if(vmId.front()!=L'{')vmId=L"{"+vmId+L"}";
         GUID vm{};
-        if(FAILED(CLSIDFromString(vmId.c_str(),&vm)))Fail("Invalid VM runtime GUID");
+        if(FAILED(CLSIDFromString(vmId.c_str(),&vm)))GuestFail("Invalid VM runtime GUID");
         auto resource=request.at("ResourceType").get<std::string>();
         unsigned port=resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
             resource=="FileExchange"?27457u:27453u;
         WSADATA data{};
-        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Wsa{~Wsa(){WSACleanup();}} cleanup;
         Socket connection(socket(AF_HYPERV,SOCK_STREAM,HV_PROTOCOL_RAW));
-        if(connection.Value==InvalidSocket)Fail("Cannot open Hyper-V socket");
+        if(connection.Value==InvalidSocket)GuestFail("Cannot open Hyper-V socket");
         Nonblocking(connection.Value);
         SOCKADDR_HV address{};
         address.Family=AF_HYPERV;address.VmId=vm;
@@ -949,11 +949,11 @@ namespace
         if(connect(connection.Value,reinterpret_cast<sockaddr*>(&address),sizeof(address)))
         {
             auto err=WSAGetLastError();
-            if(err!=WSAEWOULDBLOCK&&err!=WSAEINPROGRESS)Fail("Cannot connect to guest");
-            if(!Wait(connection.Value,true,end))Fail("Guest connection timed out");
+            if(err!=WSAEWOULDBLOCK&&err!=WSAEINPROGRESS)GuestFail("Cannot connect to guest");
+            if(!Wait(connection.Value,true,end))GuestFail("Guest connection timed out");
             int result=0,len=sizeof(result);
             if(getsockopt(connection.Value,SOL_SOCKET,SO_ERROR,reinterpret_cast<char*>(&result),&len)||result)
-                Fail("Guest connection failed");
+                GuestFail("Guest connection failed");
         }
         Send(connection.Value,request,end);
         return Receive(connection.Value,end);
@@ -962,23 +962,23 @@ namespace
     Json ReadRequestFile(fs::path const& path)
     {
         std::ifstream stream(path,std::ios::binary);
-        if(!stream)Fail("Cannot open request file");
+        if(!stream)GuestFail("Cannot open request file");
         std::string contents;
         std::array<char,4096> buffer{};
         while(stream)
         {
             stream.read(buffer.data(),buffer.size());
             contents.append(buffer.data(),static_cast<std::size_t>(stream.gcount()));
-            if(contents.size()>MaxFrame)Fail("Request file exceeds maximum frame size");
+            if(contents.size()>MaxFrame)GuestFail("Request file exceeds maximum frame size");
         }
-        if(stream.bad())Fail("Cannot read request file");
+        if(stream.bad())GuestFail("Cannot read request file");
         return Json::parse(contents);
     }
 #endif
 
     void Require(bool value, char const* message)
     {
-        if (!value) Fail(message);
+        if (!value) GuestFail(message);
     }
 
     void SelfTest()
@@ -1151,18 +1151,18 @@ int main(int argc, char** argv)
             else if (arg == "--dns-tunnel") DnsMode = true;
             else if (arg == "--bind-coordination") BindMode = true;
             else if (arg == "--loopback-state" && i + 1 < argc) LoopbackState = fs::path(argv[++i]);
-            else if (arg != "--serve") Fail("Unknown GuestTool option");
+            else if (arg != "--serve") GuestFail("Unknown GuestTool option");
         }
-        if ((DnsMode || BindMode || !LoopbackState.empty()) && !NetworkMode) Fail("Network integration options require network mode");
+        if ((DnsMode || BindMode || !LoopbackState.empty()) && !NetworkMode) GuestFail("Network integration options require network mode");
 #ifdef _WIN32
         if (service)
         {
             SERVICE_TABLE_ENTRYW table[] = {{const_cast<wchar_t*>(NetworkMode ? NetworkServiceName : ServiceName), ServiceMain}, {nullptr, nullptr}};
-            if (!StartServiceCtrlDispatcherW(table)) Fail("Cannot connect to service control manager");
+            if (!StartServiceCtrlDispatcherW(table)) GuestFail("Cannot connect to service control manager");
             return 0;
         }
 #else
-        if (service) Fail("Use --serve with systemd");
+        if (service) GuestFail("Use --serve with systemd");
         signal(SIGTERM, OnSignal); signal(SIGINT, OnSignal);
 #endif
         Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
