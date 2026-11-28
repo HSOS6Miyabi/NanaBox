@@ -579,7 +579,7 @@
             <TextBox x:Name="HcnSettingsTextBox" x:Uid="/VirtualMachineSettingsPage/HcnSettings" Header="HCN settings JSON" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" Height="160" AutomationProperties.AutomationId="HcnSettingsTextBox" />
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button x:Uid="/VirtualMachineSettingsPage/HcnCreate" Content="Create" Tag="HcnCreate" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnCreate" />
-              <Button x:Uid="/VirtualMachineSettingsPage/HcnModify" Content="Modify" Tag="HcnModify" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnModify" />
+              <Button x:Name="HcnModifyButton" x:Uid="/VirtualMachineSettingsPage/HcnModify" Content="Modify" Tag="HcnModify" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnModify" />
               <Button x:Uid="/VirtualMachineSettingsPage/HcnDelete" Content="Delete" Tag="HcnDelete" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnDelete" />
             </StackPanel>
             <TextBox x:Name="HcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/HcnResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="220" AutomationProperties.AutomationId="HcnResultTextBox" />

@@ -2024,6 +2024,11 @@ namespace winrt::NanaBox::implementation
         winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
     {
         if (auto Box = this->HcnResourceComboBox()) Box.Items().Clear();
+        if (auto Button = this->HcnModifyButton())
+        {
+            auto Selected = this->HcnKindComboBox().SelectedItem().try_as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>();
+            Button.IsEnabled(!Selected || winrt::unbox_value<winrt::hstring>(Selected.Tag()) != L"Route");
+        }
     }
 
     void VirtualMachineSettingsPage::HcnResourceButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)

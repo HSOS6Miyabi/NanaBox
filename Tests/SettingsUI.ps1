@@ -458,18 +458,34 @@ try {
             $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'HcnDelete'}
             Set-Text 'HcnNameTextBox' 'Test resource'
             Set-Text 'HcnNetworkIdTextBox' '85c8668e-36fe-447f-aae0-ba159a0142a7'
-            Set-Text 'HcnSettingsTextBox' '{"SchemaVersion":{"Major":2,"Minor":0}}'
+            $settings = switch ($kind) {
+                'Network' { '{"Type":"ICS","SchemaVersion":{"Major":2,"Minor":0}}' }
+                'Namespace' { '{"Type":"Host","SchemaVersion":{"Major":2,"Minor":0}}' }
+                'LoadBalancer' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"FrontendVIPs":["192.0.2.100"],"PortMappings":[{"Protocol":6,"InternalPort":80,"ExternalPort":80}],"SchemaVersion":{"Major":2,"Minor":0}}' }
+                'Route' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"Setting":[{"DestinationPrefix":"192.0.2.0/24","NextHop":"192.0.2.1","NeedEncap":false}],"SchemaVersion":{"Major":2,"Minor":0}}' }
+                default { '{"SchemaVersion":{"Major":2,"Minor":0}}' }
+            }
+            Set-Text 'HcnSettingsTextBox' $settings
             Invoke-Control 'HcnCreate'
             $created = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
             Invoke-Control 'HcnInspect'
             $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Managed -and $v.Id -eq $created.Id}
             if ($kind -ne 'Route') {
-                Set-Text 'HcnSettingsTextBox' '{"ResourceType":"Policy","RequestType":"Add","Settings":{"Policies":[]}}'
+                $modification = switch ($kind) {
+                    'Namespace' { '{"ResourceType":"Endpoint","RequestType":"Add","Settings":{"EndpointId":"85c8668e-36fe-447f-aae0-ba159a0142a7"}}' }
+                    'LoadBalancer' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"FrontendVIPs":["192.0.2.101"],"PortMappings":[{"Protocol":6,"InternalPort":80,"ExternalPort":80}],"SchemaVersion":{"Major":2,"Minor":0}}' }
+                    default { '{"ResourceType":"Policy","RequestType":"Add","Settings":{"Policies":[]}}' }
+                }
+                Set-Text 'HcnSettingsTextBox' $modification
                 Confirm-Change 'HcnModify'
                 $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnModify'}
                 Invoke-Control 'HcnInspect'
-                $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.RequestType -eq 'Add'}
-            }
+                if ($kind -eq 'LoadBalancer') {
+                    $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.FrontendVIPs[0] -eq '192.0.2.101'}
+                } else {
+                    $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.RequestType -eq 'Add'}
+                }
+            } elseif ((Find-Control 'HcnModify').Current.IsEnabled) { throw 'SDN route modification must be disabled' }
             Confirm-Change 'HcnDelete'
             $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
             Invoke-Control 'HcnList'

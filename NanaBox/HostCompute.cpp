@@ -23,6 +23,7 @@
 #include <memory>
 #include <type_traits>
 #include <string_view>
+#include <set>
 #include <vector>
 #pragma comment(lib, "setupapi.lib")
 
@@ -1370,10 +1371,31 @@ namespace
         }
     };
 
+    void CheckHcnKeyCase(HcnJson const& Data, unsigned Depth = 0)
+    {
+        if (Depth > 64) throw winrt::hresult_invalid_argument(L"HCN settings are nested too deeply.");
+        if (Data.is_object())
+        {
+            std::set<std::wstring> Keys;
+            for (auto It = Data.begin(); It != Data.end(); ++It)
+            {
+                auto WideKey = winrt::to_hstring(It.key());
+                std::wstring Key(WideKey.c_str(), WideKey.size());
+                if (!Key.empty()) ::CharLowerBuffW(Key.data(), static_cast<DWORD>(Key.size()));
+                if (!Keys.insert(Key).second)
+                    throw winrt::hresult_invalid_argument(L"HCN settings must not repeat a property with different casing.");
+                CheckHcnKeyCase(*It, Depth + 1);
+            }
+        }
+        else if (Data.is_array())
+            for (auto const& Item : Data) CheckHcnKeyCase(Item, Depth + 1);
+    }
+
     void CheckResourceSettings(HcnJson const& Data)
     {
         if (!Data.is_object() || Data.dump().size() > 1024 * 1024)
             throw winrt::hresult_invalid_argument(L"Supply a JSON object smaller than 1 MiB.");
+        CheckHcnKeyCase(Data);
         for (auto It = Data.begin(); It != Data.end(); ++It)
         {
             auto Key = winrt::to_hstring(It.key());
@@ -1386,15 +1408,12 @@ namespace
     {
         // Load balancers and routes must only reference endpoints created
         // by this resource manager, not VM adapters or system endpoints.
-        for (auto It = Data.begin(); It != Data.end(); ++It)
-        {
-            if (_wcsicmp(winrt::to_hstring(It.key()).c_str(), L"HostComputeEndpoints") != 0) continue;
-            if (It.key() != "HostComputeEndpoints" || !It->is_array() || It->empty())
-                throw winrt::hresult_invalid_argument(L"HostComputeEndpoints must contain managed endpoint IDs.");
-            for (auto const& Value : *It)
-                if (!RegisteredResource("Endpoint", ResourceId(Value)))
-                    throw winrt::hresult_error(E_ACCESSDENIED, L"Referenced endpoint is not managed by NanaBox.");
-        }
+        if (!Data.contains("HostComputeEndpoints") || !Data["HostComputeEndpoints"].is_array() ||
+            Data["HostComputeEndpoints"].empty())
+            throw winrt::hresult_invalid_argument(L"HostComputeEndpoints must contain managed endpoint IDs.");
+        for (auto const& Value : Data["HostComputeEndpoints"])
+            if (!RegisteredResource("Endpoint", ResourceId(Value)))
+                throw winrt::hresult_error(E_ACCESSDENIED, L"Referenced endpoint is not managed by NanaBox.");
     }
 
     HcnJson HcnManagement(std::string const& Action, HcnJson const& Arguments)
@@ -1434,6 +1453,7 @@ namespace
             auto Data = Arguments.at("Settings");
             CheckResourceSettings(Data);
             if (!Data.contains("SchemaVersion")) Data["SchemaVersion"] = {{"Major", 2}, {"Minor", 0}};
+            CheckHcnKeyCase(Data);
             GUID NewId{};
             winrt::check_hresult(::CoCreateGuid(&NewId));
             auto Id = winrt::guid(NewId);
@@ -1482,6 +1502,7 @@ namespace
                                 throw winrt::hresult_invalid_argument(L"Create an empty namespace and attach endpoints separately.");
                         }
                         Data["Type"] = Type;
+                        CheckHcnKeyCase(Data);
                     }
                     else CheckEndpointReferences(Data);
                     Api.Make(Id, Data);
@@ -1531,11 +1552,16 @@ namespace
                     throw winrt::hresult_invalid_argument(L"Use Policy or Endpoint modification requests for this resource type.");
                 if (Kind == "Namespace")
                 {
+                    if (Request == "Update") throw winrt::hresult_invalid_argument(L"Use Add or Remove for namespace membership.");
                     auto Endpoint = ResourceId(Data.at("Settings").at("EndpointId"));
                     if (!RegisteredResource("Endpoint", Endpoint))
                         throw winrt::hresult_error(E_ACCESSDENIED, L"Select an endpoint created by the resource manager.");
-                    Data["Settings"] = {{"EndpointId", winrt::to_string(winrt::hstring(HcnGuidName(Endpoint)))}};
+                    Data = {{"ResourceType", Resource}, {"RequestType", Request},
+                        {"Settings", {{"EndpointId", winrt::to_string(winrt::hstring(HcnGuidName(Endpoint)))}}}};
                 }
+                else if (!Data.at("Settings").is_object() || !Data.at("Settings").contains("Policies") ||
+                    !Data.at("Settings").at("Policies").is_array())
+                    throw winrt::hresult_invalid_argument(L"Settings.Policies must be an array.");
             }
             Api.Apply(Id, Data);
         }
