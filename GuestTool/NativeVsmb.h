@@ -311,6 +311,18 @@ class NativeVsmb
         }
         if(!fs::is_empty(path))throw std::runtime_error("Virtual SMB mount directory is not empty");
     }
+    void EnsureTarget(fs::path const& path,std::wstring const& target,
+        std::wstring const& setupTarget,bool readOnly)
+    {
+        if(!ExistingTarget(path,target,readOnly))
+        {
+            PrepareDirectory(path);
+            auto hr=Setup(nullptr,0x60|(readOnly?1u:0u),path.c_str(),setupTarget.c_str(),nullptr,0);
+            if(FAILED(hr))throw std::runtime_error("Bind Filter mount failed: "+std::to_string(static_cast<unsigned long>(hr)));
+            if(!ExistingTarget(path,target,readOnly))throw std::runtime_error("Bind Filter mapping did not appear");
+        }
+        if(!fs::is_directory(path))throw std::runtime_error("Mapped directory is inaccessible");
+    }
     bool DetachTarget(fs::path const& path,std::wstring const& target,bool readOnly)
     {
         if(!ExistingTarget(path,target,readOnly)) return false;
@@ -332,6 +344,20 @@ public:
     bool Mapped(fs::path const& path,std::wstring const& name,bool readOnly)
     {
         return Existing(path,name,readOnly)&&fs::is_directory(path);
+    }
+    // Local fixtures exercise the identical directory mapping functions
+    // without initializing the VMBus redirector.
+    void MapLocalForTest(fs::path const& path,fs::path const& source,bool readOnly)
+    {
+        EnsureTarget(path,NtPath(source),source.wstring(),readOnly);
+    }
+    bool MappedLocalForTest(fs::path const& path,fs::path const& source,bool readOnly)
+    {
+        return ExistingTarget(path,NtPath(source),readOnly)&&fs::is_directory(path);
+    }
+    void DetachLocalForTest(fs::path const& path,fs::path const& source,bool readOnly)
+    {
+        (void)DetachTarget(path,NtPath(source),readOnly);
     }
     // Exercise the same Bind Filter API and mapping validation on two
     // disposable directories without initializing the VMBus transport.
@@ -464,15 +490,7 @@ public:
         NativeHandle share(OpenShare(name));
         if(!share.Valid())Error("Open Virtual SMB share");
         Load();
-        if(!Existing(path,name,readOnly))
-        {
-            PrepareDirectory(path);
-            auto target=L"\\\\?\\GLOBALROOT"+NtShare(name);
-            auto hr=Setup(nullptr,0x60|(readOnly?1u:0u),path.c_str(),target.c_str(),nullptr,0);
-            if(FAILED(hr))throw std::runtime_error("Bind Filter mount failed: "+std::to_string(static_cast<unsigned long>(hr)));
-            if(!Existing(path,name,readOnly))throw std::runtime_error("Bind Filter mapping did not appear");
-        }
-        if(!fs::is_directory(path))throw std::runtime_error("Mapped Virtual SMB directory is inaccessible");
+        EnsureTarget(path,NtShare(name),L"\\\\?\\GLOBALROOT"+NtShare(name),readOnly);
         Owned[path.wstring()]={name,readOnly};
         return true;
     }

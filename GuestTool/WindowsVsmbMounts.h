@@ -162,6 +162,7 @@ public:
             }
             // Persist definitions before creating a mapping, so a service
             // restart can identify and safely detach the exact old mapping.
+            if(next.size()>224)throw std::runtime_error("Too many pending VSMB mappings");
             Save(next);
             InventoryError.clear();
             for(auto& row:Records)
@@ -279,4 +280,96 @@ bool WindowsVsmbMountStateTest()
     }
     manager.Update({});
     return mapped.empty()&&journal.empty();
+}
+
+
+int WindowsVsmbLocalIntegrationTest()
+{
+    auto root=fs::temp_directory_path()/("NanaBox-VSMB-Manager-"+std::to_string(GetCurrentProcessId()));
+    if(!fs::create_directory(root))throw std::runtime_error("Cannot create VSMB test directory");
+    auto local=root/L"mounts",source=root/L"exports";
+    fs::create_directory(local);fs::create_directory(source);
+    VirtualSmbDescriptor automatic{"Projects",L"Projects",false,false,true,false};
+    VirtualSmbDescriptor manual{"ReadOnly",L"ReadOnly",true,false,false,true};
+    auto inventory=std::vector<VirtualSmbDescriptor>{automatic,manual};
+    Json journal=Json::array();
+    auto ops=WindowsVsmbMounts::Operations{
+        [&](auto const& s){return VsmbClient.MappedLocalForTest(local/s.WideName,source/s.WideName,s.ReadOnly);},
+        [&](auto const& s){VsmbClient.MapLocalForTest(local/s.WideName,source/s.WideName,s.ReadOnly);},
+        [&](auto const& s){VsmbClient.DetachLocalForTest(local/s.WideName,source/s.WideName,s.ReadOnly);},
+        [&](){return journal;},[&](Json const& state){journal=state;}
+    };
+    auto require=[](bool result,char const* message){if(!result)throw std::runtime_error(message);};
+    auto create=[](fs::path const& path)
+    {
+        NativeHandle file(CreateFileW(path.c_str(),GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_NEW,
+            FILE_ATTRIBUTE_NORMAL,nullptr));
+        if(!file.Valid())Error("Create local VSMB integration fixture");
+        char data[]="data";DWORD count=0;
+        if(!WriteFile(file.Get(),data,4,&count,nullptr)||count!=4)Error("Write local VSMB integration fixture");
+    };
+    try
+    {
+        for(auto const& s:inventory)
+        {
+            fs::create_directory(source/s.WideName);
+            create(source/s.WideName/L"host.txt");
+        }
+        {
+            WindowsVsmbMounts mounts(local,ops);
+            mounts.Update(inventory);
+            auto status=mounts.Query();
+            require(status.at("ShareErrors").empty(),"Automatic VSMB mapping failed");
+            require(status["VirtualSmbShares"][0]["Mounted"]==true,"Automatic VSMB share is not mounted");
+            require(status["VirtualSmbShares"][1]["Mounted"]==false,"Manual VSMB share mounted unexpectedly");
+            require(fs::file_size(local/L"Projects"/L"host.txt")==4,"Bound source data is missing");
+            create(local/L"Projects"/L"guest.txt");
+            require(fs::file_size(source/L"Projects"/L"guest.txt")==4,"Writable binding did not update source");
+            mounts.Action("VsmbMount","ReadOnly");
+            require(fs::file_size(local/L"ReadOnly"/L"host.txt")==4,"Manual mapping unavailable");
+            {
+                NativeHandle write(CreateFileW((local/L"ReadOnly"/L"host.txt").c_str(),GENERIC_WRITE,
+                    FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+                require(!write.Valid(),"Read-only VSMB accepted write access");
+            }
+            mounts.Action("VsmbUnmount","Projects");
+            require(!fs::exists(local/L"Projects"/L"host.txt"),"Detached local directory still exposes source");
+            require(fs::exists(source/L"Projects"/L"guest.txt"),"Detachment removed host data");
+        }
+        {
+            WindowsVsmbMounts restored(local,ops);
+            restored.Update(inventory);
+            auto status=restored.Query();
+            require(status["VirtualSmbShares"][0]["Suppressed"]==true&&
+                status["VirtualSmbShares"][0]["Mounted"]==false,"Unmount preference was not restored");
+            require(status["VirtualSmbShares"][1]["Mounted"]==true,"Manual mount was not restored");
+            restored.Action("VsmbUnmount","ReadOnly");
+            // A pre-existing directory with files must not be overwritten.
+            create(local/L"Projects"/L"unrelated.txt");
+            bool conflict=false;
+            try{restored.Action("VsmbMount","Projects");}catch(std::exception const&){conflict=true;}
+            require(conflict&&fs::exists(local/L"Projects"/L"unrelated.txt"),"Nonempty directory conflict was not preserved");
+            fs::remove(local/L"Projects"/L"unrelated.txt");
+            restored.Action("VsmbMount","Projects");
+            require(fs::exists(local/L"Projects"/L"guest.txt"),"Remount did not recover host data");
+            restored.Update({});
+            require(restored.Query()["VirtualSmbShares"].empty()&&journal.empty(),"Obsolete bindings were not removed");
+            require(!fs::exists(local/L"Projects"/L"guest.txt")&&
+                fs::exists(source/L"Projects"/L"guest.txt"),"Obsolete share removal damaged source");
+        }
+        fs::remove_all(root);
+        std::cout<<"Native VSMB mount manager passed (automatic, manual, read-only, writable, restart and conflict recovery)\n";
+        return 0;
+    }
+    catch(...)
+    {
+        // Never recursively delete a fixture while any mapping might remain.
+        for(auto const& s:inventory)
+        {
+            try{VsmbClient.DetachLocalForTest(local/s.WideName,source/s.WideName,s.ReadOnly);}
+            catch(...){throw std::runtime_error("VSMB fixture cleanup failed; retained isolated test directory");}
+        }
+        std::error_code ec;fs::remove_all(root,ec);
+        throw;
+    }
 }

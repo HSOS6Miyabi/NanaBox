@@ -1417,7 +1417,11 @@ int wmain(int argc, wchar_t** argv)
         if (argc == 2 && std::wstring_view(argv[1]) == L"--self-test") return SelfTest();
         if (argc == 4 && std::wstring_view(argv[1]) == L"--plan9-manager-test")
             return WindowsPlan9ManagerTest(argv[2],argv[3]);
-        if (argc == 2 && std::wstring_view(argv[1]) == L"--bind-filter-self-test") return VsmbClient.LocalMappingTest();
+        if (argc == 2 && std::wstring_view(argv[1]) == L"--bind-filter-self-test")
+        {
+            auto result=VsmbClient.LocalMappingTest();
+            return result?result:WindowsVsmbLocalIntegrationTest();
+        }
         if (argc == 2 && std::wstring_view(argv[1]) == L"--cleanup")
         {
             Manager manager; manager.Cleanup(); return 0;
