@@ -196,6 +196,7 @@ try {
     $pipe2 = Get-Text 'ComPort2TextBox'
 
     Select-Tab 'TabGpu'
+    Select-Choice 'AssignmentModeComboBox' 'ChoiceListItem'
     Invoke-Control 'AddGpuDeviceButton'
     Set-Text 'GpuDeviceDeviceInterfaceLabel' 'UI-test-GPU'
     Set-Text 'GpuDevicePartitionIdLabel' '65535'
@@ -452,8 +453,8 @@ try {
     Invoke-Control 'ClearCom1'
     Invoke-Control 'ClearCom2'
     Select-Tab 'TabGpu'
-    Select-Choice 'AssignmentModeComboBox' 'ChoiceMirrorItem'
     Invoke-Control 'GpuRemove'
+    Select-Choice 'AssignmentModeComboBox' 'ChoiceMirrorItem'
     Select-Tab 'TabNetwork'
     Invoke-Control 'NetworkRemove'
     Select-Tab 'TabStorage'

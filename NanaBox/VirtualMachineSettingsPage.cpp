@@ -163,16 +163,20 @@ namespace
         Row.Visibility(Visible
             ? winrt::Visibility::Visible
             : winrt::Visibility::Collapsed);
+        double LabelColumnWidth = 250 - Panel.Margin().Left;
         winrt::ColumnDefinition LabelColumn;
-        LabelColumn.Width(winrt::GridLengthHelper::FromPixels(200));
+        LabelColumn.Width(winrt::GridLengthHelper::FromPixels(LabelColumnWidth));
         Row.ColumnDefinitions().Append(LabelColumn);
+        winrt::ColumnDefinition SpacingColumn;
+        SpacingColumn.Width(winrt::GridLengthHelper::FromPixels(12));
+        Row.ColumnDefinitions().Append(SpacingColumn);
         Row.ColumnDefinitions().Append(winrt::ColumnDefinition());
 
         winrt::TextBlock Label;
         Label.Text(::GetSettingsString(LabelResource));
+        Label.MinWidth(LabelColumnWidth);
         Label.TextWrapping(winrt::TextWrapping::Wrap);
         Label.VerticalAlignment(winrt::VerticalAlignment::Center);
-        Label.Margin(winrt::ThicknessHelper::FromLengths(0, 0, 12, 0));
         Row.Children().Append(Label);
 
         winrt::hstring Help = ::GetSettingsString(HelpResource);
@@ -180,7 +184,7 @@ namespace
         winrt::AutomationProperties::SetAutomationId(Input, winrt::hstring(LabelResource));
         winrt::AutomationProperties::SetHelpText(Input, Help);
         winrt::ToolTipService::SetToolTip(Input, winrt::box_value(Help));
-        winrt::Grid::SetColumn(Input, 1);
+        winrt::Grid::SetColumn(Input, 2);
         Row.Children().Append(Input);
         Panel.Children().Append(Row);
         return Row;
@@ -195,6 +199,7 @@ namespace
     {
         winrt::TextBox Input;
         Input.Text(Value);
+        Input.MinWidth(250);
         Input.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
         ::AddSettingRow(Panel, Input, LabelResource, HelpResource, !Hidden);
         return Input;
@@ -400,6 +405,20 @@ namespace winrt::NanaBox::implementation
     void VirtualMachineSettingsPage::InitializeComponent()
     {
         VirtualMachineSettingsPageT::InitializeComponent();
+        this->AssignmentModeComboBox().SelectionChanged([
+            WeakSection = winrt::make_weak(this->GpuDeviceSection())](
+                winrt::IInspectable const& Sender,
+                winrt::SelectionChangedEventArgs const& Arguments)
+        {
+            UNREFERENCED_PARAMETER(Arguments);
+            if (auto Section = WeakSection.get())
+            {
+                Section.Visibility(
+                    Sender.as<winrt::ComboBox>().SelectedIndex() ==
+                        static_cast<std::int32_t>(NanaBox::GpuAssignmentMode::List)
+                        ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+            }
+        });
         if (this->m_ConfigurationFilePath.empty())
         {
             this->PopulateControls();
@@ -1465,7 +1484,6 @@ namespace winrt::NanaBox::implementation
             L"GpuDevicePartitionIdHelp",
             winrt::to_hstring(PartitionId),
             false);
-        Row.PartitionId.Width(120);
         Row.PartitionId.HorizontalAlignment(winrt::HorizontalAlignment::Left);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
@@ -2247,6 +2265,7 @@ namespace winrt::NanaBox::implementation
             true);
         Row.Path = winrt::TextBox();
         Row.Path.Text(winrt::to_hstring(Configuration.Path));
+        Row.Path.MinWidth(250);
         Row.Path.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
         winrt::Grid PathRow = ::AddSettingRow(
             Row.Container,
@@ -2268,7 +2287,7 @@ namespace winrt::NanaBox::implementation
         winrt::ColumnDefinition BrowseColumn;
         BrowseColumn.Width(winrt::GridLengthHelper::Auto());
         PathRow.ColumnDefinitions().Append(BrowseColumn);
-        winrt::Grid::SetColumn(BrowseButton, 2);
+        winrt::Grid::SetColumn(BrowseButton, 3);
         PathRow.Children().Append(BrowseButton);
         Row.Type.SelectionChanged([
             WeakBrowse = winrt::make_weak(BrowseButton)](
@@ -2406,7 +2425,6 @@ namespace winrt::NanaBox::implementation
             L"Plan9SharePortHelp",
             winrt::to_hstring(Configuration.Port),
             false);
-        Row.Port.Width(120);
         Row.Port.HorizontalAlignment(winrt::HorizontalAlignment::Left);
         Row.Path = ::AddSettingTextBox(
             Row.Container,
