@@ -1647,6 +1647,14 @@
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsMoveStorage" Tag="VmmsMoveStorage" Content="Move VM storage" AutomationProperties.AutomationId="VmmsMoveStorage" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsSetProcessor" Tag="VmmsSetProcessor" Content="Set processor count" AutomationProperties.AutomationId="VmmsSetProcessor" />
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsSetMemory" Tag="VmmsSetMemory" Content="Set startup memory" AutomationProperties.AutomationId="VmmsSetMemory" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsDynamicMemory" Tag="VmmsDynamicMemory" Content="Enable dynamic memory" AutomationProperties.AutomationId="VmmsDynamicMemory" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsStaticMemory" Tag="VmmsStaticMemory" Content="Disable dynamic memory" AutomationProperties.AutomationId="VmmsStaticMemory" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsMigrate" Tag="VmmsMigrate" Content="Migrate to another Hyper-V host" AutomationProperties.AutomationId="VmmsMigrate" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationEnable" Tag="VmmsReplicationEnable" Content="Configure Hyper-V Replica" AutomationProperties.AutomationId="VmmsReplicationEnable" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationStart" Tag="VmmsReplicationStart" Content="Start initial replication" AutomationProperties.AutomationId="VmmsReplicationStart" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationSuspend" Tag="VmmsReplicationSuspend" Content="Suspend replication" AutomationProperties.AutomationId="VmmsReplicationSuspend" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationResume" Tag="VmmsReplicationResume" Content="Resume replication" AutomationProperties.AutomationId="VmmsReplicationResume" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicationRemove" Tag="VmmsReplicationRemove" Content="Remove replication relationship" AutomationProperties.AutomationId="VmmsReplicationRemove" />
                 </ComboBox>
                 <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsFieldsNote" Text="Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints." TextWrapping="Wrap" Opacity="0.75" />
                 <TextBox x:Name="VmmsNameTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsNameTextBox" Header="VM or new checkpoint name" AutomationProperties.AutomationId="VmmsNameTextBox" />
@@ -1656,6 +1664,24 @@
                 <ComboBox x:Name="VmmsCheckpointsComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointsComboBox" Header="Checkpoint" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsCheckpointsComboBox" />
                 <TextBox x:Name="VmmsPathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsPathTextBox" Header="Configuration file or existing directory" AutomationProperties.AutomationId="VmmsPathTextBox" />
                 <TextBox x:Name="VmmsDestinationTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDestinationTextBox" Header="Empty destination directory (import copy)" AutomationProperties.AutomationId="VmmsDestinationTextBox" />
+                <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsDynamicMemoryTitle" Text="Dynamic memory" FontSize="16" FontWeight="SemiBold" />
+                <TextBox x:Name="VmmsMinimumMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMinimumMemoryTextBox" Header="Minimum memory (MiB)" Text="512" InputScope="Number" AutomationProperties.AutomationId="VmmsMinimumMemoryTextBox" />
+                <TextBox x:Name="VmmsMaximumMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMaximumMemoryTextBox" Header="Maximum memory (MiB)" Text="4096" InputScope="Number" AutomationProperties.AutomationId="VmmsMaximumMemoryTextBox" />
+                <TextBox x:Name="VmmsMemoryBufferTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryBufferTextBox" Header="Memory buffer (%)" Text="20" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryBufferTextBox" />
+                <TextBox x:Name="VmmsMemoryPriorityTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryPriorityTextBox" Header="Memory priority (0–100)" Text="50" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryPriorityTextBox" />
+                <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsRemoteTitle" Text="Migration and replication" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsRemoteNote" Text="Configure migration or Replica on both hosts first. Use an absolute path on the destination host, or leave it empty for shared storage." TextWrapping="Wrap" Opacity="0.75" />
+                <TextBox x:Name="VmmsRemoteHostTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsRemoteHostTextBox" Header="Destination host / replica server" AutomationProperties.AutomationId="VmmsRemoteHostTextBox" />
+                <TextBox x:Name="VmmsRemotePathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsRemotePathTextBox" Header="Destination storage path (optional)" AutomationProperties.AutomationId="VmmsRemotePathTextBox" />
+                <TextBox x:Name="VmmsReplicaPortTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaPortTextBox" Header="Replica server port" Text="80" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaPortTextBox" />
+                <TextBox x:Name="VmmsReplicaFrequencyTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaFrequencyTextBox" Header="Replication interval (30, 300 or 900 seconds)" Text="300" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaFrequencyTextBox" />
+                <TextBox x:Name="VmmsReplicaHistoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaHistoryTextBox" Header="Additional recovery points (0–24)" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsReplicaHistoryTextBox" />
+                <TextBox x:Name="VmmsReplicaCertificateTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCertificateTextBox" Header="Certificate thumbprint" AutomationProperties.AutomationId="VmmsReplicaCertificateTextBox" />
+                <ComboBox x:Name="VmmsReplicaAuthComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaAuthComboBox" Header="Replica authentication" SelectedIndex="0" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsReplicaAuthComboBox">
+                  <ComboBoxItem Tag="Kerberos" Content="Kerberos" AutomationProperties.AutomationId="VmmsReplicaKerberos" />
+                  <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCertificate" Tag="Certificate" Content="Certificate" AutomationProperties.AutomationId="VmmsReplicaCertificate" />
+                </ComboBox>
+                <CheckBox x:Name="VmmsReplicaCompressionCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCompressionCheckBox" Content="Compress replication traffic" IsChecked="True" AutomationProperties.AutomationId="VmmsReplicaCompressionCheckBox" />
                 <Button x:Uid="/VirtualMachineSettingsPage/VmmsExecuteButton" Content="Execute selected operation" Tag="Execute" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsExecuteButton" />
               </StackPanel>
             </ContentControl>

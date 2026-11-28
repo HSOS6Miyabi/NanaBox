@@ -2064,7 +2064,37 @@ namespace winrt::NanaBox::implementation
                         Data["Count"] = Number(this->VmmsProcessorTextBox(), 1, 2048);
                         Confirmation += L"\n" + std::wstring(this->VmmsProcessorTextBox().Text().c_str());
                     }
-                    else if (Action == L"VmmsSetMemory")
+                    else if (Action == L"VmmsDynamicMemory")
+                    {
+                        Data["MinimumMiB"] = Number(this->VmmsMinimumMemoryTextBox(), 32, 16777216);
+                        Data["MemoryMiB"] = Number(this->VmmsMemoryTextBox(), 32, 16777216);
+                        Data["MaximumMiB"] = Number(this->VmmsMaximumMemoryTextBox(), 32, 16777216);
+                        Data["Buffer"] = Number(this->VmmsMemoryBufferTextBox(), 5, 2000);
+                        Data["Priority"] = Number(this->VmmsMemoryPriorityTextBox(), 0, 100);
+                        if (Data["MinimumMiB"] > Data["MemoryMiB"] || Data["MemoryMiB"] > Data["MaximumMiB"])
+                            throw winrt::hresult_invalid_argument(L"Invalid dynamic memory range.");
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsMigrate" || Action == L"VmmsReplicationEnable")
+                    {
+                        Data["Host"] = winrt::to_string(this->VmmsRemoteHostTextBox().Text());
+                        if (Data["Host"].get<std::string>().empty()) throw winrt::hresult_invalid_argument(L"Specify a destination host.");
+                        if (Action == L"VmmsMigrate")
+                            Data["Path"] = winrt::to_string(this->VmmsRemotePathTextBox().Text());
+                        else
+                        {
+                            Data["Port"] = Number(this->VmmsReplicaPortTextBox(), 1, 65535);
+                            Data["Frequency"] = Number(this->VmmsReplicaFrequencyTextBox(), 30, 900);
+                            if (Data["Frequency"] != 30 && Data["Frequency"] != 300 && Data["Frequency"] != 900)
+                                throw winrt::hresult_invalid_argument(L"Replication interval must be 30, 300 or 900 seconds.");
+                            Data["RecoveryHistory"] = Number(this->VmmsReplicaHistoryTextBox(), 0, 24);
+                            Data["Authentication"] = Selected(this->VmmsReplicaAuthComboBox());
+                            Data["Thumbprint"] = winrt::to_string(this->VmmsReplicaCertificateTextBox().Text());
+                            Data["Compression"] = this->VmmsReplicaCompressionCheckBox().IsChecked().Value();
+                        }
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsSetMemory" || Action == L"VmmsStaticMemory")
                     {
                         Data["MemoryMiB"] = Number(this->VmmsMemoryTextBox(), 32, 16777216);
                         Confirmation += L"\n" + std::wstring(this->VmmsMemoryTextBox().Text().c_str()) + L" MiB";

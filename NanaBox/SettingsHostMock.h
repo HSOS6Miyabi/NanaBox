@@ -172,7 +172,44 @@ namespace NanaBox
                     else if (Action == "VmmsSave") Machine["State"] = "Saved";
                     else if (Action == "VmmsRename") Machine["Name"] = Text("Name");
                     else if (Action == "VmmsSetProcessor") Machine["ProcessorCount"] = A.at("Count");
-                    else if (Action == "VmmsSetMemory") Machine["MemoryMiB"] = A.at("MemoryMiB");
+                    else if (Action == "VmmsSetMemory" || Action == "VmmsStaticMemory")
+                    {
+                        Machine["MemoryMiB"] = A.at("MemoryMiB");
+                        if (Action == "VmmsStaticMemory") Machine["DynamicMemoryEnabled"] = false;
+                    }
+                    else if (Action == "VmmsDynamicMemory")
+                    {
+                        if (A.at("MinimumMiB") > A.at("MemoryMiB") || A.at("MemoryMiB") > A.at("MaximumMiB"))
+                            throw winrt::hresult_invalid_argument();
+                        Machine["DynamicMemoryEnabled"] = true;
+                        for (auto Key : {"MinimumMiB", "MemoryMiB", "MaximumMiB", "Buffer", "Priority"}) Machine[Key] = A.at(Key);
+                    }
+                    else if (Action == "VmmsMigrate")
+                    {
+                        if (Text("Host").empty()) throw winrt::hresult_invalid_argument();
+                        Result["MigratedTo"] = Text("Host");
+                        Result["MigratedId"] = Selected;
+                        Data->Machines.erase(It);
+                        Data->Checkpoints.erase(Selected);
+                        Selected.clear();
+                    }
+                    else if (Action == "VmmsReplicationEnable")
+                    {
+                        if (Machine.contains("Replication") || Text("Host").empty()) throw winrt::hresult_invalid_argument();
+                        Machine["Replication"] = A;
+                        Machine["Replication"]["State"] = "ReadyForInitialReplication";
+                    }
+                    else if (Action == "VmmsReplicationStart" || Action == "VmmsReplicationSuspend" ||
+                        Action == "VmmsReplicationResume" || Action == "VmmsReplicationRemove")
+                    {
+                        auto& Replica = Machine.at("Replication");
+                        auto State = Replica.at("State").get<std::string>();
+                        if (Action == "VmmsReplicationRemove") Machine.erase("Replication");
+                        else if (Action == "VmmsReplicationStart" && State == "ReadyForInitialReplication") Replica["State"] = "Replicating";
+                        else if (Action == "VmmsReplicationSuspend" && State == "Replicating") Replica["State"] = "Suspended";
+                        else if (Action == "VmmsReplicationResume" && State == "Suspended") Replica["State"] = "Replicating";
+                        else throw winrt::hresult_invalid_argument(L"Invalid replication state.");
+                    }
                     else if (Action == "VmmsCheckpointCreate")
                         Snapshots.push_back(Json{{"Id", NewId()}, {"Name", Text("Name")}, {"MemoryMiB", Machine["MemoryMiB"]}});
                     else if (Action == "VmmsCheckpointRestore") Machine["MemoryMiB"] = Find(Snapshots, Text("CheckpointId"))->at("MemoryMiB");

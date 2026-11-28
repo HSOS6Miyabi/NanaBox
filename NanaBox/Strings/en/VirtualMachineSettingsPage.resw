@@ -1917,4 +1917,76 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsSetMemory.Content" xml:space="preserve">
     <value>Set startup memory</value>
   </data>
+  <data name="VmmsDynamicMemory.Content" xml:space="preserve">
+    <value>Enable dynamic memory</value>
+  </data>
+  <data name="VmmsStaticMemory.Content" xml:space="preserve">
+    <value>Disable dynamic memory</value>
+  </data>
+  <data name="VmmsMigrate.Content" xml:space="preserve">
+    <value>Migrate to another Hyper-V host</value>
+  </data>
+  <data name="VmmsReplicationEnable.Content" xml:space="preserve">
+    <value>Configure Hyper-V Replica</value>
+  </data>
+  <data name="VmmsReplicationStart.Content" xml:space="preserve">
+    <value>Start initial replication</value>
+  </data>
+  <data name="VmmsReplicationSuspend.Content" xml:space="preserve">
+    <value>Suspend replication</value>
+  </data>
+  <data name="VmmsReplicationResume.Content" xml:space="preserve">
+    <value>Resume replication</value>
+  </data>
+  <data name="VmmsReplicationRemove.Content" xml:space="preserve">
+    <value>Remove replication relationship</value>
+  </data>
+  <data name="VmmsMinimumMemoryTextBox.Header" xml:space="preserve">
+    <value>Minimum memory (MiB)</value>
+  </data>
+  <data name="VmmsMaximumMemoryTextBox.Header" xml:space="preserve">
+    <value>Maximum memory (MiB)</value>
+  </data>
+  <data name="VmmsMemoryBufferTextBox.Header" xml:space="preserve">
+    <value>Memory buffer (%)</value>
+  </data>
+  <data name="VmmsMemoryPriorityTextBox.Header" xml:space="preserve">
+    <value>Memory priority (0–100)</value>
+  </data>
+  <data name="VmmsRemoteHostTextBox.Header" xml:space="preserve">
+    <value>Destination host / replica server</value>
+  </data>
+  <data name="VmmsRemotePathTextBox.Header" xml:space="preserve">
+    <value>Destination storage path (optional)</value>
+  </data>
+  <data name="VmmsReplicaPortTextBox.Header" xml:space="preserve">
+    <value>Replica server port</value>
+  </data>
+  <data name="VmmsReplicaFrequencyTextBox.Header" xml:space="preserve">
+    <value>Replication interval (30, 300 or 900 seconds)</value>
+  </data>
+  <data name="VmmsReplicaHistoryTextBox.Header" xml:space="preserve">
+    <value>Additional recovery points (0–24)</value>
+  </data>
+  <data name="VmmsReplicaCertificateTextBox.Header" xml:space="preserve">
+    <value>Certificate thumbprint</value>
+  </data>
+  <data name="VmmsDynamicMemoryTitle.Text" xml:space="preserve">
+    <value>Dynamic memory</value>
+  </data>
+  <data name="VmmsRemoteTitle.Text" xml:space="preserve">
+    <value>Migration and replication</value>
+  </data>
+  <data name="VmmsRemoteNote.Text" xml:space="preserve">
+    <value>Configure migration or Replica on both hosts first. Use an absolute path on the destination host, or leave it empty for shared storage.</value>
+  </data>
+  <data name="VmmsReplicaAuthComboBox.Header" xml:space="preserve">
+    <value>Replica authentication</value>
+  </data>
+  <data name="VmmsReplicaCertificate.Content" xml:space="preserve">
+    <value>Certificate</value>
+  </data>
+  <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve">
+    <value>Compress replication traffic</value>
+  </data>
 </root>

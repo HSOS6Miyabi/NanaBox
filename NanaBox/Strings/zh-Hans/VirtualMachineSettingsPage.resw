@@ -1917,4 +1917,76 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsSetMemory.Content" xml:space="preserve">
     <value>设置启动内存</value>
   </data>
+  <data name="VmmsDynamicMemory.Content" xml:space="preserve">
+    <value>启用动态内存</value>
+  </data>
+  <data name="VmmsStaticMemory.Content" xml:space="preserve">
+    <value>禁用动态内存</value>
+  </data>
+  <data name="VmmsMigrate.Content" xml:space="preserve">
+    <value>迁移至其他 Hyper-V 宿主机</value>
+  </data>
+  <data name="VmmsReplicationEnable.Content" xml:space="preserve">
+    <value>配置 Hyper-V 副本</value>
+  </data>
+  <data name="VmmsReplicationStart.Content" xml:space="preserve">
+    <value>开始初始复制</value>
+  </data>
+  <data name="VmmsReplicationSuspend.Content" xml:space="preserve">
+    <value>暂停复制</value>
+  </data>
+  <data name="VmmsReplicationResume.Content" xml:space="preserve">
+    <value>恢复复制</value>
+  </data>
+  <data name="VmmsReplicationRemove.Content" xml:space="preserve">
+    <value>删除复制关系</value>
+  </data>
+  <data name="VmmsMinimumMemoryTextBox.Header" xml:space="preserve">
+    <value>最小内存 (MiB)</value>
+  </data>
+  <data name="VmmsMaximumMemoryTextBox.Header" xml:space="preserve">
+    <value>最大内存 (MiB)</value>
+  </data>
+  <data name="VmmsMemoryBufferTextBox.Header" xml:space="preserve">
+    <value>内存缓冲区 (%)</value>
+  </data>
+  <data name="VmmsMemoryPriorityTextBox.Header" xml:space="preserve">
+    <value>内存优先级 (0–100)</value>
+  </data>
+  <data name="VmmsRemoteHostTextBox.Header" xml:space="preserve">
+    <value>目标宿主机 / 副本服务器</value>
+  </data>
+  <data name="VmmsRemotePathTextBox.Header" xml:space="preserve">
+    <value>目标存储路径（可选）</value>
+  </data>
+  <data name="VmmsReplicaPortTextBox.Header" xml:space="preserve">
+    <value>副本服务器端口</value>
+  </data>
+  <data name="VmmsReplicaFrequencyTextBox.Header" xml:space="preserve">
+    <value>复制间隔（30、300 或 900 秒）</value>
+  </data>
+  <data name="VmmsReplicaHistoryTextBox.Header" xml:space="preserve">
+    <value>附加恢复点数量 (0–24)</value>
+  </data>
+  <data name="VmmsReplicaCertificateTextBox.Header" xml:space="preserve">
+    <value>证书指纹</value>
+  </data>
+  <data name="VmmsDynamicMemoryTitle.Text" xml:space="preserve">
+    <value>动态内存</value>
+  </data>
+  <data name="VmmsRemoteTitle.Text" xml:space="preserve">
+    <value>迁移与复制</value>
+  </data>
+  <data name="VmmsRemoteNote.Text" xml:space="preserve">
+    <value>请先在两台宿主机上配置迁移或副本功能。填写目标宿主机上的绝对路径，使用共享存储时可留空。</value>
+  </data>
+  <data name="VmmsReplicaAuthComboBox.Header" xml:space="preserve">
+    <value>副本身份验证</value>
+  </data>
+  <data name="VmmsReplicaCertificate.Content" xml:space="preserve">
+    <value>证书</value>
+  </data>
+  <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve">
+    <value>压缩复制流量</value>
+  </data>
 </root>
