@@ -13,7 +13,8 @@ public:
 
 [[noreturn]] void InputError(char const* operation)
 {
-    throw std::runtime_error(std::string(operation) + " (Windows error " + std::to_string(GetLastError()) + ")");
+    auto error = GetLastError();
+    throw std::runtime_error(std::string(operation) + " (Windows error " + std::to_string(error) + ")");
 }
 
 std::vector<INPUT> UnicodeInputEvents(std::wstring_view text)
@@ -219,7 +220,7 @@ InputExit InjectUnicode(std::vector<INPUT>& events, DWORD session)
 
 constexpr wchar_t InputTestText[] = L"Hello \u4e16\u754c \U0001f600 \u20ac A!";
 
-int UnicodeInputChild(std::wstring_view nonce, std::wstring_view sessionText, bool test)
+int UnicodeInputChild(std::wstring_view nonce, std::wstring_view sessionText)
 {
     try
     {
@@ -240,7 +241,6 @@ int UnicodeInputChild(std::wstring_view nonce, std::wstring_view sessionText, bo
         std::wstring text(size, L'\0');
         if (size) ReadInputPipe(pipe.Get(), text.data(), static_cast<DWORD>(size * sizeof(wchar_t)));
         auto events = UnicodeInputEvents(text);
-        if (test) return text == InputTestText ? 0 : static_cast<int>(InputExit::Invalid);
         return static_cast<int>(InjectUnicode(events, current));
     }
     catch (...) { return static_cast<int>(InputExit::Invalid); }
@@ -268,13 +268,13 @@ void WaitInputIo(HANDLE pipe, OVERLAPPED& operation, HANDLE process, DWORD& byte
 }
 
 template<class Launch, class Check>
-void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool test, Launch launch, Check check)
+void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool sameUser, Launch launch, Check check)
 {
     auto random = Token();
     std::wstring nonce(random.begin(), random.end());
     auto name = InputPipeName(nonce);
     auto sid = InputLogonSid(user);
-    auto sddl = L"D:P(A;;GA;;;SY)(A;;" + std::wstring(test ? L"GA" : L"GR") + L";;;" + sid + L")";
+    auto sddl = L"D:P(A;;GA;;;SY)(A;;" + std::wstring(sameUser ? L"GA" : L"GR") + L";;;" + sid + L")";
     PSECURITY_DESCRIPTOR descriptor = nullptr;
     if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.c_str(), SDDL_REVISION_1, &descriptor, nullptr))
         InputError("Create input pipe security descriptor");
@@ -286,7 +286,7 @@ void SendInputFrame(std::wstring const& text, DWORD session, HANDLE user, bool t
     if (!pipe) InputError("Create private Unicode input pipe");
     auto executable = InputExecutable();
     auto command = L"\"" + executable + L"\" " +
-        (test ? L"--unicode-input-test-child " : L"--unicode-input-child ") + nonce + L" " + std::to_wstring(session);
+        L"--unicode-input-child " + nonce + L" " + std::to_wstring(session);
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
     wchar_t desktop[] = L"winsta0\\default";
@@ -423,10 +423,6 @@ void UnicodeInputUiTest()
     HANDLE raw = nullptr;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &raw)) InputError("Open test input token");
     InputHandle token(raw);
-    SendInputFrame(InputTestText, session, token.Get(), true,
-        [](std::wstring const& exe, std::wstring& cmd, STARTUPINFOW& startup, PROCESS_INFORMATION& child)
-        { return CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
-            nullptr, nullptr, &startup, &child); }, [](){});
     HWND window = CreateWindowExW(WS_EX_TOPMOST, L"STATIC", L"NanaBox Unicode input integration",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 480, 160,
         nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -452,9 +448,10 @@ void UnicodeInputUiTest()
     pump();
     if (GetForegroundWindow() != window || GetFocus() != edit)
         GuestFail("Cannot focus isolated Unicode input test control");
-    auto events = UnicodeInputEvents(InputTestText);
-    if (InjectUnicode(events, session) != InputExit::Success)
-        GuestFail("Windows SendInput failed in the test window");
+    SendInputFrame(InputTestText, session, token.Get(), true,
+        [](std::wstring const& exe, std::wstring& cmd, STARTUPINFOW& startup, PROCESS_INFORMATION& child)
+        { return CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+            nullptr, nullptr, &startup, &child); }, [](){});
     for (int attempt = 0; attempt < 100; ++attempt)
     {
         pump();
@@ -462,7 +459,7 @@ void UnicodeInputUiTest()
         GetWindowTextW(edit, actual, static_cast<int>(std::size(actual)));
         if (std::wstring_view(actual) == InputTestText)
         {
-            std::cout << "Private input pipe and Windows native edit Unicode input passed.\n";
+            std::cout << "Private input pipe, child process and Windows native edit Unicode input passed.\n";
             return;
         }
         Sleep(20);
