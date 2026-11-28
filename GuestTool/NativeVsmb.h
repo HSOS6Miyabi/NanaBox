@@ -186,15 +186,45 @@ class NativeVsmb
         catch(...){FreeLibrary(Module);Module=nullptr;throw;}
     }
     static std::wstring WideName(std::u16string const& value){return std::wstring(value.begin(),value.end());}
-    static std::wstring NtPath(fs::path const& path)
+    static std::wstring CanonicalPath(fs::path const& path,DWORD format)
     {
         auto text=path.wstring();
         if(text.size()<3||text[1]!=L':'||text[2]!=L'\\')throw std::runtime_error("A local DOS mount path is required");
-        wchar_t name[32768]{};
-        if(!QueryDosDeviceW(text.substr(0,2).c_str(),name,static_cast<DWORD>(std::size(name))))
-            Error("Resolve mount volume");
-        return std::wstring(name)+text.substr(2);
+        auto parent=path.parent_path();
+        std::vector<std::wstring> suffix{path.filename().wstring()};
+        // Canonicalize the nearest existing parent. In particular, Windows
+        // TEMP can use an 8.3 directory name. Do not follow the final mount
+        // point itself, which may already be mapped to another filesystem.
+        while(!parent.empty())
+        {
+            auto attr=GetFileAttributesW(parent.c_str());
+            if(attr!=INVALID_FILE_ATTRIBUTES)
+            {
+                if(!(attr&FILE_ATTRIBUTE_DIRECTORY)||(attr&FILE_ATTRIBUTE_REPARSE_POINT))
+                    throw std::runtime_error("Unsafe mount directory parent");
+                NativeHandle handle(CreateFileW(parent.c_str(),FILE_READ_ATTRIBUTES,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,
+                    FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,nullptr));
+                if(!handle.Valid())Error("Open mount directory parent");
+                std::vector<wchar_t> result(32768);
+                auto size=GetFinalPathNameByHandleW(handle.Get(),result.data(),static_cast<DWORD>(result.size()),format);
+                if(!size||size>=result.size())Error("Resolve canonical mount directory");
+                std::wstring value(result.data(),size);
+                for(auto it=suffix.rbegin();it!=suffix.rend();++it)
+                {
+                    if(value.back()!=L'\\')value+=L'\\';
+                    value+=*it;
+                }
+                return value;
+            }
+            auto error=GetLastError();
+            if(error!=ERROR_FILE_NOT_FOUND&&error!=ERROR_PATH_NOT_FOUND)Error("Inspect mount directory parent");
+            if(parent==parent.root_path())break;
+            suffix.push_back(parent.filename().wstring());parent=parent.parent_path();
+        }
+        throw std::runtime_error("Mount directory has no accessible volume");
     }
+    static std::wstring NtPath(fs::path const& path){return CanonicalPath(path,VOLUME_NAME_NT);}
     static bool Within(std::wstring const& path,std::wstring const& parent)
     {
         return Equal(path,parent)||(path.size()>parent.size()&&path[parent.size()]==L'\\'&&
@@ -306,7 +336,20 @@ public:
             auto status=Setup(nullptr,0x61,mount.c_str(),source.c_str(),nullptr,0);
             if(FAILED(status))throw std::runtime_error("Create test binding failed: "+std::to_string(static_cast<unsigned long>(status)));
             bound=true;
-            if(!ExistingTarget(mount,NtPath(source),true))throw std::runtime_error("Test binding not reported");
+            if(!ExistingTarget(mount,NtPath(source),true))
+            {
+                auto expected=NtPath(mount);
+                auto mappings=Bindings(mount);
+                std::cerr<<"Expected test mapping "<<Utf8(expected)<<"; reported "<<mappings.size()<<" mappings\n";
+                for(auto const& item:mappings)
+                {
+                    auto rootName=WideName(item.Root);
+                    if(rootName.find(L"NanaBox-BindFilter-")==std::wstring::npos)continue;
+                    std::cerr<<"Test mapping: "<<Utf8(rootName)<<" flags "<<item.Flags<<"\n";
+                    for(auto const& target:item.Targets)std::cerr<<"Target: "<<Utf8(WideName(target))<<"\n";
+                }
+                throw std::runtime_error("Test binding not reported");
+            }
             {
                 NativeHandle file(CreateFileW((mount/L"test.txt").c_str(),GENERIC_READ,FILE_SHARE_READ,
                     nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
@@ -317,7 +360,7 @@ public:
                     throw std::runtime_error("Bound file content differs");
                 wchar_t path[32768]{};
                 auto size=GetFinalPathNameByHandleW(file.Get(),path,static_cast<DWORD>(std::size(path)),VOLUME_NAME_DOS);
-                if(!size||size>=std::size(path)||!Equal(std::wstring(path),L"\\\\?\\"+(mount/L"test.txt").wstring()))
+                if(!size||size>=std::size(path)||!Equal(std::wstring(path),CanonicalPath(mount,VOLUME_NAME_DOS)+L"\\test.txt"))
                     throw std::runtime_error("Bind Filter did not preserve the local DOS filename");
             }
             {
