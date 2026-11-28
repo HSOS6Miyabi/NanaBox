@@ -5,6 +5,7 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <hvsocket.h>
+#include <sfc.h>
 #include <nlohmann/json.hpp>
 #include "WddmMapping.h"
 #include <atomic>
@@ -25,6 +26,7 @@
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "sfc.lib")
 
 namespace
 {
@@ -208,8 +210,10 @@ namespace
     fs::path Destination(std::wstring const& id)
     {
         auto slash = id.find_last_of(L'\\');
+        auto suffix = std::wstring_view(L".nanabox-gpu-original");
         if (slash == std::wstring::npos || !Wddm::SafeComponent(id.substr(slash + 1)) ||
-            !Wddm::SafeSystemDirectory(id.substr(0, slash)))
+            !Wddm::SafeSystemDirectory(id.substr(0, slash)) ||
+            (id.size() >= suffix.size() && Wddm::Fold(id.substr(id.size() - suffix.size())) == suffix))
             throw std::runtime_error("Invalid GPU destination");
         return fs::path(WindowsDirectory()) / id;
     }
@@ -235,6 +239,20 @@ namespace
             if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY) ||
                 (attr & FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error("Unsafe GPU destination directory");
         }
+    }
+
+    fs::path BackupPath(fs::path const& destination)
+    {
+        auto result = destination;
+        result += L".nanabox-gpu-original";
+        return result;
+    }
+
+    bool PlainFile(fs::path const& path)
+    {
+        DWORD attr = GetFileAttributesW(path.c_str());
+        return attr != INVALID_FILE_ATTRIBUTES &&
+            !(attr & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT));
     }
 
     std::wstring NormalizeLink(fs::path const& path)
@@ -282,6 +300,24 @@ namespace
         if (!CreateSymbolicLinkW(destination.c_str(), source.c_str(), 0)) Error("Create GPU symbolic link");
     }
 
+    void MoveOriginal(fs::path const& destination)
+    {
+        auto backup = BackupPath(destination);
+        if (!PlainFile(destination) || SfcIsFileProtected(nullptr, destination.c_str()) ||
+            ExistsEntry(backup)) throw std::runtime_error("Guest file cannot be safely replaced");
+        if (!MoveFileExW(destination.c_str(), backup.c_str(), MOVEFILE_WRITE_THROUGH))
+            Error("Preserve original GPU file");
+    }
+
+    void RestoreOriginal(fs::path const& destination)
+    {
+        auto backup = BackupPath(destination);
+        if (!PlainFile(backup) || ExistsEntry(destination))
+            throw std::runtime_error("Original GPU file cannot be safely restored");
+        if (!MoveFileExW(backup.c_str(), destination.c_str(), MOVEFILE_WRITE_THROUGH))
+            Error("Restore original GPU file");
+    }
+
     std::vector<std::wstring> SplitPath(std::wstring_view text)
     {
         std::vector<std::wstring> result;
@@ -312,7 +348,7 @@ namespace
     }
 
     void UpdateEnvironment(Key const& state, wchar_t const* name, wchar_t const* ownedName,
-        std::vector<std::wstring> const& desired)
+        std::vector<std::wstring> const& desired, bool removeObsolete = true)
     {
         Key environment(EnvironmentKey, KEY_READ | KEY_SET_VALUE);
         DWORD type = REG_EXPAND_SZ;
@@ -320,8 +356,12 @@ namespace
         auto entries = SplitPath(original);
         auto owned = SplitPath(state.Read(ownedName));
         std::vector<std::wstring> nextOwned;
-        entries.erase(std::remove_if(entries.begin(), entries.end(), [&](auto const& value)
-            { return Contains(owned, value) && !Contains(desired, value); }), entries.end());
+        if (removeObsolete)
+            entries.erase(std::remove_if(entries.begin(), entries.end(), [&](auto const& value)
+                { return Contains(owned, value) && !Contains(desired, value); }), entries.end());
+        else
+            for (auto const& value : owned)
+                if (Contains(entries, value) && !Contains(desired, value)) nextOwned.push_back(value);
         for (auto const& value : desired)
         {
             if (!Contains(entries, value))
@@ -367,9 +407,9 @@ namespace
         DriverMount Mount;
         std::map<std::string, std::unique_ptr<DriverMount>> ExtraMounts;
         Json Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", Json::array()}};
-        Links ReadLinks(Key const& key)
+        Links ReadLinks(Key const& key, wchar_t const* name = L"Links")
         {
-            auto value = key.Read(L"Links");
+            auto value = key.Read(name);
             if (value.empty()) return {};
             auto object = Json::parse(Utf8(value));
             Links result;
@@ -377,11 +417,73 @@ namespace
                 result.emplace(Wide(it.key()), Wide(it.value().get<std::string>()));
             return result;
         }
-        void SaveLinks(Key const& key, Links const& links)
+        void SaveLinks(Key const& key, Links const& links, wchar_t const* name = L"Links")
         {
             Json object = Json::object();
             for (auto const& pair : links) object[Utf8(pair.first)] = Utf8(pair.second);
-            key.Write(L"Links", Wide(object.dump()));
+            key.Write(name, Wide(object.dump()));
+        }
+
+        void RecoverBackups(Key const& key, Links& links, Links& backups)
+        {
+            for (auto it = backups.begin(); it != backups.end();)
+            {
+                auto const id = it->first;
+                auto target = Destination(id);
+                ValidateDestinationParent(target, false);
+                auto backup = BackupPath(target);
+                auto link = links.find(id);
+                bool owned = link != links.end() && OwnedLink(target, link->second);
+                if (ExistsEntry(backup))
+                {
+                    if (!PlainFile(backup)) throw std::runtime_error("Unsafe original GPU backup");
+                    if (owned) { ++it; continue; }
+                    if (OwnedLink(target, it->second))
+                    {
+                        links[id] = it->second;
+                        SaveLinks(key, links);
+                        ++it;
+                        continue;
+                    }
+                    if (ExistsEntry(target))
+                    {
+                        // A file installed by another program is never overwritten.
+                        ++it;
+                        continue;
+                    }
+                    RestoreOriginal(target);
+                }
+                else if (owned || OwnedLink(target, it->second) || !PlainFile(target))
+                    throw std::runtime_error("Original GPU file backup is missing");
+                // Either an interrupted replacement was rolled back or its original
+                // file was never moved.
+                links.erase(id);
+                SaveLinks(key, links);
+                it = backups.erase(it);
+                SaveLinks(key, backups, L"Backups");
+            }
+        }
+
+        void RemoveMapping(Key const& key, Links& links, Links& backups, std::wstring const& id)
+        {
+            auto target = Destination(id);
+            ValidateDestinationParent(target, false);
+            auto link = links.find(id);
+            auto backup = backups.find(id);
+            if (link != links.end() && OwnedLink(target, link->second))
+            {
+                if (!DeleteFileW(target.c_str())) Error("Remove GPU symbolic link");
+            }
+            if (backup != backups.end())
+            {
+                if (ExistsEntry(target))
+                    throw std::runtime_error("Cannot restore original GPU file over another guest file");
+                RestoreOriginal(target);
+                backups.erase(backup);
+                SaveLinks(key, backups, L"Backups");
+            }
+            links.erase(id);
+            SaveLinks(key, links);
         }
     public:
         Json Query()
@@ -449,6 +551,7 @@ namespace
                 auto const& extraFiles = wddm.at("ExtraFiles");
                 if (!extraFiles.is_array() || extraFiles.size() > 4096 || extraShares.size() > 64)
                     throw std::runtime_error("Invalid supplemental GPU inventory");
+                std::map<std::string, bool> ready;
                 for (auto const& file : extraFiles)
                 {
                     auto name = file.at("Share").get<std::string>();
@@ -464,15 +567,19 @@ namespace
                     if (desired.count(id)) continue;
                     try
                     {
-                        auto& mount = ExtraMounts[name];
-                        if (!mount) mount = std::make_unique<DriverMount>(Wide(name));
-                        if (ExtraMounts.size() > 96) throw std::runtime_error("Too many GPU mount generations");
-                        if (!mount->Ensure(0))
+                        auto state = ready.emplace(name, false);
+                        if (state.second)
                         {
-                            Last["Errors"].push_back("Supplemental GPU share is not mounted: " + name);
-                            continue;
+                            if (!ExtraMounts.count(name) && ExtraMounts.size() >= 96)
+                                throw std::runtime_error("Too many GPU mount generations");
+                            auto& mount = ExtraMounts[name];
+                            if (!mount) mount = std::make_unique<DriverMount>(Wide(name));
+                            state.first->second = mount->Ensure(0);
+                            if (!state.first->second)
+                                Last["Errors"].push_back("Supplemental GPU share is not mounted: " + name);
                         }
-                        desired.emplace(id, Item{mount->Root() / source, true});
+                        if (!state.first->second) continue;
+                        desired.emplace(id, Item{ExtraMounts.at(name)->Root() / source, true});
                     }
                     catch (std::exception const& error)
                     {
@@ -482,6 +589,8 @@ namespace
             }
             Key key(StateKey, KEY_READ | KEY_SET_VALUE);
             auto links = ReadLinks(key);
+            auto backups = ReadLinks(key, L"Backups");
+            RecoverBackups(key, links, backups);
             for (auto const& entry : desired)
             {
                 auto const& id = entry.first;
@@ -505,10 +614,36 @@ namespace
                     {
                         status["State"] = "KeptNewerOrEqualGuestFile";
                     }
+                    else if (existing == links.end() && ExistsEntry(target) &&
+                        SfcIsFileProtected(nullptr, target.c_str()))
+                    {
+                        status["State"] = "KeptProtectedGuestFile";
+                        Last["Errors"].push_back(Utf8(id) + ": Windows protects the existing file");
+                    }
                     else
                     {
+                        if (existing == links.end() && ExistsEntry(target))
+                        {
+                            if (backups.count(id) || ExistsEntry(BackupPath(target)) || !PlainFile(target))
+                                throw std::runtime_error("Existing guest file or link is not safely replaceable");
+                            // Persist the intended replacement before moving the original.
+                            backups[id] = item.Source.wstring();
+                            SaveLinks(key, backups, L"Backups");
+                            MoveOriginal(target);
+                        }
                         auto previous = existing == links.end() ? nullptr : &existing->second;
-                        InstallLink(target, item.Source, previous);
+                        try { InstallLink(target, item.Source, previous); }
+                        catch (...)
+                        {
+                            if (previous == nullptr && backups.count(id) &&
+                                PlainFile(BackupPath(target)) && !ExistsEntry(target))
+                            {
+                                RestoreOriginal(target);
+                                backups.erase(id);
+                                SaveLinks(key, backups, L"Backups");
+                            }
+                            throw;
+                        }
                         links[id] = item.Source.wstring();
                         SaveLinks(key, links);
                         status["State"] = "Linked";
@@ -526,38 +661,34 @@ namespace
             }
             if (Last["Errors"].empty())
             {
-                for (auto it = links.begin(); it != links.end();)
+                std::set<std::wstring> obsolete;
+                for (auto const& link : links) if (!desired.count(link.first)) obsolete.insert(link.first);
+                for (auto const& backup : backups) if (!desired.count(backup.first)) obsolete.insert(backup.first);
+                for (auto const& id : obsolete)
                 {
-                    if (desired.count(it->first)) { ++it; continue; }
-                    auto target = Destination(it->first);
-                    ValidateDestinationParent(target, false);
-                    if (OwnedLink(target, it->second) && !DeleteFileW(target.c_str()))
-                    {
-                        Last["Errors"].push_back("Cannot remove obsolete GPU link: " + Utf8(it->first));
-                        ++it;
-                    }
-                    else { it = links.erase(it); SaveLinks(key, links); }
+                    try { RemoveMapping(key, links, backups, id); }
+                    catch (std::exception const& error)
+                    { Last["Errors"].push_back(Utf8(id) + ": " + error.what()); }
                 }
-                UpdateEnvironment(key, L"Path", L"OwnedPath", directories);
-                UpdateEnvironment(key, L"LIB", L"OwnedLib", directories);
-                DWORD_PTR ignored = 0;
-                SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
-                    reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
             }
+            bool complete = Last["Errors"].empty();
+            UpdateEnvironment(key, L"Path", L"OwnedPath", directories, complete);
+            UpdateEnvironment(key, L"LIB", L"OwnedLib", directories, complete);
+            DWORD_PTR ignored = 0;
+            SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
+                reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
             return Last;
         }
         void Cleanup()
         {
             Key key(StateKey, KEY_READ | KEY_SET_VALUE);
             auto links = ReadLinks(key);
-            for (auto const& link : links)
-            {
-                auto target = Destination(link.first);
-                ValidateDestinationParent(target, false);
-                if (OwnedLink(target, link.second) && !DeleteFileW(target.c_str()))
-                    Error("Remove GPU link");
-            }
-            SaveLinks(key, {});
+            auto backups = ReadLinks(key, L"Backups");
+            RecoverBackups(key, links, backups);
+            std::set<std::wstring> ids;
+            for (auto const& link : links) ids.insert(link.first);
+            for (auto const& backup : backups) ids.insert(backup.first);
+            for (auto const& id : ids) RemoveMapping(key, links, backups, id);
             UpdateEnvironment(key, L"Path", L"OwnedPath", {});
             UpdateEnvironment(key, L"LIB", L"OwnedLib", {});
         }
@@ -724,6 +855,12 @@ namespace
         auto previous = source.wstring();
         InstallLink(link, original, &previous);
         if (!OwnedLink(link, original.wstring()) || !fs::is_regular_file(source)) return 9;
+        MoveOriginal(original);
+        if (ExistsEntry(original) || !PlainFile(BackupPath(original))) return 11;
+        InstallLink(original, source, nullptr);
+        if (!OwnedLink(original, source.wstring()) || !DeleteFileW(original.c_str())) return 12;
+        RestoreOriginal(original);
+        if (!PlainFile(original) || ExistsEntry(BackupPath(original))) return 13;
         return 0;
     }
 }

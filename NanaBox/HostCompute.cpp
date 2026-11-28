@@ -661,7 +661,7 @@ namespace
             if (!Count) break;
             VARIANT Value;
             ::VariantInit(&Value);
-            auto Clear = Mile::ScopeExitTaskHandler([&]() { ::VariantClear(&Value); });
+            struct ClearVariant { VARIANT& Value; ~ClearVariant() { ::VariantClear(&Value); } } Clear{Value};
             if (SUCCEEDED(Item->Get(L"Name", 0, &Value, nullptr, nullptr)) &&
                 Value.vt == VT_BSTR && Value.bstrVal) Result.emplace_back(Value.bstrVal);
         }
@@ -737,6 +737,7 @@ namespace
             auto Slash = Relative.find_last_of(L'\\');
             auto Directory = Relative.substr(0, Slash);
             auto Name = Relative.substr(Slash + 1);
+            if (!NanaBox::Wddm::SafeSystemDirectory(Directory)) continue;
             DWORD Attributes = ::GetFileAttributesW(Full.c_str());
             if (Attributes == INVALID_FILE_ATTRIBUTES || (Attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
                 continue;
