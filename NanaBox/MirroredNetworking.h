@@ -2,6 +2,7 @@
 
 #include "NanaBox.Configuration.Specification.h"
 #include <memory>
+#include <atomic>
 #include <string>
 #include <winrt/base.h>
 
@@ -10,7 +11,8 @@ namespace NanaBox
     std::string CheckMirroredHostSupport();
     std::string QueryGuestTools(winrt::guid const& RuntimeId, std::string const& Resource);
     std::string RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
-        std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite);
+        std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
+        std::shared_ptr<std::atomic<bool>> const& Cancellation = {});
     bool GuestToolsSelfTest();
     // Owns the HCN guest network service and the endpoints hot-added to one VM.
     class MirroredNetworking

@@ -1543,18 +1543,75 @@ namespace winrt::NanaBox::implementation
 
     void VirtualMachineSettingsPage::GuestToolsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
     {
-        if (this->m_GuestToolsRunning) return;
         try
         {
             auto Resource = winrt::to_string(winrt::unbox_value<winrt::hstring>(
                 Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag()));
-            auto Query = this->m_GuestQuery;
-            if (!Query)
+            if (Resource == "Cancel")
+            {
+                if (this->m_GuestCancellation) this->m_GuestCancellation->store(true);
+                this->GuestCancelControl().IsEnabled(false);
+                return;
+            }
+            if (this->m_GuestToolsRunning) return;
+
+            if (Resource == "BrowseUpload" || Resource == "BrowseDownload")
+            {
+                COMDLG_FILTERSPEC Types[] = {{L"All files (*.*)", L"*.*"}};
+                LPWSTR Raw = nullptr;
+                auto DefaultName = this->GuestFileNameTextBox().Text();
+                HRESULT Hr = ::ShowFileDialog(this->m_WindowHandle, Resource == "BrowseDownload",
+                    ARRAYSIZE(Types), Types, nullptr, nullptr,
+                    Resource == "BrowseDownload" ? DefaultName.c_str() : nullptr, &Raw);
+                auto Free = Mile::ScopeExitTaskHandler([&]() { ::CoTaskMemFree(Raw); });
+                if (Hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+                winrt::check_hresult(Hr);
+                if (Raw)
+                {
+                    std::wstring Path(Raw);
+                    this->GuestFilePathTextBox().Text(winrt::hstring(Path));
+                    if (Resource == "BrowseUpload" && this->GuestFileNameTextBox().Text().empty())
+                        this->GuestFileNameTextBox().Text(winrt::hstring(Path.substr(Path.find_last_of(L"\\/") + 1)));
+                }
+                return;
+            }
+
+            bool Transfer = Resource == "FileUpload" || Resource == "FileDownload";
+            std::wstring Path;
+            std::string Name;
+            bool Overwrite = false;
+            if (Transfer)
+            {
+                Path = this->GuestFilePathTextBox().Text().c_str();
+                Name = winrt::to_string(this->GuestFileNameTextBox().Text());
+                Overwrite = this->GuestFileOverwriteCheckBox().IsChecked().Value();
+                if (Path.empty() || Name.empty())
+                    throw winrt::hresult_invalid_argument(::GetSettingsString(L"GuestFileRequired"));
+            }
+            if ((Resource == "TimeSync" || (Transfer && Overwrite)) &&
+                ::MessageBoxW(this->m_WindowHandle,
+                    ::GetSettingsString(Resource == "TimeSync" ? L"GuestClockConfirm" : L"GuestOverwriteConfirm").c_str(),
+                    L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
+
+            auto Cancellation = std::make_shared<std::atomic<bool>>(false);
+            std::function<std::string(std::string const&)> Query;
+            if ((Resource == "Heartbeat" || Resource == "GuestInformation" || Resource == "Diagnostics") && this->m_GuestQuery)
+                Query = this->m_GuestQuery;
+            else if (this->m_HostOperations->GuestAction)
+                Query = [Operations = this->m_HostOperations, Path, Name, Overwrite, Cancellation](std::string const& Action)
+                {
+                    return Operations->GuestAction(Action, Path, Name, Overwrite, Cancellation);
+                };
+            else
             {
                 if (!this->m_MainWindow) throw winrt::hresult_error(E_FAIL, ::GetSettingsString(L"GuestToolsUnavailable"));
                 auto Id = this->m_MainWindow->GuestRuntimeId();
-                Query = [Id](std::string const& Type) { return ::NanaBox::QueryGuestTools(Id, Type); };
+                Query = [Id, Path, Name, Overwrite, Cancellation](std::string const& Action)
+                {
+                    return ::NanaBox::RunGuestToolsAction(Id, Action, Path, Name, Overwrite, Cancellation);
+                };
             }
+            this->m_GuestCancellation = std::move(Cancellation);
             this->RunGuestToolsQuery(std::move(Resource), std::move(Query));
         }
         catch (...)
@@ -1565,15 +1622,26 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+    void VirtualMachineSettingsPage::SetGuestToolsBusy(bool Busy, bool Cancellable)
+    {
+        this->m_GuestToolsRunning = Busy;
+        for (auto const& Button : {this->GuestHeartbeatControl(), this->GuestInformationControl(),
+            this->GuestDiagnosticsControl(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
+            this->GuestUploadControl(), this->GuestDownloadControl(), this->GuestBrowseUploadControl(),
+            this->GuestBrowseDownloadControl()})
+            Button.IsEnabled(!Busy);
+        this->GuestFileNameTextBox().IsEnabled(!Busy);
+        this->GuestFilePathTextBox().IsEnabled(!Busy);
+        this->GuestFileOverwriteCheckBox().IsEnabled(!Busy);
+        this->GuestCancelControl().IsEnabled(Busy && Cancellable);
+    }
+
     winrt::fire_and_forget VirtualMachineSettingsPage::RunGuestToolsQuery(std::string Resource,
         std::function<std::string(std::string const&)> Query)
     {
         auto Lifetime = this->get_strong();
         winrt::apartment_context Foreground;
-        this->m_GuestToolsRunning = true;
-        this->GuestHeartbeatControl().IsEnabled(false);
-        this->GuestInformationControl().IsEnabled(false);
-        this->GuestDiagnosticsControl().IsEnabled(false);
+        this->SetGuestToolsBusy(true, Resource == "FileUpload" || Resource == "FileDownload");
         this->GuestToolsResult().Text(::GetSettingsString(L"DiskOperationRunning"));
         std::string Result;
         try
@@ -1585,15 +1653,13 @@ namespace winrt::NanaBox::implementation
         {
             auto Error = Mile::WinRT::ToHResultError();
             Result = nlohmann::json{{"Success", false}, {"ResourceType", Resource},
-                {"Error", winrt::to_string(Error.message())}}.dump(2);
+                {"Cancelled", Error.code() == E_ABORT}, {"Error", winrt::to_string(Error.message())}}.dump(2);
         }
         try
         {
             co_await Foreground;
-            this->m_GuestToolsRunning = false;
-            this->GuestHeartbeatControl().IsEnabled(true);
-            this->GuestInformationControl().IsEnabled(true);
-            this->GuestDiagnosticsControl().IsEnabled(true);
+            this->m_GuestCancellation.reset();
+            this->SetGuestToolsBusy(false);
             this->GuestToolsResult().Text(winrt::to_hstring(Result));
         }
         catch (...) {}

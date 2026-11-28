@@ -9,6 +9,7 @@
 #include <knownfolders.h>
 #include <wincrypt.h>
 #include <array>
+#include <algorithm>
 #include <functional>
 #include <vector>
 #include <Mile.Json.h>
@@ -1263,19 +1264,26 @@ namespace
 }
 
 std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
-    std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite)
+    std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
+    std::shared_ptr<std::atomic<bool>> const& Cancellation)
 {
     RegisterGuestSocket();
     WSADATA Data{};
     auto Result = ::WSAStartup(MAKEWORD(2, 2), &Data);
     if (Result) winrt::throw_hresult(HRESULT_FROM_WIN32(Result));
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
-    std::atomic<bool> Stop{false};
+    std::atomic<bool> LocalStop{false};
+    auto const& Stop = Cancellation ? *Cancellation : LocalStop;
     auto Reply = ExecuteGuestTools(Action, LocalPath, GuestName, Overwrite,
         [&](std::string const& Kind, std::string const& Verb, Json const& Settings)
         {
+            bool Abort = Verb == "Abort";
+            if (!Abort && Stop.load()) throw winrt::hresult_error(E_ABORT);
+            // Complete a final publication once it has been requested.
+            bool Final = Verb == "Commit" || Verb == "FinishDownload";
             return GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", Kind},
-                {"RequestType", Verb}, {"Settings", Settings}}, Stop, Kind == "Diagnostics" ? 40 : 15);
+                {"RequestType", Verb}, {"Settings", Settings}}, (Abort || Final) ? LocalStop : Stop,
+                Abort ? 3 : (Kind == "Diagnostics" ? 40 : 15));
         });
     return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
 }

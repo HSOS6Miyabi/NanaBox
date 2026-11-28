@@ -1738,4 +1738,72 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="GuestInformation.Content" xml:space="preserve"><value>系统信息</value></data>
   <data name="GuestDiagnostics.Content" xml:space="preserve"><value>网络诊断</value></data>
   <data name="GuestToolsUnavailable" xml:space="preserve"><value>请先启动虚拟机，再查询客户机服务。</value></data>
+  <data name="GuestClockTitle.Text" xml:space="preserve">
+    <value>客户机时钟</value>
+    <comment>Guest clock</comment>
+  </data>
+  <data name="GuestClockNote.Text" xml:space="preserve">
+    <value>修改客户机时钟需要在客户机服务中明确启用该权限。</value>
+    <comment>Changing the guest clock requires explicit permission in the guest service.</comment>
+  </data>
+  <data name="GuestClockQuery.Content" xml:space="preserve">
+    <value>检查时钟偏差</value>
+    <comment>Check clock offset</comment>
+  </data>
+  <data name="GuestClockSync.Content" xml:space="preserve">
+    <value>与宿主机时钟同步</value>
+    <comment>Synchronize to host clock</comment>
+  </data>
+  <data name="GuestExchangeTitle.Text" xml:space="preserve">
+    <value>文件传输</value>
+    <comment>File exchange</comment>
+  </data>
+  <data name="GuestExchangeNote.Text" xml:space="preserve">
+    <value>通过客户机中指定的交换目录传输文件。文件写入目标位置前将验证 SHA-256 摘要。</value>
+    <comment>Files are transferred into the configured exchange directory in the guest. Transfers verify SHA-256 before publishing the destination.</comment>
+  </data>
+  <data name="GuestFileName.Header" xml:space="preserve">
+    <value>客户机交换文件名</value>
+    <comment>Guest exchange filename</comment>
+  </data>
+  <data name="GuestFilePath.Header" xml:space="preserve">
+    <value>宿主机文件路径</value>
+    <comment>Local file path</comment>
+  </data>
+  <data name="GuestFileOverwrite.Content" xml:space="preserve">
+    <value>替换已有目标文件</value>
+    <comment>Replace existing destination file</comment>
+  </data>
+  <data name="GuestBrowseUpload.Content" xml:space="preserve">
+    <value>选择源文件</value>
+    <comment>Choose source file</comment>
+  </data>
+  <data name="GuestBrowseDownload.Content" xml:space="preserve">
+    <value>选择保存位置</value>
+    <comment>Choose destination</comment>
+  </data>
+  <data name="GuestUpload.Content" xml:space="preserve">
+    <value>上传到客户机</value>
+    <comment>Upload to guest</comment>
+  </data>
+  <data name="GuestDownload.Content" xml:space="preserve">
+    <value>从客户机下载</value>
+    <comment>Download from guest</comment>
+  </data>
+  <data name="GuestCancel.Content" xml:space="preserve">
+    <value>取消传输</value>
+    <comment>Cancel transfer</comment>
+  </data>
+  <data name="GuestFileRequired" xml:space="preserve">
+    <value>请指定宿主机文件路径和客户机交换文件名。</value>
+    <comment>Specify a local file path and a guest exchange filename.</comment>
+  </data>
+  <data name="GuestClockConfirm" xml:space="preserve">
+    <value>是否将客户机时钟与宿主机时钟同步？时钟变化可能影响客户机中正在运行的应用程序。</value>
+    <comment>Synchronize the guest clock to the host? Applications in the guest may be affected by a clock change.</comment>
+  </data>
+  <data name="GuestOverwriteConfirm" xml:space="preserve">
+    <value>如果目标文件已存在，是否替换？</value>
+    <comment>Replace the destination if it already exists?</comment>
+  </data>
 </root>

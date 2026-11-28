@@ -175,6 +175,38 @@ try {
         $null = Wait-Result 'GuestToolsResult' {param($v) -not $v.Success -and $v.ResourceType -eq 'Diagnostics' -and $v.Error -like '*Injected guest query failure*'}
         Invoke-Control 'GuestHeartbeatButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+        Invoke-Control 'GuestClockQueryButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'TimeQuery' -and $v.Data.GuestOffsetMilliseconds -eq 123}
+        Invoke-ModalAction $process.Id 'GuestClockSyncButton' { Invoke-NativeDialogButton $process.Id 6 }
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'TimeSync' -and $v.Data.UnixMilliseconds -eq 1800000000123}
+        $uploadPath = Join-Path $OutputDirectory 'guest-upload.bin'
+        $downloadPath = Join-Path $OutputDirectory 'guest-download.bin'
+        [IO.File]::WriteAllBytes($uploadPath, [byte[]](0,255,128,32,0,42))
+        Set-Text 'GuestFileNameTextBox' 'exchange.bin'
+        Set-Text 'GuestFilePathTextBox' $uploadPath
+        Set-Check 'GuestFileOverwriteCheckBox' $false
+        Invoke-ModalAction $process.Id 'GuestBrowseUploadButton' { Invoke-NativeDialogButton $process.Id 2 }
+        Invoke-Control 'GuestUploadButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'FileUpload' -and $v.Data.Size -eq 6}
+        Invoke-Control 'GuestUploadButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -eq $false -and $v.ResourceType -eq 'FileUpload'}
+        Set-Text 'GuestFilePathTextBox' $downloadPath
+        Invoke-ModalAction $process.Id 'GuestBrowseDownloadButton' { Invoke-NativeDialogButton $process.Id 2 }
+        Invoke-Control 'GuestDownloadButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'FileDownload' -and $v.Data.Size -eq 6}
+        Assert-Equal (Get-FileHash -LiteralPath $downloadPath).Hash (Get-FileHash -LiteralPath $uploadPath).Hash 'Guest file transfer content'
+        Invoke-Control 'GuestDownloadButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -eq $false -and $v.ResourceType -eq 'FileDownload'}
+        Set-Check 'GuestFileOverwriteCheckBox' $true
+        Invoke-ModalAction $process.Id 'GuestDownloadButton' { Invoke-NativeDialogButton $process.Id 6 }
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'FileDownload'}
+        Assert-Equal (Get-FileHash -LiteralPath $downloadPath).Hash (Get-FileHash -LiteralPath $uploadPath).Hash 'Guest file replacement'
+        Set-Check 'GuestFileOverwriteCheckBox' $false
+        Set-Text 'GuestFileNameTextBox' 'cancel-test.bin'
+        Set-Text 'GuestFilePathTextBox' $uploadPath
+        Invoke-Control 'GuestUploadButton'
+        Invoke-Control 'GuestCancelButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -eq $false -and $v.ResourceType -eq 'FileUpload' -and $v.Cancelled}
     } else {
         Invoke-Control 'GuestHeartbeatButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -eq $false -and $v.Error}

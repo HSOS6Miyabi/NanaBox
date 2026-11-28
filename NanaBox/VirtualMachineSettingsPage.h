@@ -9,6 +9,7 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include <atomic>
 #include <vector>
 
 namespace NanaBox
@@ -23,6 +24,8 @@ namespace NanaBox
         std::function<void(winrt::guid const&)> DeleteNetwork = DeleteManagedNetwork;
         std::function<winrt::hstring(winrt::hstring const&, winrt::hstring const&)> Manage = RunHostManagement;
         std::function<winrt::hstring(bool)> NetworkDiagnostics;
+        std::function<std::string(std::string const&, std::wstring const&, std::string const&,
+            bool, std::shared_ptr<std::atomic<bool>> const&)> GuestAction;
         std::function<winrt::hstring(winrt::hstring const&, std::wstring const&)> ExternalAction;
     };
 }
@@ -90,6 +93,7 @@ namespace winrt::NanaBox::implementation
         void GuestToolsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         winrt::fire_and_forget RunGuestToolsQuery(std::string Resource,
             std::function<std::string(std::string const&)> Query);
+        void SetGuestToolsBusy(bool Busy, bool Cancellable = false);
 
         void NetworkDiagnosticsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         winrt::fire_and_forget RunHostPreflight();
@@ -171,6 +175,7 @@ namespace winrt::NanaBox::implementation
 
         std::shared_ptr<::NanaBox::SettingsHostOperations> m_HostOperations;
         bool m_GuestToolsRunning = false;
+        std::shared_ptr<std::atomic<bool>> m_GuestCancellation;
         std::function<std::string(std::string const&)> m_GuestQuery;
         bool m_DiskOperationRunning = false;
         bool m_HostManagementRunning = false;

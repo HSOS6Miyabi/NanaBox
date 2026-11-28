@@ -3,6 +3,11 @@
 #include <Mile.Json.h>
 #include <map>
 #include <mutex>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <thread>
+#include <chrono>
 
 namespace NanaBox
 {
@@ -16,6 +21,8 @@ namespace NanaBox
             Json Switches = Json::array();
             Json Creators = Json::array();
             std::map<std::string, Json> Firewall;
+            std::map<std::string, std::vector<char>> GuestFiles;
+            std::int64_t GuestClock = 1800000000000ll;
         };
         auto Data = std::make_shared<State>();
         auto Operations = std::make_shared<SettingsHostOperations>();
@@ -32,6 +39,51 @@ namespace NanaBox
                 throw winrt::hresult_invalid_argument();
             return winrt::to_hstring(Json{{"Success", true}, {"Operation", winrt::to_string(Action)},
                 {"Path", winrt::to_string(Path)}}.dump(2));
+        };
+        Operations->GuestAction = [Data](std::string const& Action, std::wstring const& Path,
+            std::string const& Name, bool Overwrite, std::shared_ptr<std::atomic<bool>> const& Cancellation)
+        {
+            if (Name == "cancel-test.bin")
+            {
+                auto Deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                while (!Cancellation->load() && std::chrono::steady_clock::now() < Deadline)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                if (Cancellation->load()) throw winrt::hresult_error(E_ABORT);
+                throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT));
+            }
+            std::lock_guard Lock(Data->Mutex);
+            Json Result = Json::object();
+            if (Action == "TimeQuery" || Action == "TimeSync")
+            {
+                if (Action == "TimeSync") Data->GuestClock = 1800000000123ll;
+                Result = {{"UnixMilliseconds", Data->GuestClock}, {"ClockSetEnabled", true},
+                    {"GuestOffsetMilliseconds", Action == "TimeQuery" ? 123 : 0}};
+            }
+            else if (Action == "FileUpload")
+            {
+                if (!Overwrite && Data->GuestFiles.count(Name)) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS));
+                std::ifstream Input(std::filesystem::path(Path), std::ios::binary);
+                if (!Input) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
+                std::vector<char> Bytes((std::istreambuf_iterator<char>(Input)), std::istreambuf_iterator<char>());
+                if (Input.bad()) throw winrt::hresult_error(E_FAIL);
+                Result = {{"Name", Name}, {"Size", Bytes.size()}};
+                Data->GuestFiles[Name] = std::move(Bytes);
+            }
+            else if (Action == "FileDownload")
+            {
+                auto It = Data->GuestFiles.find(Name);
+                if (It == Data->GuestFiles.end()) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
+                if (!Overwrite && std::filesystem::exists(std::filesystem::path(Path)))
+                    throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS));
+                std::ofstream Output(std::filesystem::path(Path), std::ios::binary | std::ios::trunc);
+                if (!Output) throw winrt::hresult_error(E_FAIL);
+                Output.write(It->second.data(), static_cast<std::streamsize>(It->second.size()));
+                Output.close();
+                if (!Output) throw winrt::hresult_error(E_FAIL);
+                Result = {{"Name", Name}, {"Size", It->second.size()}};
+            }
+            else throw winrt::hresult_invalid_argument();
+            return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Result}}.dump(2);
         };
         auto NewId = []()
         {
