@@ -85,10 +85,10 @@ function Wait-Exit($process,[string]$name,[string]$operation) {
     Wait-VMState $name Absent 180
     if (-not $process.WaitForExit(30000)) { throw "App did not exit after $operation" }
 }
-function Guest-Request([string]$runtimeId,[string]$resource,$settings) {
+function Guest-Request([string]$runtimeId,[string]$resource,$settings,[string]$requestType="Query") {
     $file = Join-Path $env:TEMP ('NanaBox-GNS-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
-        @{Version=1; ResourceType=$resource; RequestType='Query'; Settings=$settings} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $file -Encoding UTF8
+        @{Version=1; ResourceType=$resource; RequestType=$requestType; Settings=$settings} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $file -Encoding UTF8
         $response = & $GuestToolExecutable --send $runtimeId $file
         if ($LASTEXITCODE -ne 0) { throw "Guest request $resource failed: $response" }
         $reply = $response | ConvertFrom-Json
@@ -105,6 +105,40 @@ function Wait-Mirrored($process) {
         Start-Sleep -Seconds 1
     } while ([DateTime]::UtcNow -lt $until)
     throw "Mirrored networking did not synchronize: $($process.MainWindowTitle)"
+}
+function Test-WindowsPlan9([string]$runtimeId,$cfg) {
+    $shares = @($cfg.Plan9Shares | Where-Object {$_})
+    if (-not $shares.Count) { return }
+    $deadline = [DateTime]::UtcNow.AddMinutes(3)
+    do {
+        $status = Guest-Request $runtimeId 'Plan9Shares' @{}
+        if (-not $status.Plan9Enabled) { throw 'Install WinFsp and enable Windows 9P on the disposable test guest.' }
+        $missing = @($shares | Where-Object {
+            $share = $_
+            -not @($status.Shares | Where-Object {
+                $_.Name -ceq $share.Name -and $_.Available -and [bool]$_.ReadOnly -eq [bool]$share.ReadOnly -and
+                [uint32]$_.Port -eq [uint32]$share.Port
+            }).Count
+        })
+        if (-not $missing.Count) { break }
+        Start-Sleep -Seconds 2
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if ($missing.Count) { throw 'The Windows 9P inventory did not synchronize.' }
+    foreach ($share in $shares) {
+        $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$share.Name;Target=''} 'Mount'
+        $row = @($result.Shares | Where-Object {$_.Name -ceq $share.Name -and $_.Available})
+        if ($row.Count -ne 1 -or -not $row[0].Mounted) { throw "Windows 9P mount failed: $($share.Name)" }
+        $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$share.Name} 'Unmount'
+        $row = @($result.Shares | Where-Object {$_.Name -ceq $share.Name -and $_.Available})
+        if ($row.Count -ne 1 -or $row[0].Mounted -or -not $row[0].Suppressed) { throw "Windows 9P unmount failed: $($share.Name)" }
+        if ($share.AutoMount -ne $false) {
+            $result = Guest-Request $runtimeId 'Plan9Shares' @{Name=$share.Name;Target=''} 'Mount'
+            if (-not @($result.Shares | Where-Object {$_.Name -ceq $share.Name -and $_.Mounted}).Count) {
+                throw "Windows 9P remount failed: $($share.Name)"
+            }
+        }
+        Write-Host "Windows HCS 9P share lifecycle verified: $($share.Name)"
+    }
 }
 function Wait-GpuShares([string]$runtimeId,[string]$guestType,$cfg) {
     $until = [DateTime]::UtcNow.AddMinutes(4)
@@ -159,6 +193,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if ($guest.OperatingSystem -ne $guestType) { throw "Expected guest OS $guestType" }
         $gpu = $guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8
@@ -184,6 +219,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-NewRuntime $cfg.Name $vm.RuntimeId $process
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
         if ($connection.LocalAddress -notin $hostAddresses) { throw 'Mirrored connectivity failed after restart' }
 
@@ -202,6 +238,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
         Wait-GpuShares $vm.RuntimeId $guestType $cfg
+        if ($guestType -eq 'Windows') { Test-WindowsPlan9 $vm.RuntimeId $cfg }
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if (($guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8) -notmatch $gpuPattern) { throw 'GPU was not restored' }
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
