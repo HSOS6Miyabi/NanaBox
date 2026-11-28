@@ -212,6 +212,7 @@ namespace NanaBox
     };
 
     std::vector<HostGpuInfo> EnumeratePartitionableGpus();
+    winrt::hstring EnumerateGpuDriverMappings(std::vector<std::string> const& Selected, bool All);
     std::vector<HostNetworkInfo> EnumerateHostNetworks();
     HostNetworkInfo QueryHostNetwork(winrt::guid const& Id);
     winrt::hstring BuildManagedNetworkSettings(winrt::hstring const& Name, bool Firewall,

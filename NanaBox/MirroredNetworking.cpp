@@ -1681,8 +1681,17 @@ struct NanaBox::Plan9MountManager::Impl
             try
             {
                 RegisterGuestSocket(false, false, true);
+                auto Inventory = Json::parse(Shares);
+                Json Settings = {{"Shares", Inventory}};
+                if (Inventory.is_object())
+                {
+                    Settings = {{"Shares", Inventory.at("Shares")},
+                        {"Wddm", Json::parse(winrt::to_string(EnumerateGpuDriverMappings(
+                            Inventory.at("GpuDevices").get<std::vector<std::string>>(),
+                            Inventory.at("AllGpuDevices").get<bool>())))}};
+                }
                 (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
-                    {"RequestType", "Update"}, {"Settings", {{"Shares", Json::parse(Shares)}}}}, Stop, 15, Plan9ServiceId);
+                    {"RequestType", "Update"}, {"Settings", Settings}}, Stop, 15, Plan9ServiceId);
             }
             catch (...) {}
             std::unique_lock Lock(Mutex);

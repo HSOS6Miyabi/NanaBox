@@ -21,6 +21,7 @@
 #include "PowerTransition.h"
 #include "Plan9Reconciliation.h"
 #include "KeyboardText.h"
+#include "../GuestTool/WddmMapping.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include "SettingsHostMock.h"
@@ -122,6 +123,17 @@ int WINAPI wWinMain(
                 try { NanaBox::EncodeKeyboardText(L"a\u4e2d"); }
                 catch (std::invalid_argument const&) { Rejected = true; }
                 if (!Rejected) return 51;
+            }
+            {
+                auto M = NanaBox::Wddm::MakeMapping(L"gpu.inf_amd64_123", {L"sub\\x.dll", L"y.dll"}, true, true);
+                if (!M || M->Source != L"gpu.inf_amd64_123\\sub\\x.dll" ||
+                    M->Destination != L"y.dll" || M->Directory != L"SysWOW64" || !M->WhenNewer) return 52;
+                auto Default = NanaBox::Wddm::MakeMapping(L"gpu", {L"a/b.dll"}, false, false);
+                if (!Default || Default->Destination != L"b.dll" || Default->Directory != L"System32" ||
+                    Default->WhenNewer) return 52;
+                for (auto Bad : {L"..\\a.dll", L"C:\\a.dll", L"a.dll:stream", L"CON.dll", L"x\\", L"/a.dll"})
+                    if (NanaBox::Wddm::MakeMapping(L"gpu", {Bad}, false, false)) return 52;
+                if (NanaBox::Wddm::MakeMapping(L"gpu", {L"a.dll", L"..\\x.dll"}, false, false)) return 52;
             }
             if (!NanaBox::GuestToolsSelfTest()) return 33;
             if (!NanaBox::HostManagementSelfTest()) return 36;

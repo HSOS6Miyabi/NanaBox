@@ -15,6 +15,8 @@
 #pragma comment(lib, "advapi32.lib")
 
 #include <Mile.Json.h>
+#include "../GuestTool/WddmMapping.h"
+#include <functional>
 #include <SetupAPI.h>
 #include <wincrypt.h>
 #include <cwchar>
@@ -501,12 +503,13 @@ namespace
     }
 }
 
-std::vector<NanaBox::HostGpuInfo> NanaBox::EnumeratePartitionableGpus()
+namespace
+{
+void VisitPartitionableGpus(std::function<void(HDEVINFO, SP_DEVINFO_DATA&, std::wstring const&)> const& Visit)
 {
     DeviceInfoSet Set{::SetupDiGetClassDevsW(&GpuInterfaceClass, nullptr, nullptr,
         DIGCF_PRESENT | DIGCF_DEVICEINTERFACE)};
     winrt::check_bool(Set.Value != INVALID_HANDLE_VALUE);
-    std::vector<HostGpuInfo> Result;
     for (DWORD Index = 0;; ++Index)
     {
         SP_DEVICE_INTERFACE_DATA Interface{};
@@ -533,9 +536,173 @@ std::vector<NanaBox::HostGpuInfo> NanaBox::EnumeratePartitionableGpus()
         if (Path.size() < SuffixLength ||
             ::_wcsicmp(Path.c_str() + Path.size() - SuffixLength, Suffix) != 0)
             continue;
-        Result.push_back({DeviceName(Set.Value, Device), winrt::hstring(Path)});
+        Visit(Set.Value, Device, Path);
     }
+}
+}
+
+std::vector<NanaBox::HostGpuInfo> NanaBox::EnumeratePartitionableGpus()
+{
+    std::vector<HostGpuInfo> Result;
+    VisitPartitionableGpus([&](HDEVINFO Set, SP_DEVINFO_DATA& Device, std::wstring const& Path)
+    {
+        Result.push_back({DeviceName(Set, Device), winrt::hstring(Path)});
+    });
     return Result;
+}
+
+
+namespace
+{
+    struct DriverRegistryKey
+    {
+        HKEY Value = nullptr;
+        ~DriverRegistryKey() { if (Value && Value != INVALID_HANDLE_VALUE) ::RegCloseKey(Value); }
+        DriverRegistryKey() = default;
+        DriverRegistryKey(DriverRegistryKey const&) = delete;
+        DriverRegistryKey& operator=(DriverRegistryKey const&) = delete;
+    };
+
+    std::wstring RegistryText(HKEY Key, wchar_t const* Name)
+    {
+        DWORD Bytes = 0;
+        if (::RegGetValueW(Key, nullptr, Name, RRF_RT_REG_SZ, nullptr, nullptr, &Bytes) != ERROR_SUCCESS ||
+            Bytes < sizeof(wchar_t) || Bytes > 65536) return {};
+        std::vector<wchar_t> Data(Bytes / sizeof(wchar_t) + 1);
+        if (::RegGetValueW(Key, nullptr, Name, RRF_RT_REG_SZ, nullptr, Data.data(), &Bytes) != ERROR_SUCCESS)
+            return {};
+        return Data.data();
+    }
+
+    std::wstring AdapterService(HDEVINFO Set, SP_DEVINFO_DATA& Device)
+    {
+        wchar_t Data[512]{};
+        if (!::SetupDiGetDeviceRegistryPropertyW(Set, &Device, SPDRP_SERVICE, nullptr,
+            reinterpret_cast<PBYTE>(Data), sizeof(Data), nullptr)) return {};
+        Data[ARRAYSIZE(Data)-1] = 0;
+        return Data;
+    }
+
+    std::wstring DriverPackage(HKEY Key)
+    {
+        auto Inf = RegistryText(Key, L"InfPath");
+        if (Inf.empty()) return {};
+        wchar_t Store[MAX_PATH]{}, System[MAX_PATH]{};
+        if (!::SetupGetInfDriverStoreLocationW(Inf.c_str(), nullptr, nullptr, Store, ARRAYSIZE(Store), nullptr))
+            return {};
+        auto Length = ::GetSystemDirectoryW(System, ARRAYSIZE(System));
+        if (!Length || Length >= ARRAYSIZE(System)) return {};
+        std::wstring Root = std::wstring(System) + L"\\DriverStore\\FileRepository\\";
+        std::wstring Full(Store);
+        auto Slash = Full.find_last_of(L'\\');
+        if (Slash == std::wstring::npos || Slash <= Root.size() ||
+            ::_wcsnicmp(Full.c_str(), Root.c_str(), Root.size()) != 0) return {};
+        auto Package = Full.substr(Root.size(), Slash - Root.size());
+        return NanaBox::Wddm::SafeComponent(Package) ? Package : std::wstring();
+    }
+
+    void ReadCopyRules(HKEY Key, std::wstring const& Package, nlohmann::json& Result)
+    {
+        struct Rule { wchar_t const* Name; bool Wow64; bool Newer; };
+        constexpr Rule Rules[] = {
+            {L"CopyToVmOverwrite", false, false}, {L"CopyToVmWhenNewer", false, true},
+            {L"CopyToVmOverwriteWow64", true, false}, {L"CopyToVmWhenNewerWow64", true, true}
+        };
+        for (auto const& RuleEntry : Rules)
+        {
+            DriverRegistryKey Sub;
+            auto Open = ::RegOpenKeyExW(Key, RuleEntry.Name, 0, KEY_READ, &Sub.Value);
+            if (Open == ERROR_FILE_NOT_FOUND) continue;
+            if (Open != ERROR_SUCCESS)
+            {
+                Result["Errors"].push_back("Cannot open GPU copy rule registry key");
+                continue;
+            }
+            for (DWORD Index = 0;; ++Index)
+            {
+                wchar_t Name[16384]{};
+                DWORD NameLength = ARRAYSIZE(Name), Type = 0, Bytes = 0;
+                auto Status = ::RegEnumValueW(Sub.Value, Index, Name, &NameLength, nullptr, &Type, nullptr, &Bytes);
+                if (Status == ERROR_NO_MORE_ITEMS) break;
+                if (Status != ERROR_SUCCESS || (Type != REG_SZ && Type != REG_MULTI_SZ) ||
+                    !Bytes || Bytes > 65536 || Bytes % sizeof(wchar_t))
+                {
+                    Result["Errors"].push_back("Invalid GPU copy rule registry value");
+                    if (Status != ERROR_SUCCESS) break;
+                    continue;
+                }
+                std::vector<wchar_t> Data(Bytes / sizeof(wchar_t) + 2);
+                if (::RegQueryValueExW(Sub.Value, Name, nullptr, &Type,
+                    reinterpret_cast<PBYTE>(Data.data()), &Bytes) != ERROR_SUCCESS ||
+                    (Type != REG_SZ && Type != REG_MULTI_SZ))
+                {
+                    Result["Errors"].push_back("Cannot read GPU copy rule registry value");
+                    continue;
+                }
+                std::vector<std::wstring> Values;
+                for (size_t Offset = 0, Count = Bytes / sizeof(wchar_t);
+                    Offset < Count && Data[Offset];)
+                {
+                    std::wstring Entry(Data.data() + Offset);
+                    Values.push_back(Entry);
+                    Offset += Entry.size() + 1;
+                }
+                if (Type == REG_SZ && Values.size() != 1)
+                {
+                    Result["Errors"].push_back("Invalid GPU copy rule string");
+                    continue;
+                }
+                auto Mapping = NanaBox::Wddm::MakeMapping(Package, Values, RuleEntry.Wow64, RuleEntry.Newer);
+                if (!Mapping)
+                {
+                    Result["Errors"].push_back("Invalid GPU copy rule path");
+                    continue;
+                }
+                nlohmann::json Item = {{"Source", winrt::to_string(Mapping->Source)},
+                    {"Destination", winrt::to_string(Mapping->Destination)},
+                    {"Directory", winrt::to_string(Mapping->Directory)},
+                    {"WhenNewer", Mapping->WhenNewer}};
+                auto& Files = Result["Files"];
+                if (std::find(Files.begin(), Files.end(), Item) == Files.end())
+                    Files.push_back(std::move(Item));
+            }
+        }
+    }
+}
+
+winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> const& Selected, bool All)
+{
+    using Json = nlohmann::json;
+    Json Result = {{"Packages", Json::array()}, {"Files", Json::array()}, {"Errors", Json::array()}};
+    if (!All && Selected.empty()) return winrt::to_hstring(Result.dump());
+    std::set<std::wstring> Packages;
+    VisitPartitionableGpus([&](HDEVINFO Set, SP_DEVINFO_DATA& Device, std::wstring const& Path)
+    {
+        if (!All && std::none_of(Selected.begin(), Selected.end(), [&](std::string const& Id)
+            { return ::_wcsicmp(winrt::to_hstring(Id).c_str(), Path.c_str()) == 0; })) return;
+        DriverRegistryKey Key;
+        Key.Value = ::SetupDiOpenDevRegKey(Set, &Device, DICS_FLAG_GLOBAL, 0, DIREG_DRV, KEY_READ);
+        if (Key.Value == INVALID_HANDLE_VALUE)
+        {
+            Result["Errors"].push_back("Cannot open GPU adapter software registry key");
+            return;
+        }
+        auto Package = DriverPackage(Key.Value);
+        if (Package.empty())
+        {
+            Result["Errors"].push_back("Cannot resolve installed GPU INF in DriverStore");
+            return;
+        }
+        if (Packages.insert(Wddm::Fold(Package)).second)
+            Result["Packages"].push_back(winrt::to_string(Package));
+        ReadCopyRules(Key.Value, Package, Result);
+        auto Service = AdapterService(Set, Device);
+        if (!Wddm::SafeComponent(Service)) return;
+        DriverRegistryKey ServiceKey;
+        if (::RegOpenKeyExW(Key.Value, Service.c_str(), 0, KEY_READ, &ServiceKey.Value) == ERROR_SUCCESS)
+            ReadCopyRules(ServiceKey.Value, Package, Result);
+    });
+    return winrt::to_hstring(Result.dump());
 }
 
 NanaBox::HostNetworkInfo NanaBox::QueryHostNetwork(winrt::guid const& Id)

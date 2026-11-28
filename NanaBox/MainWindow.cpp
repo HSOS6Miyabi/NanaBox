@@ -1147,11 +1147,23 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
 
 void NanaBox::MainWindow::PublishPlan9Inventory()
 {
-    if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux) return;
+    bool Windows = this->m_Configuration.GuestType == NanaBox::GuestType::Windows;
+    if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux && !Windows) return;
+    if (Windows && !this->m_Configuration.Gpu.EnableHostDriverStore) return;
     auto Manifest = this->m_Plan9Builtins;
     for (auto const& Share : this->m_Configuration.Plan9Shares)
         Manifest.push_back({{"Name", Share.Name}, {"Port", Share.Port},
             {"ReadOnly", Share.ReadOnly}, {"AutoMount", Share.AutoMount}});
+    if (Windows)
+    {
+        auto const& Gpu = this->m_Configuration.Gpu;
+        std::vector<std::string> Selected;
+        if (Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List)
+            for (auto const& Device : Gpu.SelectedDevices) Selected.push_back(Device.first);
+        Manifest = {{"Shares", Manifest}, {"GpuDevices", Selected},
+            {"AllGpuDevices", Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Mirror ||
+                Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Default}};
+    }
     if (this->m_Plan9MountManager)
         this->m_Plan9MountManager->Update(Manifest.dump());
     else
@@ -1275,6 +1287,7 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
             Configuration.Gpu);
         this->m_Configuration.Gpu.AssignmentMode = Configuration.Gpu.AssignmentMode;
         this->m_Configuration.Gpu.SelectedDevices = Configuration.Gpu.SelectedDevices;
+        this->PublishPlan9Inventory();
     }
     catch (...)
     {
