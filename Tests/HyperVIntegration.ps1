@@ -106,12 +106,50 @@ function Wait-Mirrored($process) {
     } while ([DateTime]::UtcNow -lt $until)
     throw "Mirrored networking did not synchronize: $($process.MainWindowTitle)"
 }
+function Wait-GpuShares([string]$runtimeId,[string]$guestType,$cfg) {
+    $until = [DateTime]::UtcNow.AddMinutes(4)
+    $last = 'Guest share service has not responded.'
+    do {
+        try {
+            $status = Guest-Request $runtimeId 'Plan9Shares' @{}
+            $last = $status | ConvertTo-Json -Depth 12 -Compress
+            if ($guestType -eq 'Windows') {
+                $expected = @($cfg.VirtualSmbShares | Where-Object {$_})
+                $missing = @($expected | Where-Object {
+                    $share = $_
+                    -not @($status.VirtualSmbShares | Where-Object {
+                        $_.Name -ceq $share.Name -and $_.Mounted -and [bool]$_.ReadOnly -eq [bool]$share.ReadOnly
+                    }).Count
+                })
+                if ($status.Backend -eq 'VirtualSmb' -and $status.NativeTransportActive -and
+                    $status.Mounted -and @($status.Packages | Where-Object {$_}).Count -gt 0 -and
+                    -not @($status.Errors | Where-Object {$_}).Count -and
+                    -not @($status.ShareErrors | Where-Object {$_}).Count -and -not $missing.Count -and
+                    @($status.Devices | Where-Object {$_.State -eq 'Restarted'}).Count -gt 0) {
+                    Write-Host "Windows native GPU and Virtual SMB share report: $last"
+                    return
+                }
+            } else {
+                $drivers = @($status.Shares | Where-Object {$_.Name -eq 'NanaBox.HostDrivers' -and $_.Mounted -and $_.ReadOnly -and $_.MountPoint -eq '/usr/lib/wsl/drivers'})
+                $libraries = @($status.Shares | Where-Object {$_.Name -eq 'NanaBox.HostLxssLib' -and $_.Mounted -and $_.ReadOnly -and $_.MountPoint -eq '/usr/lib/wsl/lib'})
+                if ($drivers.Count -eq 1 -and $libraries.Count -eq 1) {
+                    Write-Host "Linux native GPU share report: $last"
+                    return
+                }
+            }
+        } catch { $last = $_.Exception.Message }
+        Start-Sleep -Seconds 2
+    } while ([DateTime]::UtcNow -lt $until)
+    throw "$guestType GPU share initialization failed: $last"
+}
 function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
     $path = (Resolve-Path -LiteralPath $path).Path
     $cfg = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).NanaBox
     if ($cfg.Name -notmatch '^NanaBox-CI-[A-Za-z0-9_.-]+$') { throw 'Test VM name must start with NanaBox-CI- and use safe identifier characters' }
     if (-not $cfg.MirroredNetworking) { throw 'Hardware test guest must have mirrored networking enabled' }
-    if (-not $cfg.Gpu -or $cfg.Gpu.AssignmentMode -eq 'Disabled') { throw 'Hardware test guest must have GPU-PV enabled' }
+    if (-not $cfg.Gpu -or $cfg.Gpu.AssignmentMode -eq 'Disabled' -or -not $cfg.Gpu.EnableHostDriverStore) {
+        throw 'Hardware test guest must have GPU-PV and host driver sharing enabled'
+    }
     if ($cfg.GuestType -ne $guestType) { throw "Expected $guestType guest" }
     if ($cfg.SaveStateFile) { throw 'Begin with a powered-off test VM without saved state' }
     if ((& hcsdiag.exe list | Out-String) -match [regex]::Escape($cfg.Name)) { throw "VM already running: $($cfg.Name)" }
@@ -120,6 +158,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         Wait-VMState $cfg.Name Present
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
+        Wait-GpuShares $vm.RuntimeId $guestType $cfg
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if ($guest.OperatingSystem -ne $guestType) { throw "Expected guest OS $guestType" }
         $gpu = $guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8
@@ -144,6 +183,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         Invoke-UI $process 'RestartVirtualMachineButton'
         $vm = Wait-NewRuntime $cfg.Name $vm.RuntimeId $process
         Wait-Mirrored $process
+        Wait-GpuShares $vm.RuntimeId $guestType $cfg
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}
         if ($connection.LocalAddress -notin $hostAddresses) { throw 'Mirrored connectivity failed after restart' }
 
@@ -161,6 +201,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         Wait-VMState $cfg.Name Present
         $vm = Wait-ExactState $cfg.Name 'Running'
         Wait-Mirrored $process
+        Wait-GpuShares $vm.RuntimeId $guestType $cfg
         $guest = Guest-Request $vm.RuntimeId 'Diagnostics' @{}
         if (($guest | Select-Object Gpu,Dxg | ConvertTo-Json -Depth 8) -notmatch $gpuPattern) { throw 'GPU was not restored' }
         $connection = Guest-Request $vm.RuntimeId 'Connectivity' @{Address=$TestAddress;Port=$TestPort}

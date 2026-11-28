@@ -948,8 +948,9 @@ namespace
         vm.Data4[0]=static_cast<unsigned char>(number(19,2));vm.Data4[1]=static_cast<unsigned char>(number(21,2));
         for(std::size_t i=0;i<6;++i)vm.Data4[2+i]=static_cast<unsigned char>(number(24+2*i,2));
         auto resource=request.at("ResourceType").get<std::string>();
-        unsigned port=resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
-            resource=="FileExchange"?27457u:27453u;
+        unsigned port=resource=="Plan9Shares"?27456u:
+            (resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
+                resource=="FileExchange"?27457u:27453u);
         WSADATA data{};
         if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Wsa{~Wsa(){WSACleanup();}} cleanup;

@@ -584,6 +584,20 @@ namespace
         }
     };
 
+    // Recover an interrupted atomic link replacement without treating the
+    // previous journal entry as the owner of a different guest file.
+    void ReconcilePendingLink(fs::path const& target, std::wstring const& id,
+        std::wstring const& expected, Links& links)
+    {
+        if (OwnedLink(target, expected)) links[id] = expected;
+        else
+        {
+            auto previous = links.find(id);
+            if (previous != links.end() && !OwnedLink(target, previous->second))
+                links.erase(previous);
+        }
+    }
+
     class Manager
     {
         DriverMount Mount;
@@ -607,6 +621,19 @@ namespace
             Json object = Json::object();
             for (auto const& pair : links) object[Utf8(pair.first)] = Utf8(pair.second);
             key.Write(name, Wide(object.dump()));
+        }
+
+        void RecoverPending(Key const& key, Links& links, Links& pending)
+        {
+            for (auto it = pending.begin(); it != pending.end();)
+            {
+                auto target = Destination(it->first);
+                ValidateDestinationParent(target, false);
+                ReconcilePendingLink(target, it->first, it->second, links);
+                SaveLinks(key, links);
+                it = pending.erase(it);
+                SaveLinks(key, pending, L"PendingLinks");
+            }
         }
 
         void RecoverBackups(Key const& key, Links& links, Links& backups)
@@ -835,6 +862,8 @@ namespace
             Key key(StateKey, KEY_READ | KEY_SET_VALUE);
             auto links = ReadLinks(key);
             auto backups = ReadLinks(key, L"Backups");
+            auto pending = ReadLinks(key, L"PendingLinks");
+            RecoverPending(key, links, pending);
             RecoverBackups(key, links, backups);
             for (auto const& entry : desired)
             {
@@ -882,6 +911,11 @@ namespace
                             MoveOriginal(target);
                         }
                         auto previous = existing == links.end() ? nullptr : &existing->second;
+                        if (!previous || !Equal(*previous, item.Source.wstring()))
+                        {
+                            pending[id] = item.Source.wstring();
+                            SaveLinks(key, pending, L"PendingLinks");
+                        }
                         try { InstallLink(target, item.Source, previous); }
                         catch (...)
                         {
@@ -896,6 +930,7 @@ namespace
                         }
                         links[id] = item.Source.wstring();
                         SaveLinks(key, links);
+                        if (pending.erase(id)) SaveLinks(key, pending, L"PendingLinks");
                         status["State"] = "Linked";
                     }
                     auto folder = item.Source.parent_path().wstring();
@@ -921,6 +956,8 @@ namespace
                     { Last["Errors"].push_back(Utf8(id) + ": " + error.what()); }
                 }
             }
+            Last["VerifiedImageCount"] = VerifiedImages.size();
+            Last["Packages"] = wddm.at("Packages");
             bool complete = Last["Errors"].empty();
             UpdateEnvironment(key, L"Path", L"OwnedPath", directories, complete);
             UpdateEnvironment(key, L"LIB", L"OwnedLib", directories, complete);
@@ -949,6 +986,8 @@ namespace
             Key key(StateKey, KEY_READ | KEY_SET_VALUE);
             auto links = ReadLinks(key);
             auto backups = ReadLinks(key, L"Backups");
+            auto pending = ReadLinks(key, L"PendingLinks");
+            RecoverPending(key, links, pending);
             RecoverBackups(key, links, backups);
             std::set<std::wstring> ids;
             for (auto const& link : links) ids.insert(link.first);
@@ -1191,6 +1230,13 @@ namespace
         auto previous = source.wstring();
         InstallLink(link, original, &previous);
         if (!OwnedLink(link, original.wstring()) || !fs::is_regular_file(source)) return 9;
+        Links interrupted{{L"test", source.wstring()}};
+        ReconcilePendingLink(link, L"test", original.wstring(), interrupted);
+        if (interrupted.at(L"test") != original.wstring()) return 30;
+        ReconcilePendingLink(link, L"test", source.wstring(), interrupted);
+        if (interrupted.at(L"test") != original.wstring()) return 31;
+        ReconcilePendingLink(source, L"test", original.wstring(), interrupted);
+        if (!interrupted.empty() || !fs::is_regular_file(source)) return 32;
         MoveOriginal(original);
         if (ExistsEntry(original) || !PlainFile(BackupPath(original))) return 11;
         InstallLink(original, source, nullptr);

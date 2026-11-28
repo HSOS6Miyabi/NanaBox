@@ -352,6 +352,8 @@ public:
     }
     bool Ensure(fs::path const& path,std::wstring const& name,bool readOnly)
     {
+        Load();
+        (void)Bindings(path);
         Connect(name);
         NativeHandle share(OpenShare(name));
         if(!share.Valid())Error("Open Virtual SMB share");
