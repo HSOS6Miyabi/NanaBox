@@ -6,12 +6,14 @@
 #include <windows.h>
 #include <hvsocket.h>
 #include <sfc.h>
+#include <winternl.h>
 #include <setupapi.h>
 #include <cfgmgr32.h>
 #include <cfg.h>
 #include <functional>
 #include <nlohmann/json.hpp>
 #include "WddmMapping.h"
+#include "VsmbProtocol.h"
 #include <atomic>
 #include <filesystem>
 #include <iostream>
@@ -49,6 +51,9 @@ namespace
     SERVICE_STATUS_HANDLE ServiceHandle = nullptr;
     std::wstring CirnoPath;
     bool AutomaticRestart = true;
+    bool NativeMode = true;
+    std::atomic<bool> NativeActive{false};
+    void Status(DWORD state,DWORD error);
 
     [[noreturn]] void Error(char const* message)
     {
@@ -144,6 +149,8 @@ namespace
             Equal(volume, label);
     }
 
+#include "NativeVsmb.h"
+
     class DriverMount
     {
         HANDLE Process = nullptr;
@@ -162,11 +169,13 @@ namespace
         fs::path const& Root() const { return Repository; }
         bool Ready() const
         {
+            if (NativeMode) return VsmbClient.Ready(Repository, Share, true);
             return Mounted(Repository, Share.c_str()) ||
                 (Legacy && Mounted(Repository.parent_path(), L"HostDriverStore") && fs::is_directory(Repository));
         }
         bool Ensure(unsigned attempts = 30)
         {
+            if (NativeMode) return VsmbClient.Ensure(Repository, Share, true);
             if (Ready()) return true;
             if (Process && WaitForSingleObject(Process, 0) == WAIT_OBJECT_0)
             {
@@ -655,21 +664,66 @@ namespace
         Json Update(Json const& settings)
         {
             auto const& shares = settings.at("Shares");
+            auto smbShares = settings.value("VirtualSmbShares", Json::array());
+            bool gpuEnabled = settings.value("GpuEnabled", true);
+            if (!smbShares.is_array() || smbShares.size() > 224) throw std::runtime_error("Invalid Virtual SMB inventory");
+            Json mounted = Json::array();
+            Json mountErrors = Json::array();
+            if (NativeMode)
+            {
+                wchar_t programData[32768]{};
+                auto size = GetEnvironmentVariableW(L"ProgramData",programData,static_cast<DWORD>(std::size(programData)));
+                if (!size || size >= std::size(programData)) throw std::runtime_error("ProgramData is unavailable");
+                fs::path root = fs::path(programData) / L"NanaBox Guest Shares";
+                // The installer creates and protects the shared-folder mount root.
+                if (!fs::is_directory(root) || (GetFileAttributesW(root.c_str()) & FILE_ATTRIBUTE_REPARSE_POINT))
+                    throw std::runtime_error("The protected Virtual SMB mount directory is missing");
+                std::set<std::wstring> names;
+                for (auto const& share : smbShares)
+                {
+                    auto name = share.at("Name").get<std::string>();
+                    auto wide = Wide(name);
+                    if (!Wddm::SafeComponent(wide) || !names.insert(Wddm::Fold(wide)).second)
+                        throw std::runtime_error("Invalid or duplicate Virtual SMB share name");
+                    if (name=="NanaBox.HostDrivers" || name=="HostDriverStore" ||
+                        name=="NanaBox.HostLxssLib" || Wddm::ExtraShareName(name)) continue;
+                    auto path=root/wide;
+                    auto readOnly=share.at("ReadOnly").get<bool>();
+                    try
+                    {
+                        VsmbClient.Ensure(path,wide,readOnly);
+                        mounted.push_back({{"Name",name},{"Target",Utf8(path.wstring())},{"ReadOnly",readOnly},{"Mounted",true}});
+                    }
+                    catch (std::exception const& error)
+                    {
+                        mountErrors.push_back(name+": "+error.what());
+                    }
+                }
+            }
+            if (!gpuEnabled)
+            {
+                Last={{"Mounted",false},{"Files",Json::array()},{"Errors",mountErrors},{"VirtualSmbShares",mounted},
+                    {"Backend",NativeMode?"VirtualSmb":"Plan9"}};
+                return Last;
+            }
             auto const& wddm = settings.at("Wddm");
             if (!shares.is_array() || !wddm.at("Packages").is_array() || !wddm.at("Files").is_array() ||
                 !wddm.at("Errors").is_array() || wddm.at("Packages").size() > 128 || wddm.at("Files").size() > 1024)
                 throw std::runtime_error("Invalid WDDM inventory");
             bool shared = false;
             std::set<std::string> extraShares;
-            for (auto const& share : shares)
+            for (auto const& share : NativeMode ? smbShares : shares)
             {
                 auto name = share.value("Name", std::string());
-                if (share.value("Port", 0) != 50001 || !share.value("ReadOnly", false)) continue;
+                if ((!NativeMode && share.value("Port", 0) != 50001) || !share.value("ReadOnly", false)) continue;
                 if (name == "NanaBox.HostDrivers") shared = true;
                 else if (Wddm::ExtraShareName(name)) extraShares.insert(name);
             }
             if (!shared) throw std::runtime_error("Read-only host GPU repository is unavailable");
-            Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", wddm.at("Errors")}};
+            Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", wddm.at("Errors")},
+                {"VirtualSmbShares", mounted}, {"ShareErrors", mountErrors}, {"Backend", NativeMode ? "VirtualSmb" : "Plan9"}};
+            for (auto const& error : wddm.value(NativeMode ? "VirtualSmbErrors" : "Plan9Errors", Json::array()))
+                Last["Errors"].push_back(error);
             if (!Mount.Ensure())
             {
                 Last["Errors"].push_back("GPU repository is not mounted");
@@ -720,10 +774,15 @@ namespace
                     auto source = Wide(file.at("Source").get<std::string>());
                     auto destination = Wide(file.at("Destination").get<std::string>());
                     auto directory = Wide(file.at("Directory").get<std::string>());
-                    if (!extraShares.count(name) || !Wddm::SafeComponent(source) ||
+                    if (!Wddm::SafeComponent(source) ||
                         !Wddm::SafeComponent(destination) || !Wddm::SafeSystemDirectory(directory) ||
                         !Equal(source, destination))
                         throw std::runtime_error("Invalid supplemental GPU file mapping");
+                    if (!extraShares.count(name))
+                    {
+                        Last["Errors"].push_back("Supplemental GPU share is unavailable: " + name);
+                        continue;
+                    }
                     auto id = LinkId(directory, destination);
                     // Explicit WDDM copy rules take precedence over the device inventory.
                     if (desired.count(id)) continue;
@@ -967,7 +1026,8 @@ namespace
         SERVICE_STATUS status{};
         status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
         status.dwCurrentState = state;
-        status.dwControlsAccepted = state == SERVICE_RUNNING ? SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN : 0;
+        status.dwControlsAccepted = state == SERVICE_RUNNING ?
+            SERVICE_ACCEPT_SHUTDOWN | (NativeActive ? 0u : SERVICE_ACCEPT_STOP) : 0;
         status.dwWin32ExitCode = error;
         status.dwWaitHint = state == SERVICE_STOP_PENDING ? 15000 : 0;
         if (ServiceHandle) SetServiceStatus(ServiceHandle, &status);
@@ -975,7 +1035,7 @@ namespace
 
     void WINAPI Control(DWORD control)
     {
-        if (control == SERVICE_CONTROL_STOP || control == SERVICE_CONTROL_SHUTDOWN)
+        if ((control == SERVICE_CONTROL_STOP && !NativeActive) || control == SERVICE_CONTROL_SHUTDOWN)
         {
             Stop = true;
             Status(SERVICE_STOP_PENDING);
@@ -991,8 +1051,12 @@ namespace
         {
             Key key(StateKey, KEY_READ);
             CirnoPath = key.Read(L"CirnoPath");
+            auto backend = key.Read(L"Backend");
+            NativeMode = backend == L"VirtualSmb" || (backend.empty() && CirnoPath.empty());
+            if (!backend.empty() && backend != L"VirtualSmb" && backend != L"Plan9")
+                throw std::runtime_error("Unknown Windows share backend");
             AutomaticRestart = key.Read(L"AutomaticRestart") != L"0";
-            if (CirnoPath.empty() || !fs::path(CirnoPath).is_absolute())
+            if (!NativeMode && (CirnoPath.empty() || !fs::path(CirnoPath).is_absolute()))
                 throw std::runtime_error("Mile.Cirno path is not configured");
             Serve();
             Status(SERVICE_STOPPED);
@@ -1002,6 +1066,32 @@ namespace
 
     int SelfTest()
     {
+        {
+            for(auto layout:{88u,92u,108u,116u,120u})
+            {
+                auto request=Vsmb::StartRequest(layout);
+                if(Vsmb::Get32(request,0)!=120||Vsmb::Get32(request,4)!=30||
+                    request[layout-4]!=1||request[layout]!=0x5c||request[layout+1]!=0||
+                    request.size()!=layout+26) return 25;
+            }
+            if(Vsmb::Layouts(19045)!=std::vector<unsigned>{88}||
+                Vsmb::Layouts(22631)!=std::vector<unsigned>{92}||
+                Vsmb::Layouts(26100)!=std::vector<unsigned>{120,116})return 26;
+            auto bind=Vsmb::BindRequest();
+            if(Vsmb::Get32(bind,4)!=2||Vsmb::Get32(bind,8)!=bind.size()-12)return 27;
+            std::vector<unsigned char> bytes(100);
+            Vsmb::Put32(bytes,0,100);Vsmb::Put32(bytes,8,1);
+            Vsmb::Put32(bytes,12,4);Vsmb::Put32(bytes,16,40);
+            Vsmb::Put32(bytes,20,0x21);Vsmb::Put32(bytes,24,1);Vsmb::Put32(bytes,28,32);
+            Vsmb::Put32(bytes,32,4);Vsmb::Put32(bytes,36,44);
+            Vsmb::PutName(bytes,40,u"AB");Vsmb::PutName(bytes,44,u"CD");
+            auto mappings=Vsmb::ParseBindings(bytes);
+            if(mappings.size()!=1||mappings[0].Root!=u"AB"||mappings[0].Flags!=0x21||
+                mappings[0].Targets!=std::vector<std::u16string>{u"CD"})return 28;
+            Vsmb::Put32(bytes,36,UINT32_MAX);
+            bool refused=false;try{Vsmb::ParseBindings(bytes);}catch(...){refused=true;}
+            if(!refused)return 29;
+        }
         if (!Wddm::IsVirtualRenderDevice(L"PCI\\VEN_1414&DEV_008E&SUBSYS_00000000", L"VirtualRender") ||
             Wddm::IsVirtualRenderDevice(L"PCI\\VEN_1414&DEV_008E0", L"VirtualRender") ||
             Wddm::IsVirtualRenderDevice(L"PCI\\VEN_10DE&DEV_008E", L"VirtualRender") ||
