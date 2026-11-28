@@ -8,11 +8,21 @@
 
 #include <string>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace NanaBox
 {
     class MainWindow;
+
+    struct SettingsHostOperations
+    {
+        std::function<std::vector<HostNetworkInfo>()> EnumerateNetworks = EnumerateHostNetworks;
+        std::function<HostNetworkInfo(winrt::guid const&)> QueryNetwork = QueryHostNetwork;
+        std::function<void(winrt::hstring const&, bool)> CreateNetwork = CreateManagedNetwork;
+        std::function<void(winrt::guid const&)> DeleteNetwork = DeleteManagedNetwork;
+        std::function<winrt::hstring(winrt::hstring const&, winrt::hstring const&)> Manage = RunHostManagement;
+    };
 }
 
 namespace winrt::NanaBox
@@ -42,7 +52,8 @@ namespace winrt::NanaBox::implementation
             std::wstring const& ConfigurationFilePath = std::wstring(),
             std::wstring const& Name = std::wstring(),
             _In_opt_ NanaBox::MainWindow* MainWindow = nullptr,
-            std::function<std::string(std::string const&)> GuestQuery = {});
+            std::function<std::string(std::string const&)> GuestQuery = {},
+            std::shared_ptr<::NanaBox::SettingsHostOperations> HostOperations = {});
 
         ~VirtualMachineSettingsPage();
 
@@ -156,6 +167,7 @@ namespace winrt::NanaBox::implementation
             winrt::TextBox Name = nullptr;
         };
 
+        std::shared_ptr<::NanaBox::SettingsHostOperations> m_HostOperations;
         bool m_GuestToolsRunning = false;
         std::function<std::string(std::string const&)> m_GuestQuery;
         bool m_DiskOperationRunning = false;

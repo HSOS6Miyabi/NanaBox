@@ -319,7 +319,9 @@ namespace winrt::NanaBox::implementation
         std::wstring const& ConfigurationFilePath,
         std::wstring const& Name,
         _In_opt_ NanaBox::MainWindow* MainWindow,
-        std::function<std::string(std::string const&)> GuestQuery) :
+        std::function<std::string(std::string const&)> GuestQuery,
+        std::shared_ptr<::NanaBox::SettingsHostOperations> HostOperations) :
+        m_HostOperations(HostOperations ? std::move(HostOperations) : std::make_shared<::NanaBox::SettingsHostOperations>()),
         m_GuestQuery(std::move(GuestQuery)),
         m_WindowHandle(WindowHandle),
         m_ConfigurationFilePath(ConfigurationFilePath),
@@ -1689,13 +1691,13 @@ namespace winrt::NanaBox::implementation
         {
             co_await winrt::resume_background();
             if (Action == L"Inspect")
-                Result = Json::parse(winrt::to_string(::NanaBox::QueryHostNetwork(
+                Result = Json::parse(winrt::to_string(this->m_HostOperations->QueryNetwork(
                     winrt::guid(winrt::to_string(Value))).Properties));
             else
             {
-                if (Action == L"Create") ::NanaBox::CreateManagedNetwork(Value, Firewall);
-                else if (Action == L"Delete") ::NanaBox::DeleteManagedNetwork(winrt::guid(winrt::to_string(Value)));
-                Networks = ::NanaBox::EnumerateHostNetworks();
+                if (Action == L"Create") this->m_HostOperations->CreateNetwork(Value, Firewall);
+                else if (Action == L"Delete") this->m_HostOperations->DeleteNetwork(winrt::guid(winrt::to_string(Value)));
+                Networks = this->m_HostOperations->EnumerateNetworks();
                 Result = {{"Success", true}, {"Operation", winrt::to_string(Action)}, {"Count", Networks.size()}};
             }
         }
@@ -1715,7 +1717,12 @@ namespace winrt::NanaBox::implementation
             }
             this->NetworkPropertiesTextBox().Text(winrt::to_hstring(Result.dump(2)));
         }
-        catch (...) { this->m_NetworkManagementRunning = false; }
+        catch (...)
+        {
+            this->m_NetworkManagementRunning = false;
+            try { this->SetNetworkManagementBusy(false); this->NetworkPropertiesTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+            catch (...) {}
+        }
     }
 
     void VirtualMachineSettingsPage::HostManagementButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
@@ -1801,9 +1808,9 @@ namespace winrt::NanaBox::implementation
         try
         {
             co_await winrt::resume_background();
-            auto Run = [](winrt::hstring const& Command, Json const& Data) -> Json
+            auto Run = [Operations = this->m_HostOperations](winrt::hstring const& Command, Json const& Data) -> Json
             {
-                return Json::parse(winrt::to_string(::NanaBox::RunHostManagement(Command, winrt::to_hstring(Data.dump()))));
+                return Json::parse(winrt::to_string(Operations->Manage(Command, winrt::to_hstring(Data.dump()))));
             };
             auto Data = Json::parse(Arguments);
             Result = Run(Action, Data);
@@ -1864,7 +1871,12 @@ namespace winrt::NanaBox::implementation
             }
             this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
         }
-        catch (...) { this->m_HostManagementRunning = false; }
+        catch (...)
+        {
+            this->m_HostManagementRunning = false;
+            try { this->HostManagementResult().Text(Mile::WinRT::ToHResultError().message()); }
+            catch (...) {}
+        }
     }
 
     void VirtualMachineSettingsPage::DiskManagerButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)

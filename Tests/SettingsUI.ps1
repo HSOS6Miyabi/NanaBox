@@ -13,7 +13,8 @@ $config = Join-Path $OutputDirectory 'ui-test.7b'
 $initial = @{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} | ConvertTo-Json -Depth 10
 [IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($true)))
 
-$process = Start-Process -FilePath $Executable -ArgumentList ('--edit-config-test "' + $config + '"') -PassThru
+$mode = if ($HostIntegration) { '--edit-config' } else { '--edit-config-test' }
+$process = Start-Process -FilePath $Executable -ArgumentList ($mode + ' "' + $config + '"') -PassThru
 $root = [System.Windows.Automation.AutomationElement]::RootElement
 $pidCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, [int]$process.Id)
 $desc = [System.Windows.Automation.TreeScope]::Descendants
@@ -158,14 +159,19 @@ try {
     Set-Check 'TpmCheckBox' $true
     Set-Check 'VirtualizationExtensionsCheckBox' $true
     Select-Tab 'TabGuestTools'
-    Invoke-Control 'GuestHeartbeatButton'
-    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
-    Invoke-Control 'GuestInformationButton'
-    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
-    Invoke-Control 'GuestDiagnosticsButton'
-    $null = Wait-Result 'GuestToolsResult' {param($v) -not $v.Success -and $v.ResourceType -eq 'Diagnostics' -and $v.Error -like '*Injected guest query failure*'}
-    Invoke-Control 'GuestHeartbeatButton'
-    $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+    if (-not $HostIntegration) {
+        Invoke-Control 'GuestHeartbeatButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+        Invoke-Control 'GuestInformationButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
+        Invoke-Control 'GuestDiagnosticsButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) -not $v.Success -and $v.ResourceType -eq 'Diagnostics' -and $v.Error -like '*Injected guest query failure*'}
+        Invoke-Control 'GuestHeartbeatButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+    } else {
+        Invoke-Control 'GuestHeartbeatButton'
+        $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -eq $false -and $v.Error}
+    }
     Select-Tab 'TabSerial'
     Invoke-Control 'GenerateCom1'
     $pipe1 = Get-Text 'ComPort1TextBox'
@@ -258,7 +264,7 @@ try {
     foreach ($id in @('SwitchListButton','SwitchCreateButton','SwitchDeleteButton','AdapterListButton','CreatorListButton','CreatorRegisterButton','FirewallInspectButton','UseCreatorButton','FirewallConfigureButton','RuleCreateButton','RuleEnableButton','RuleDisableButton','RuleDeleteButton')) {
         $null = Find-Control $id
     }
-    if ($HostIntegration) {
+    & {
         $name = 'CI-' + [guid]::NewGuid().ToString('N')
         $managed = 'NanaBox.Managed.' + $name
         $creator = $null
@@ -271,12 +277,18 @@ try {
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
             Invoke-Control 'SwitchCreateButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and $v.Name -eq $managed}
-            $switch = Get-VMSwitch | Where-Object Name -eq $managed
-            if ($null -eq $switch -or [string]$switch.SwitchType -ne 'Private') { throw 'Switch was not created' }
+            if ($HostIntegration) {
+                $switch = Get-VMSwitch | Where-Object Name -eq $managed
+                if ($null -eq $switch -or [string]$switch.SwitchType -ne 'Private') { throw 'Switch was not created' }
+            } else {
+                Invoke-Control 'SwitchCreateButton'
+                $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -eq $false -and $v.Error -like '*already exists*'}
+            }
             $null = Select-ByName 'ManagedSwitchesComboBox' ($managed+' (')
             Confirm-Change 'SwitchDeleteButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $v.Success -and -not $v.Name}
-            if (Get-VMSwitch | Where-Object Name -eq $managed) { throw 'Switch was not removed' }
+            if ($HostIntegration -and (Get-VMSwitch | Where-Object Name -eq $managed)) { throw 'Switch was not removed' }
+            if (Select-ByName 'ManagedSwitchesComboBox' ($managed+' (') -Optional) { throw 'Deleted switch still displayed' }
 
             Invoke-Control 'CreatorListButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v}
@@ -284,17 +296,30 @@ try {
             Invoke-Control 'CreatorRegisterButton'
             $registered = Wait-Result 'HostManagementResult' {param($v) $v.Name -eq $managed -and $v.Id}
             $creator = [string]$registered.Id
-            $registeredCreator = Get-NetFirewallHyperVVMCreator | Where-Object { [guid]$_.VMCreatorId -eq [guid]$creator }
-            if ($null -eq $registeredCreator) { throw 'Firewall creator registration missing' }
+            if ($HostIntegration) {
+                $registeredCreator = Get-NetFirewallHyperVVMCreator | Where-Object { [guid]$_.VMCreatorId -eq [guid]$creator }
+                if ($null -eq $registeredCreator) { throw 'Firewall creator registration missing' }
+            }
             $null = Select-ByName 'FirewallCreatorsComboBox' ($managed+' (')
-            Confirm-Change 'FirewallConfigureButton'
+            Invoke-Control 'FirewallInspectButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Settings}
-            $setting = Get-NetFirewallHyperVVMSetting -Name $creator
-            Assert-Equal ([string]$setting.DefaultInboundAction) 'Block' 'Firewall inbound default'
-            Assert-Equal ([string]$setting.DefaultOutboundAction) 'Allow' 'Firewall outbound default'
+            Invoke-Control 'UseCreatorButton'
+            Select-Tab 'TabNetwork'
+            Assert-Equal (Get-Text 'MirroredFirewallCreatorTextBox') $creator 'Selected firewall creator'
+            Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'
+            Select-Tab 'TabHostManagement'
+            Select-Choice 'FirewallInboundComboBox' 'FirewallInboundComboBoxAllow'
+            Select-Choice 'FirewallOutboundComboBox' 'FirewallOutboundComboBoxBlock'
+            Confirm-Change 'FirewallConfigureButton'
+            $report = Wait-Result 'HostManagementResult' {param($v) @($v.Settings | Where-Object { $_.DefaultInboundAction -eq 'Allow' -and $_.DefaultOutboundAction -eq 'Block' }).Count -eq 1}
+            $setting = $report.Settings[0]
+            if ($HostIntegration) { $setting = Get-NetFirewallHyperVVMSetting -Name $creator }
+            Assert-Equal ([string]$setting.DefaultInboundAction) 'Allow' 'Firewall inbound default'
+            Assert-Equal ([string]$setting.DefaultOutboundAction) 'Block' 'Firewall outbound default'
             Invoke-Control 'RuleCreateButton'
-            $null = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 1}
-            $rule = Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule'
+            $report = Wait-Result 'HostManagementResult' {param($v) @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 1}
+            $rule = $report.Rules | Where-Object Name -eq 'UI-test-rule'
+            if ($HostIntegration) { $rule = Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule' }
             if ($null -eq $rule -or $rule.LocalPorts -notcontains '18080') { throw 'Firewall rule missing or incorrect' }
             $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
             Invoke-Control 'RuleDisableButton'
@@ -305,7 +330,7 @@ try {
             $null = Select-ByName 'FirewallRulesComboBox' 'UI-test-rule ('
             Confirm-Change 'RuleDeleteButton'
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Rules -and @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 0}
-            if (Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule') { throw 'Firewall rule was not deleted' }
+            if ($HostIntegration -and (Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule')) { throw 'Firewall rule was not deleted' }
 
             Select-Tab 'TabNetwork'
             Set-Text 'NetworkNameTextBox' $name
@@ -323,7 +348,7 @@ try {
             if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'HCN network was not deleted' }
             $networkCreated = $false
         } finally {
-            if ($networkCreated -and -not $process.HasExited) {
+            if ($HostIntegration -and $networkCreated -and -not $process.HasExited) {
                 try {
                     Select-Tab 'TabNetwork'
                     Invoke-Control 'RefreshNetworks'
@@ -334,8 +359,8 @@ try {
                     }
                 } catch { Write-Warning "HCN test network cleanup: $_" }
             }
-            Get-VMSwitch | Where-Object Name -eq $managed | Remove-VMSwitch -Confirm:$false
-            if ($creator) {
+            if ($HostIntegration) { Get-VMSwitch | Where-Object Name -eq $managed | Remove-VMSwitch -Confirm:$false }
+            if ($HostIntegration -and $creator) {
                 Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object Name -like 'NanaBox.Managed.*' | Remove-NetFirewallHyperVRule -Confirm:$false
                 $null = Invoke-CimMethod -Namespace root/standardcimv2 -ClassName MSFT_NetFirewallHyperVVMCreator -MethodName UnregisterHyperVVMCreator -Arguments @{VMCreatorId=$creator}
             }
@@ -343,6 +368,8 @@ try {
     }
 
     Select-Tab 'TabSession'
+    Invoke-Control 'RefreshDriveButton'
+    Invoke-Control 'RefreshDeviceButton'
     Set-Check 'RedirectKeyCombinationsCheckBox' $false
     foreach ($id in @('FullScreen','CtrlEsc','AltEsc','AltTab','AltShiftTab','AltSpace','CtrlAltDel','FocusReleaseLeft','FocusReleaseRight')) {
         Set-Text ($id+'HotkeyTextBox') '65'

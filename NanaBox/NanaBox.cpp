@@ -20,6 +20,7 @@
 #include "PowerTransition.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
+#include "SettingsHostMock.h"
 #include <shellapi.h>
 #include <commctrl.h>
 #pragma comment(lib, "comctl32.lib")
@@ -414,7 +415,10 @@ int WINAPI wWinMain(
                 HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
                 if (!WindowHandle) return -1;
                 std::function<std::string(std::string const&)> GuestQuery;
+                std::shared_ptr<NanaBox::SettingsHostOperations> HostOperations;
                 if (0 == ::_wcsicmp(Arguments[1], L"--edit-config-test"))
+                {
+                    HostOperations = NanaBox::MakeSettingsHostMock();
                     GuestQuery = [](std::string const& Resource)
                     {
                         if (Resource == "Diagnostics")
@@ -425,8 +429,9 @@ int WINAPI wWinMain(
                         else throw winrt::hresult_invalid_argument();
                         return nlohmann::json{{"Success", true}, {"ResourceType", Resource}, {"Data", Data}}.dump(2);
                     };
+                }
                 auto Page = winrt::make<winrt::NanaBox::implementation::VirtualMachineSettingsPage>(
-                    WindowHandle, Path, std::wstring(), nullptr, std::move(GuestQuery));
+                    WindowHandle, Path, std::wstring(), nullptr, std::move(GuestQuery), std::move(HostOperations));
                 if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
                 {
                     ::DestroyWindow(WindowHandle);
