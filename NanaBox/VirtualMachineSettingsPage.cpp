@@ -70,6 +70,152 @@ namespace
         ::ShowErrorMessageDialog(WindowHandle, Mile::WinRT::ToHResultError());
     }
 
+
+    void BindVisibility(winrt::CheckBox const& Toggle, winrt::FrameworkElement const& Element)
+    {
+        auto Update = [Weak = winrt::make_weak(Element)](
+            winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+        {
+            if (auto Target = Weak.get())
+                Target.Visibility(Sender.as<winrt::CheckBox>().IsChecked().Value()
+                    ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+        };
+        Toggle.Checked(Update);
+        Toggle.Unchecked(Update);
+        Update(Toggle, nullptr);
+    }
+
+    winrt::hstring DescribeSettingsResult(winrt::hstring const& Raw)
+    {
+        if (Raw.empty()) return ::GetSettingsString(L"ResultWaiting");
+        using Json = nlohmann::json;
+        auto Data = Json::parse(winrt::to_string(Raw), nullptr, false);
+        if (Data.is_discarded() || !Data.is_object()) return Raw;
+        std::wstring Summary;
+        auto Add = [&](LPCWSTR Label, std::wstring const& Value)
+        {
+            if (Value.empty()) return;
+            if (!Summary.empty()) Summary += L"\n";
+            Summary += ::GetSettingsString(Label).c_str();
+            Summary += L": ";
+            Summary += Value;
+        };
+        auto Operation = Data.value("Operation", std::string());
+        if (Data.contains("Success") && Data["Success"].is_boolean())
+        {
+            LPCWSTR Key = Data["Success"].get<bool>() ? L"ResultSuccess" : L"ResultFailure";
+            if (Data["Success"].get<bool>())
+            {
+                if (Operation == "Refresh") Key = L"ResultRefresh";
+                else if (Operation == "Create" && Data.contains("Count")) Key = L"ResultCreateNetwork";
+                else if (Operation == "Delete" && Data.contains("Count")) Key = L"ResultDeleteNetwork";
+            }
+            Summary = ::GetSettingsString(Key).c_str();
+        }
+        else Summary = ::GetSettingsString(L"ResultInfo").c_str();
+
+        auto Fields = [&](Json const& Object)
+        {
+            if (!Object.is_object()) return;
+            auto Field = [&](char const* Name, LPCWSTR Label)
+            {
+                auto It = Object.find(Name);
+                if (It == Object.end()) return;
+                if (It->is_string()) Add(Label, winrt::to_hstring(It->get<std::string>()).c_str());
+                else if (It->is_boolean()) Add(Label, ::GetSettingsString(It->get<bool>() ? L"ResultYes" : L"ResultNo").c_str());
+                else if (It->is_number()) Add(Label, winrt::to_hstring(It->dump()).c_str());
+            };
+            Field("Name", L"ResultName");
+            Field("Type", L"ResultType");
+            Field("State", L"ResultState");
+            Field("Count", L"ResultCount");
+            Field("HostName", L"ResultHost");
+            Field("Alive", L"ResultAlive");
+            Field("Path", L"ResultPath");
+            Field("IpAddress", L"ResultAddress");
+            Field("ApiAvailable", L"ResultApi");
+            Field("WslDependencyAvailable", L"ResultWsl");
+            Field("HcnReachable", L"ResultHcn");
+            Field("Error", L"ResultError");
+            for (auto const& Key : {"Items", "Rules", "Shares", "Networks"})
+                if (Object.contains(Key) && Object[Key].is_array())
+                    Add(L"ResultCount", std::to_wstring(Object[Key].size()));
+            for (auto const& Entry : {std::pair{"VirtualSize", L"ResultSize"}, std::pair{"PhysicalSize", L"ResultPhysicalSize"}})
+                if (Object.contains(Entry.first) && Object[Entry.first].is_number_unsigned())
+                    Add(Entry.second, std::to_wstring(Object[Entry.first].get<std::uint64_t>() / (1024 * 1024)));
+        };
+        Fields(Data);
+        if (Data.contains("Data")) Fields(Data["Data"]);
+        if (Data.contains("Properties")) Fields(Data["Properties"]);
+        return winrt::hstring(Summary);
+    }
+
+    void BindOperationDetails(winrt::TextBox const& Raw, winrt::TextBlock const& Summary,
+        winrt::CheckBox const& Toggle)
+    {
+        ::BindVisibility(Toggle, Raw);
+        auto Update = [Weak = winrt::make_weak(Summary)](
+            winrt::IInspectable const& Sender, winrt::Windows::UI::Xaml::Controls::TextChangedEventArgs const&)
+        {
+            if (auto Target = Weak.get())
+            {
+                try { Target.Text(::DescribeSettingsResult(Sender.as<winrt::TextBox>().Text())); }
+                catch (...) { Target.Text(::GetSettingsString(L"ResultInfo")); }
+            }
+        };
+        Raw.TextChanged(Update);
+        Update(Raw, nullptr);
+    }
+
+    bool ParseIpv4(std::string_view Text, std::uint32_t& Value)
+    {
+        Value = 0;
+        for (int Part = 0; Part < 4; ++Part)
+        {
+            auto Dot = Text.find('.');
+            if ((Part == 3) != (Dot == std::string_view::npos)) return false;
+            auto Octet = Text.substr(0, Dot);
+            unsigned int Number = 0;
+            auto Parsed = std::from_chars(Octet.data(), Octet.data() + Octet.size(), Number);
+            if (Octet.empty() || Parsed.ec != std::errc() || Parsed.ptr != Octet.data() + Octet.size() || Number > 255)
+                return false;
+            Value = (Value << 8) | Number;
+            if (Part != 3) Text.remove_prefix(Dot + 1);
+        }
+        return true;
+    }
+
+    winrt::hstring BuildNatNetworkSettings(winrt::hstring const& Subnet, winrt::hstring const& Gateway)
+    {
+        using Json = nlohmann::json;
+        auto PrefixText = winrt::to_string(Subnet);
+        auto Slash = PrefixText.find('/');
+        std::uint32_t Address = 0;
+        unsigned int Prefix = 0;
+        if (Slash == std::string::npos || !::ParseIpv4(std::string_view(PrefixText).substr(0, Slash), Address))
+            throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Subnet"));
+        auto Begin = PrefixText.data() + Slash + 1;
+        auto End = PrefixText.data() + PrefixText.size();
+        auto Parsed = std::from_chars(Begin, End, Prefix);
+        if (Parsed.ec != std::errc() || Parsed.ptr != End || Prefix < 1 || Prefix > 30)
+            throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Subnet"));
+        std::uint32_t Mask = 0xffffffffu << (32 - Prefix);
+        if (Address & ~Mask) throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Subnet"));
+        Json SubnetSettings = {{"IpAddressPrefix", PrefixText}};
+        auto GatewayText = winrt::to_string(Gateway);
+        if (!GatewayText.empty())
+        {
+            std::uint32_t NextHop = 0;
+            if (!::ParseIpv4(GatewayText, NextHop) || (NextHop & Mask) != Address ||
+                NextHop == Address || (NextHop & ~Mask) == ~Mask)
+                throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Gateway"));
+            SubnetSettings["Routes"] = Json::array({{{"NextHop", GatewayText}, {"DestinationPrefix", "0.0.0.0/0"}}});
+        }
+        Json Settings = {{"Type", "NAT"}, {"SchemaVersion", {{"Major", 2}, {"Minor", 0}}},
+            {"Ipams", Json::array({{{"Type", "Static"}, {"Subnets", Json::array({SubnetSettings})}}})}};
+        return winrt::to_hstring(Settings.dump());
+    }
+
     std::wstring GetRelativeFilePath(
         std::wstring const& ConfigurationFilePath,
         std::wstring const& FilePath)
@@ -175,18 +321,16 @@ namespace
         Row.Visibility(Visible
             ? winrt::Visibility::Visible
             : winrt::Visibility::Collapsed);
-        double LabelColumnWidth = 250 - Panel.Margin().Left;
-        winrt::ColumnDefinition LabelColumn;
-        LabelColumn.Width(winrt::GridLengthHelper::FromPixels(LabelColumnWidth));
-        Row.ColumnDefinitions().Append(LabelColumn);
-        winrt::ColumnDefinition SpacingColumn;
-        SpacingColumn.Width(winrt::GridLengthHelper::FromPixels(12));
-        Row.ColumnDefinitions().Append(SpacingColumn);
-        Row.ColumnDefinitions().Append(winrt::ColumnDefinition());
+        winrt::Windows::UI::Xaml::Controls::RowDefinition LabelRow;
+        LabelRow.Height(winrt::GridLengthHelper::Auto());
+        Row.RowDefinitions().Append(LabelRow);
+        winrt::Windows::UI::Xaml::Controls::RowDefinition InputRow;
+        InputRow.Height(winrt::GridLengthHelper::Auto());
+        Row.RowDefinitions().Append(InputRow);
+        Row.RowSpacing(4);
 
         winrt::TextBlock Label;
         Label.Text(::GetSettingsString(LabelResource));
-        Label.MinWidth(LabelColumnWidth);
         Label.TextWrapping(winrt::TextWrapping::Wrap);
         Label.VerticalAlignment(winrt::VerticalAlignment::Center);
         Row.Children().Append(Label);
@@ -196,7 +340,7 @@ namespace
         winrt::AutomationProperties::SetAutomationId(Input, winrt::hstring(LabelResource));
         winrt::AutomationProperties::SetHelpText(Input, Help);
         winrt::ToolTipService::SetToolTip(Input, winrt::box_value(Help));
-        winrt::Grid::SetColumn(Input, 2);
+        winrt::Grid::SetRow(Input, 1);
         Row.Children().Append(Input);
         Panel.Children().Append(Row);
         return Row;
@@ -211,7 +355,7 @@ namespace
     {
         winrt::TextBox Input;
         Input.Text(Value);
-        Input.MinWidth(250);
+        Input.MinWidth(0);
         Input.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
         ::AddSettingRow(Panel, Input, LabelResource, HelpResource, !Hidden);
         return Input;
@@ -259,9 +403,16 @@ namespace
         Picker.Items().Append(Item);
     }
 
-    void FillNetworkPicker(winrt::ComboBox const& Picker, std::vector<::NanaBox::HostNetworkInfo> const& Networks, bool AttachableOnly = false)
+    void FillNetworkPicker(winrt::ComboBox const& Picker, std::vector<::NanaBox::HostNetworkInfo> const& Networks,
+        bool AttachableOnly = false, winrt::hstring const& CurrentNetwork = {})
     {
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        winrt::hstring Previous = CurrentNetwork;
+        if (!AttachableOnly)
+            if (auto Selected = Picker.SelectedItem().try_as<Item>())
+                Previous = winrt::unbox_value<winrt::hstring>(Selected.Tag());
         Picker.Items().Clear();
+        if (AttachableOnly) ::AddPickerItem(Picker, ::GetSettingsString(L"DefaultNetworkChoice"), L"");
         for (auto const& Network : Networks)
         {
             bool Mirrored = (Network.Flags & NanaBox::HcnNetworkFlags::EnableFlowSteering) != 0;
@@ -274,6 +425,22 @@ namespace
             Label += L")";
             ::AddPickerItem(Picker, winrt::hstring(Label), Id);
         }
+        if (AttachableOnly && !Previous.empty())
+        {
+            bool Present = false;
+            for (auto const& Entry : Picker.Items())
+                if (winrt::unbox_value<winrt::hstring>(Entry.as<Item>().Tag()) == Previous) Present = true;
+            if (!Present) ::AddPickerItem(Picker, winrt::hstring(Mile::FormatWideString(
+                ::GetSettingsString(L"Unavailable").c_str(), Previous.c_str())), Previous);
+        }
+        int Selection = Picker.Items().Size() ? 0 : -1;
+        for (std::uint32_t Index = 0; Index < Picker.Items().Size(); ++Index)
+            if (winrt::unbox_value<winrt::hstring>(Picker.Items().GetAt(Index).as<Item>().Tag()) == Previous)
+            {
+                Selection = static_cast<int>(Index);
+                break;
+            }
+        Picker.SelectedIndex(Selection);
         Picker.PlaceholderText(Picker.Items().Size() ? winrt::hstring() : ::GetSettingsString(L"NoHostNetworks"));
     }
 
@@ -474,6 +641,31 @@ namespace winrt::NanaBox::implementation
             if (auto Page = Weak.get())
                 Page->SettingsNavigationColumn().Width(winrt::GridLengthHelper::FromPixels(Args.NewSize().Width < 720 ? 164 : 208));
         });
+        ::BindOperationDetails(this->NetworkPropertiesTextBox(), this->SummaryNetworkPropertiesTextBox(), this->DetailsNetworkPropertiesTextBox());
+        ::BindOperationDetails(this->NetworkDiagnosticsTextBox(), this->SummaryNetworkDiagnosticsTextBox(), this->DetailsNetworkDiagnosticsTextBox());
+        ::BindOperationDetails(this->HostManagementResult(), this->SummaryHostManagementResult(), this->DetailsHostManagementResult());
+        ::BindOperationDetails(this->HcnResultTextBox(), this->SummaryHcnResultTextBox(), this->DetailsHcnResultTextBox());
+        ::BindOperationDetails(this->DiskResultTextBox(), this->SummaryDiskResultTextBox(), this->DetailsDiskResultTextBox());
+        ::BindOperationDetails(this->GuestToolsResult(), this->SummaryGuestToolsResult(), this->DetailsGuestToolsResult());
+        ::BindOperationDetails(this->VmmsResultTextBox(), this->SummaryVmmsResultTextBox(), this->DetailsVmmsResultTextBox());
+        ::BindVisibility(this->NetworkExpertCheckBox(), this->NetworkExpertCheckBoxPanel());
+        ::BindVisibility(this->HcnExpertCheckBox(), this->HcnExpertCheckBoxPanel());
+        ::BindVisibility(this->HcsQueryExpertCheckBox(), this->HcsQueryExpertCheckBoxPanel());
+        ::BindVisibility(this->HcsExtensionsExpertCheckBox(), this->HcsExtensionsExpertCheckBoxPanel());
+        auto UpdateNetworkMode = [Weak = this->get_weak()]()
+        {
+            if (auto Page = Weak.get())
+            {
+                bool Expert = Page->NetworkExpertCheckBox().IsChecked().Value();
+                Page->NetworkBasicPanel().Visibility(Expert ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+                Page->NetworkNatPanel().Visibility(Page->NetworkModeComboBox().SelectedIndex() == 1
+                    ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+            }
+        };
+        this->NetworkModeComboBox().SelectionChanged([UpdateNetworkMode](winrt::IInspectable const&, winrt::SelectionChangedEventArgs const&) { UpdateNetworkMode(); });
+        this->NetworkExpertCheckBox().Checked([UpdateNetworkMode](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateNetworkMode(); });
+        this->NetworkExpertCheckBox().Unchecked([UpdateNetworkMode](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateNetworkMode(); });
+        UpdateNetworkMode();
         this->AssignmentModeComboBox().SelectionChanged([
             WeakSection = winrt::make_weak(this->GpuDeviceSection())](
                 winrt::IInspectable const& Sender,
@@ -1595,8 +1787,10 @@ namespace winrt::NanaBox::implementation
         Row.Container.Spacing(4);
         Row.Container.Margin(winrt::ThicknessHelper::FromLengths(
             8, 0, 0, 8));
+        winrt::StackPanel Advanced;
+        Advanced.Spacing(8);
         Row.DeviceInterface = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"GpuDeviceDeviceInterfaceLabel",
             L"GpuDeviceDeviceInterfaceHelp",
             winrt::to_hstring(DeviceInterface),
@@ -1613,12 +1807,19 @@ namespace winrt::NanaBox::implementation
             Picker.PlaceholderText(Mile::WinRT::ToHResultError().message());
         }
         Row.PartitionId = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"GpuDevicePartitionIdLabel",
             L"GpuDevicePartitionIdHelp",
             winrt::to_hstring(PartitionId),
             false);
         Row.PartitionId.HorizontalAlignment(winrt::HorizontalAlignment::Left);
+
+        winrt::CheckBox Expert;
+        Expert.Content(winrt::box_value(::GetSettingsString(L"GpuExpert")));
+        winrt::AutomationProperties::SetAutomationId(Expert, L"GpuAdapterExpertCheckBox");
+        Row.Container.Children().Append(Expert);
+        Row.Container.Children().Append(Advanced);
+        ::BindVisibility(Expert, Advanced);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
         winrt::AutomationProperties::SetAutomationId(RemoveButton, L"GpuRemove");
@@ -1902,6 +2103,10 @@ namespace winrt::NanaBox::implementation
         this->NetworkNameTextBox().IsEnabled(!Busy);
         this->NetworkFirewallCheckBox().IsEnabled(!Busy);
         this->NetworkAdvancedSettingsTextBox().IsEnabled(!Busy);
+        this->NetworkModeComboBox().IsEnabled(!Busy);
+        this->NetworkSubnetTextBox().IsEnabled(!Busy);
+        this->NetworkGatewayTextBox().IsEnabled(!Busy);
+        this->NetworkExpertCheckBox().IsEnabled(!Busy);
     }
 
     void VirtualMachineSettingsPage::RefreshNetworksButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
@@ -1912,8 +2117,21 @@ namespace winrt::NanaBox::implementation
     void VirtualMachineSettingsPage::CreateNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
     {
         if (this->m_NetworkManagementRunning) return;
-        this->RunNetworkManagementOperation(L"Create", this->NetworkNameTextBox().Text(),
-            this->NetworkFirewallCheckBox().IsChecked().Value(), this->NetworkAdvancedSettingsTextBox().Text());
+        try
+        {
+            winrt::hstring Settings;
+            if (this->NetworkExpertCheckBox().IsChecked().Value())
+                Settings = this->NetworkAdvancedSettingsTextBox().Text();
+            else if (this->NetworkModeComboBox().SelectedIndex() == 1)
+                Settings = ::BuildNatNetworkSettings(this->NetworkSubnetTextBox().Text(), this->NetworkGatewayTextBox().Text());
+            this->RunNetworkManagementOperation(L"Create", this->NetworkNameTextBox().Text(),
+                this->NetworkFirewallCheckBox().IsChecked().Value(), Settings);
+        }
+        catch (...)
+        {
+            this->NetworkPropertiesTextBox().Text(winrt::to_hstring(nlohmann::json{
+                {"Success", false}, {"Operation", "Create"}, {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}.dump(2)));
+        }
     }
 
     void VirtualMachineSettingsPage::DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
@@ -1985,7 +2203,7 @@ namespace winrt::NanaBox::implementation
                 this->m_HostNetworks = std::move(Networks);
                 ::FillNetworkPicker(this->HostNetworksComboBox(), this->m_HostNetworks);
                 for (auto& Row : this->m_NetworkAdapterSettings)
-                    if (Row.NetworkPicker) ::FillNetworkPicker(Row.NetworkPicker, this->m_HostNetworks, true);
+                    if (Row.NetworkPicker) ::FillNetworkPicker(Row.NetworkPicker, this->m_HostNetworks, true, Row.NetworkId.Text());
                 if (Action == L"Create" && this->NetworkNameTextBox().Text() == Value)
                 {
                     this->NetworkNameTextBox().Text(L"");
@@ -2195,7 +2413,11 @@ namespace winrt::NanaBox::implementation
                 Data["NetworkId"] = winrt::to_string(this->HcnNetworkIdTextBox().Text());
             }
             if (Action == L"HcnCreate" || Action == L"HcnModify")
+            {
+                if (!this->HcnExpertCheckBox().IsChecked().Value())
+                    throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnExpertRequired"));
                 Data["Settings"] = Json::parse(winrt::to_string(this->HcnSettingsTextBox().Text()));
+            }
             if ((Action == L"HcnModify" || Action == L"HcnDelete") &&
                 ::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"HostManagementConfirm").c_str(),
                     L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
@@ -2791,39 +3013,50 @@ namespace winrt::NanaBox::implementation
             L"NetworkAdapterConnectedHelp",
             Configuration.Connected,
             false);
+        winrt::StackPanel Advanced;
+        Advanced.Spacing(8);
         Row.MacAddress = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"NetworkAdapterMacAddressLabel",
             L"NetworkAdapterMacAddressHelp",
             winrt::to_hstring(Configuration.MacAddress),
             false);
-        Row.NetworkId = ::AddSettingTextBox(Row.Container, L"NetworkIdLabel", L"NetworkIdHelp",
+        Row.NetworkId = ::AddSettingTextBox(
+            Advanced, L"NetworkIdLabel", L"NetworkIdHelp",
             winrt::to_hstring(Configuration.NetworkId), this->m_MainWindow && Existing);
-        Row.FirewallCreatorId = ::AddSettingTextBox(Row.Container, L"FirewallCreatorLabel", L"FirewallCreatorHelp",
+        Row.FirewallCreatorId = ::AddSettingTextBox(
+            Advanced, L"FirewallCreatorLabel", L"FirewallCreatorHelp",
             winrt::to_hstring(Configuration.FirewallCreatorId), this->m_MainWindow && Existing);
         if (!(this->m_MainWindow && Existing))
         {
             Row.NetworkPicker = ::MakeHostPicker(Row.Container, Row.NetworkId, L"HostNetworkLabel", L"HostNetworkHelp");
-            ::FillNetworkPicker(Row.NetworkPicker, this->m_HostNetworks, true);
+            ::FillNetworkPicker(Row.NetworkPicker, this->m_HostNetworks, true, Row.NetworkId.Text());
         }
         Row.SuggestedSwitchId = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"NetworkAdapterSuggestedSwitchIdLabel",
             L"NetworkAdapterSuggestedSwitchIdHelp",
             winrt::to_hstring(Configuration.SuggestedSwitchId),
             this->m_MainWindow && Existing);
         Row.SuggestedSwitchName = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"NetworkAdapterSuggestedSwitchNameLabel",
             L"NetworkAdapterSuggestedSwitchNameHelp",
             winrt::to_hstring(Configuration.SuggestedSwitchName),
             this->m_MainWindow && Existing);
         Row.SuggestedSwitchSubnet = ::AddSettingTextBox(
-            Row.Container,
+            Advanced,
             L"NetworkAdapterSuggestedSwitchSubnetLabel",
             L"NetworkAdapterSuggestedSwitchSubnetHelp",
             winrt::to_hstring(Configuration.SuggestedSwitchSubnet),
             this->m_MainWindow && Existing);
+
+        winrt::CheckBox Expert;
+        Expert.Content(winrt::box_value(::GetSettingsString(L"AdapterExpert")));
+        winrt::AutomationProperties::SetAutomationId(Expert, L"NetworkAdapterExpertCheckBox");
+        Row.Container.Children().Append(Expert);
+        Row.Container.Children().Append(Advanced);
+        ::BindVisibility(Expert, Advanced);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
         winrt::AutomationProperties::SetAutomationId(RemoveButton, L"NetworkRemove");

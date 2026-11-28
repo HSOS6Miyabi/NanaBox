@@ -118,11 +118,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AdapterListButton.Content" xml:space="preserve"><value>刷新物理网卡</value></data>
-  <data name="AddGpuDeviceButton.Content" xml:space="preserve"><value>添加</value></data>
-  <data name="AddNetworkAdapterButton.Content" xml:space="preserve"><value>添加</value></data>
-  <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>添加</value></data>
-  <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>添加</value></data>
-  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>添加</value></data>
+  <data name="AddGpuDeviceButton.Content" xml:space="preserve"><value>添加显卡</value></data>
+  <data name="AddNetworkAdapterButton.Content" xml:space="preserve"><value>添加虚拟网卡</value></data>
+  <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>添加共享文件夹</value></data>
+  <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>添加存储设备</value></data>
+  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>添加共享文件夹</value></data>
   <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>附加 VirtualMachine 设置（JSON 对象）</value></data>
   <data name="AltEscHotkeyLabel.Text" xml:space="preserve"><value>ALT+ESC 替代热键</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>指定与 ALT 组合的虚拟键码，用于替代 ALT+ESC（可选）。</value></data>
@@ -352,7 +352,7 @@
   <data name="HcnName.Header" xml:space="preserve"><value>网络名称（创建网络时使用）</value></data>
   <data name="HcnNetworkId.Header" xml:space="preserve"><value>所属网络 ID（创建终结点时使用）</value></data>
   <data name="HcnResource.Header" xml:space="preserve"><value>资源</value></data>
-  <data name="HcnResourceNote.Text" xml:space="preserve"><value>管理 HCN 网络、独立终结点、网络命名空间、负载均衡器和 SDN 路由。现有系统资源仅供查看，修改操作使用 HCN 原生 JSON 配置。</value></data>
+  <data name="HcnResourceNote.Text" xml:space="preserve"><value>管理高级虚拟网络资源。此处可查看系统资源，但不能修改。创建常用虚拟网络请前往宿主机网络页面。</value></data>
   <data name="HcnResult.Header" xml:space="preserve"><value>操作结果</value></data>
   <data name="HcnSettings.Header" xml:space="preserve"><value>HCN JSON 配置</value></data>
   <data name="HcnSettingsNote.Text" xml:space="preserve"><value>创建终结点时请输入受管理的网络 ID。网络命名空间使用 Host 或 Guest 类型；添加终结点时使用 Endpoint 资源类型及 Settings.EndpointId。修改网络或终结点策略时使用 Policy 修改请求。负载均衡器和 SDN 路由引用受管理的终结点 ID；修改 SDN 路由配置需要重新创建。</value></data>
@@ -372,8 +372,8 @@
   <data name="HostGpuLabel" xml:space="preserve"><value>可用 GPU-PV 显卡</value></data>
   <data name="HostManagementConfirm" xml:space="preserve"><value>是否应用此宿主机设置？请先确认相关虚拟机和网络连接。</value></data>
   <data name="HostManagementResult.Header" xml:space="preserve"><value>操作结果</value></data>
-  <data name="HostNetworkHelp" xml:space="preserve"><value>选择网卡连接的 HCN 网络。</value></data>
-  <data name="HostNetworkLabel" xml:space="preserve"><value>可用 HCN 网络</value></data>
+  <data name="HostNetworkHelp" xml:space="preserve"><value>选择可用的虚拟网络。默认网络适用于大多数客户机。</value></data>
+  <data name="HostNetworkLabel" xml:space="preserve"><value>连接到</value></data>
   <data name="HostNetworksPicker.Header" xml:space="preserve"><value>可用网络</value></data>
   <data name="HostNetworksTitle.Text" xml:space="preserve"><value>本机虚拟网络</value></data>
   <data name="InspectNetwork.Content" xml:space="preserve"><value>查看属性</value></data>
@@ -432,7 +432,7 @@
   <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve"><value>为此网络适配器建议的交换机子网（可选）。</value></data>
   <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve"><value>网络子网（高级）</value></data>
   <data name="NetworkAdapterTitle.Text" xml:space="preserve"><value>网络适配器</value></data>
-  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>留空时创建 ICS NAT 网络。可指定 Type 及宿主机支持的 HCN 创建属性，例如 Subnets、Policies、Dns 和 SchemaVersion。网络名称和 ID 由 NanaBox 分配。</value></data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>用于专业网络配置。可输入 HCN 网络对象，名称和标识符由程序自动分配。</value></data>
   <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>高级 HCN 设置（可选 JSON）</value></data>
   <data name="NetworkCopy.Content" xml:space="preserve"><value>复制</value></data>
   <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve"><value>网络诊断</value></data>
@@ -441,7 +441,7 @@
   <data name="NetworkIdLabel" xml:space="preserve"><value>HCN 网络 ID</value></data>
   <data name="NetworkManagerNote.Text" xml:space="preserve"><value>创建网络后刷新列表，添加网卡并选择要连接的网络。</value></data>
   <data name="NetworkName.Header" xml:space="preserve"><value>新建网络名称</value></data>
-  <data name="NetworkNote.Text" xml:space="preserve"><value>注意：默认行为是使用默认交换机。</value></data>
+  <data name="NetworkNote.Text" xml:space="preserve"><value>可使用默认网络自动访问互联网，也可以选择本机已配置的其他网络。</value></data>
   <data name="NetworkPreflight.Content" xml:space="preserve"><value>检查宿主机</value></data>
   <data name="NetworkRetry.Content" xml:space="preserve"><value>重新同步</value></data>
   <data name="NetworkStatus.Content" xml:space="preserve"><value>当前状态</value></data>
@@ -563,8 +563,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="ReloadButton.AutomationProperties.Name" xml:space="preserve"><value>重新加载配置</value></data>
   <data name="ReloadButtonTextBlock.Text" xml:space="preserve"><value>重新加载</value></data>
   <data name="Remove" xml:space="preserve"><value>删除</value></data>
-  <data name="ReservedShareNote.Text" xml:space="preserve"><value>注意：启用 EnableHostDriverStore 时，不要使用相关文档中列出的保留共享名称。</value></data>
-  <data name="ReservedVirtualSmbShareNote.Text" xml:space="preserve"><value>注意：启用 EnableHostDriverStore 时，不要使用相关文档中列出的保留共享名称。</value></data>
+  <data name="ReservedShareNote.Text" xml:space="preserve"><value>共享宿主机显卡驱动程序时，请保留驱动程序专用的共享名称。</value></data>
+  <data name="ReservedVirtualSmbShareNote.Text" xml:space="preserve"><value>共享宿主机显卡驱动程序时，请保留驱动程序专用的共享名称。</value></data>
   <data name="ResolutionNote.Text" xml:space="preserve"><value>注意：仅基本会话模式受此设置约束。</value></data>
   <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>资源分配</value></data>
   <data name="RuleCreateButton.Content" xml:space="preserve"><value>创建规则</value></data>
@@ -684,7 +684,7 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>取得备份特权</value></data>
   <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>打开文件时使用共享根目录的身份。</value></data>
   <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>使用共享根目录身份</value></data>
-  <data name="VirtualSmbShareDescription.Text" xml:space="preserve"><value>虚拟机 Virtual SMB 共享的设置对象数组。</value></data>
+  <data name="VirtualSmbShareDescription.Text" xml:space="preserve"><value>向 Windows 客户机共享本机文件夹。请选择文件夹、共享名称及访问权限。</value></data>
   <data name="VirtualSmbShareNameHelp" xml:space="preserve"><value>此 Virtual SMB 共享的来宾访问名称。</value></data>
   <data name="VirtualSmbShareNameLabel" xml:space="preserve"><value>来宾访问名称</value></data>
   <data name="VirtualSmbSharePathHelp" xml:space="preserve"><value>此 Virtual SMB 共享的宿主路径，支持相对路径。</value></data>
@@ -836,4 +836,50 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VmmsTitle.Text" xml:space="preserve"><value>Hyper-V 虚拟机管理</value></data>
   <data name="VmmsTpmDisable.Content" xml:space="preserve"><value>禁用虚拟 TPM（第二代）</value></data>
   <data name="VmmsTpmEnable.Content" xml:space="preserve"><value>启用虚拟 TPM（第二代）</value></data>
+  <data name="NetworkMode.Header" xml:space="preserve"><value>连接类型</value></data>
+  <data name="NetworkModeAutomatic.Content" xml:space="preserve"><value>共享互联网连接（自动配置）</value></data>
+  <data name="NetworkModeNat.Content" xml:space="preserve"><value>NAT（自定义 IPv4 子网）</value></data>
+  <data name="NetworkSubnet.Header" xml:space="preserve"><value>IPv4 子网（CIDR）</value></data>
+  <data name="NetworkGateway.Header" xml:space="preserve"><value>网关 IPv4 地址（可选）</value></data>
+  <data name="NetworkNatNote.Text" xml:space="preserve"><value>请选择与现有网络不重叠的子网。</value></data>
+  <data name="NetworkExpert.Content" xml:space="preserve"><value>自定义网络参数（专家选项）</value></data>
+  <data name="HcnExpert.Content" xml:space="preserve"><value>编辑底层网络资源参数（专家选项）</value></data>
+  <data name="HcsQueryExpert.Content" xml:space="preserve"><value>自定义诊断查询（专家选项）</value></data>
+  <data name="HcsExtensionsExpert.Content" xml:space="preserve"><value>附加系统参数（专家选项）</value></data>
+  <data name="DetailsNetworkPropertiesTextBox.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsNetworkDiagnosticsTextBox.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsHostManagementResult.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsHcnResultTextBox.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsDiskResultTextBox.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsGuestToolsResult.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="DetailsVmmsResultTextBox.Content" xml:space="preserve"><value>显示技术详情</value></data>
+  <data name="ResultWaiting" xml:space="preserve"><value>尚未执行操作。</value></data>
+  <data name="ResultSuccess" xml:space="preserve"><value>操作成功。</value></data>
+  <data name="ResultFailure" xml:space="preserve"><value>操作失败。</value></data>
+  <data name="ResultInfo" xml:space="preserve"><value>已获取信息。</value></data>
+  <data name="ResultCount" xml:space="preserve"><value>项目数量</value></data>
+  <data name="ResultName" xml:space="preserve"><value>名称</value></data>
+  <data name="ResultType" xml:space="preserve"><value>类型</value></data>
+  <data name="ResultState" xml:space="preserve"><value>状态</value></data>
+  <data name="ResultSize" xml:space="preserve"><value>容量（MiB）</value></data>
+  <data name="ResultPhysicalSize" xml:space="preserve"><value>磁盘占用空间（MiB）</value></data>
+  <data name="ResultHost" xml:space="preserve"><value>计算机名称</value></data>
+  <data name="ResultAlive" xml:space="preserve"><value>客户机服务</value></data>
+  <data name="ResultYes" xml:space="preserve"><value>可用</value></data>
+  <data name="ResultNo" xml:space="preserve"><value>不可用</value></data>
+  <data name="ResultPath" xml:space="preserve"><value>路径</value></data>
+  <data name="ResultError" xml:space="preserve"><value>原因</value></data>
+  <data name="ResultAddress" xml:space="preserve"><value>地址</value></data>
+  <data name="ResultApi" xml:space="preserve"><value>Windows 网络服务</value></data>
+  <data name="ResultWsl" xml:space="preserve"><value>WSL 网络依赖</value></data>
+  <data name="ResultHcn" xml:space="preserve"><value>宿主机网络服务</value></data>
+  <data name="ResultRefresh" xml:space="preserve"><value>网络列表已更新。</value></data>
+  <data name="ResultCreateNetwork" xml:space="preserve"><value>虚拟网络已创建。</value></data>
+  <data name="ResultDeleteNetwork" xml:space="preserve"><value>虚拟网络已删除。</value></data>
+  <data name="DefaultNetworkChoice" xml:space="preserve"><value>默认网络（推荐）</value></data>
+  <data name="AdapterExpert" xml:space="preserve"><value>高级网卡设置</value></data>
+  <data name="GpuExpert" xml:space="preserve"><value>高级显卡设置</value></data>
+  <data name="InvalidIpv4Subnet" xml:space="preserve"><value>请输入有效的 IPv4 子网，例如 192.168.100.0/24。</value></data>
+  <data name="InvalidIpv4Gateway" xml:space="preserve"><value>请输入所选子网内有效的网关地址。</value></data>
+  <data name="HcnExpertRequired" xml:space="preserve"><value>请启用专家选项以创建或修改此类资源。常用虚拟网络可在宿主机网络页面创建。</value></data>
 </root>

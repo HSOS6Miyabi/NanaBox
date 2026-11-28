@@ -57,6 +57,9 @@ function Set-Text([string]$id,[string]$value) {
     if ((Get-Text $id) -cne $value) { throw "Value not accepted: $id" }
 }
 function Get-Text([string]$id) {
+    if ($id -in @('NetworkPropertiesTextBox','NetworkDiagnosticsTextBox','HostManagementResult','HcnResultTextBox','DiskResultTextBox','GuestToolsResult','VmmsResultTextBox')) {
+        Set-Check ('Details'+$id) $true
+    }
     return (Pattern (Find-Control $id) ([System.Windows.Automation.ValuePattern]::Pattern)).Current.Value
 }
 function Set-Check([string]$id,[bool]$value) {
@@ -291,16 +294,21 @@ try {
     Select-Tab 'TabGpu'
     Select-Choice 'AssignmentModeComboBox' 'ChoiceListItem'
     Invoke-Control 'AddGpuDeviceButton'
+    Set-Check 'GpuAdapterExpertCheckBox' $true
     Set-Text 'GpuDeviceDeviceInterfaceLabel' 'UI-test-GPU'
     Set-Text 'GpuDevicePartitionIdLabel' '65535'
     $null = Find-Control 'HostGpuLabel'
     Set-Check 'EnableHostDriverStoreCheckBox' $true
 
-    Select-Tab 'TabNetwork'
+    Select-Tab 'TabHostManagement'
     $null = Find-Control 'HostNetworksComboBox'
     $null = Find-Control 'InspectNetwork'
     $null = Find-Control 'DeleteNetwork'
     $null = Find-Control 'CreateNetwork'
+    $null = Find-Control 'SummaryNetworkPropertiesTextBox'
+    if ((Find-Control 'DetailsNetworkPropertiesTextBox').Current.IsOffscreen) { Scroll (Find-Control 'DetailsNetworkPropertiesTextBox') }
+    Assert-Equal ((Pattern (Find-Control 'DetailsNetworkPropertiesTextBox') ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState) ([System.Windows.Automation.ToggleState]::Off) 'Technical details hidden by default'
+    Select-Tab 'TabNetwork'
     Invoke-Control 'NetworkPreflightButton'
     $diagnostics = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Mode -eq 'HostPreflight'}
     if ($null -eq $diagnostics.ApiAvailable -or $null -eq $diagnostics.WslDependencyAvailable -or $null -eq $diagnostics.HcnReachable) { throw 'Incomplete host diagnostic result' }
@@ -323,9 +331,8 @@ try {
     Set-Text 'MirroredTcpPortsTextBox' '8080'
     Set-Text 'MirroredUdpPortsTextBox' '5353'
     Set-Text 'MirroredIgnoredPortsTextBox' '53'
-    Set-Text 'NetworkNameTextBox' 'UI-test'
-    Set-Check 'NetworkFirewallCheckBox' $true
     Invoke-Control 'AddNetworkAdapterButton'
+    Set-Check 'NetworkAdapterExpertCheckBox' $true
     Set-Check 'NetworkAdapterConnectedLabel' $true
     Set-Text 'NetworkAdapterMacAddressLabel' '00-15-5D-12-34-56'
     Set-Text 'NetworkIdLabel' '85c8668e-36fe-447f-aae0-ba159a0142a7'
@@ -448,7 +455,7 @@ try {
             $null = Wait-Result 'HostManagementResult' {param($v) $null -ne $v.Rules -and @($v.Rules | Where-Object Name -eq 'UI-test-rule').Count -eq 0}
             if ($HostIntegration -and (Get-NetFirewallHyperVRule -VMCreatorId $creator | Where-Object DisplayName -eq 'UI-test-rule')) { throw 'Firewall rule was not deleted' }
 
-            Select-Tab 'TabNetwork'
+            Select-Tab 'TabHostManagement'
             Set-Text 'NetworkNameTextBox' $name
             Set-Check 'NetworkFirewallCheckBox' $false
             $networkCreated = $true
@@ -465,6 +472,25 @@ try {
             $networkCreated = $false
             if (-not $HostIntegration) {
                 Set-Text 'NetworkNameTextBox' $name
+                Select-Choice 'NetworkModeComboBox' 'NetworkModeNat'
+                Set-Text 'NetworkNameTextBox' ($name+'-nat')
+                Set-Text 'NetworkSubnetTextBox' '192.0.2.1/24'
+                Invoke-Control 'CreateNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) -not $v.Success -and $v.Operation -eq 'Create'}
+                Set-Text 'NetworkSubnetTextBox' '192.0.2.0/24'
+                Set-Text 'NetworkGatewayTextBox' '192.0.2.1'
+                Invoke-Control 'CreateNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Create'}
+                $null = Select-ByName 'HostNetworksComboBox' ($managed+'-nat (')
+                Invoke-Control 'InspectNetwork'
+                $nat = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Inspect' -and $v.Type -eq 'NAT'}
+                Assert-Equal $nat.Ipams[0].Subnets[0].IpAddressPrefix '192.0.2.0/24' 'NAT subnet generated from form'
+                Assert-Equal $nat.Ipams[0].Subnets[0].Routes[0].NextHop '192.0.2.1' 'NAT gateway generated from form'
+                Confirm-Change 'DeleteNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
+                Select-Choice 'NetworkModeComboBox' 'NetworkModeAutomatic'
+                Set-Text 'NetworkNameTextBox' $name
+                Set-Check 'NetworkExpertCheckBox' $true
                 Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","Name":"unauthorized"}'
                 Invoke-Control 'CreateNetwork'
                 $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'Create'}
@@ -488,7 +514,7 @@ try {
         } finally {
             if ($HostIntegration -and $networkCreated -and -not $process.HasExited) {
                 try {
-                    Select-Tab 'TabNetwork'
+                    Select-Tab 'TabHostManagement'
                     Invoke-Control 'RefreshNetworks'
                     $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
                     if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) {
@@ -525,6 +551,7 @@ try {
                 'Route' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"Setting":[{"DestinationPrefix":"192.0.2.0/24","NextHop":"192.0.2.1","NeedEncap":false}],"SchemaVersion":{"Major":2,"Minor":0}}' }
                 default { '{"SchemaVersion":{"Major":2,"Minor":0}}' }
             }
+            Set-Check 'HcnExpertCheckBox' $true
             Set-Text 'HcnSettingsTextBox' $settings
             Invoke-Control 'HcnCreate'
             $created = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
@@ -554,6 +581,7 @@ try {
         Select-Tab 'TabVmms'
         Invoke-Control 'HcsInventoryButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsInventory' -and $v.Items[0].Id -eq 'mock-hcs'}
+        Set-Check 'HcsQueryExpertCheckBox' $true
         Set-Text 'HcsQueryTextBox' '{"PropertyTypes":["Basic"]}'
         Invoke-Control 'HcsServicePropertiesButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsServiceProperties' -and $v.Properties.Query.PropertyTypes[0] -eq 'Basic'}
@@ -817,6 +845,7 @@ try {
 
     Select-Tab 'TabAdvanced'
     Set-Text 'HcsSchemaMinorTextBox' '5'
+    Set-Check 'HcsExtensionsExpertCheckBox' $true
     Set-Text 'AdditionalHcsSettingsTextBox' '{"Chipset":{"UseUtc":true}}'
     foreach ($id in @('BaseBoardSerialNumber','ChassisSerialNumber','ChassisAssetTag','Manufacturer','ProductName','ChipsetVersion','SerialNumber','SKUNumber','Family')) {
         Set-Text ($id+'TextBox') ('Test-'+$id)

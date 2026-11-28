@@ -118,11 +118,11 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AdapterListButton.Content" xml:space="preserve"><value>Refresh adapters</value></data>
-  <data name="AddGpuDeviceButton.Content" xml:space="preserve"><value>Add</value></data>
-  <data name="AddNetworkAdapterButton.Content" xml:space="preserve"><value>Add</value></data>
-  <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>Add</value></data>
-  <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>Add</value></data>
-  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>Add</value></data>
+  <data name="AddGpuDeviceButton.Content" xml:space="preserve"><value>Add graphics adapter</value></data>
+  <data name="AddNetworkAdapterButton.Content" xml:space="preserve"><value>Add network adapter</value></data>
+  <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>Add shared folder</value></data>
+  <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>Add storage device</value></data>
+  <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>Add shared folder</value></data>
   <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
   <data name="AltEscHotkeyLabel.Text" xml:space="preserve"><value>Alt+Esc Hotkey</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value></data>
@@ -352,7 +352,7 @@
   <data name="HcnName.Header" xml:space="preserve"><value>Network name (network creation)</value></data>
   <data name="HcnNetworkId.Header" xml:space="preserve"><value>Parent network ID (endpoint creation)</value></data>
   <data name="HcnResource.Header" xml:space="preserve"><value>Resource</value></data>
-  <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage HCN networks, standalone endpoints, namespaces, load balancers and SDN routes. Existing system resources are read-only. Resource modifications use native HCN JSON settings.</value></data>
+  <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage specialist virtual network resources. System-owned resources can be inspected but cannot be changed here. To create a normal virtual network, open Host networking.</value></data>
   <data name="HcnResult.Header" xml:space="preserve"><value>Operation result</value></data>
   <data name="HcnSettings.Header" xml:space="preserve"><value>HCN settings JSON</value></data>
   <data name="HcnSettingsNote.Text" xml:space="preserve"><value>For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings.</value></data>
@@ -372,8 +372,8 @@
   <data name="HostGpuLabel" xml:space="preserve"><value>Available GPU-PV devices</value></data>
   <data name="HostManagementConfirm" xml:space="preserve"><value>Apply this host-wide change? Check all dependent VMs and network connections first.</value></data>
   <data name="HostManagementResult.Header" xml:space="preserve"><value>Operation result</value></data>
-  <data name="HostNetworkHelp" xml:space="preserve"><value>Select the exact HCN network used by this adapter.</value></data>
-  <data name="HostNetworkLabel" xml:space="preserve"><value>Available HCN networks</value></data>
+  <data name="HostNetworkHelp" xml:space="preserve"><value>Choose an available virtual network. The default network is suitable for most guests.</value></data>
+  <data name="HostNetworkLabel" xml:space="preserve"><value>Connect to</value></data>
   <data name="HostNetworksPicker.Header" xml:space="preserve"><value>Available networks</value></data>
   <data name="HostNetworksTitle.Text" xml:space="preserve"><value>Virtual networks on this computer</value></data>
   <data name="InspectNetwork.Content" xml:space="preserve"><value>Properties</value></data>
@@ -432,7 +432,7 @@
   <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve"><value>(Optional) The switch subnet suggested for the current network adapter.</value></data>
   <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve"><value>Network subnet (advanced)</value></data>
   <data name="NetworkAdapterTitle.Text" xml:space="preserve"><value>Network Adapters</value></data>
-  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>Leave empty for an ICS NAT network. Specify a Type and any supported HCN creation properties, such as Subnets, Policies, Dns and SchemaVersion. NanaBox assigns the name and ID.</value></data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>For specialist network configurations, enter a native HCN network object. The name and identifier are assigned automatically.</value></data>
   <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>Advanced HCN settings (optional JSON)</value></data>
   <data name="NetworkCopy.Content" xml:space="preserve"><value>Copy</value></data>
   <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve"><value>Network diagnostics</value></data>
@@ -441,7 +441,7 @@
   <data name="NetworkIdLabel" xml:space="preserve"><value>HCN network ID</value></data>
   <data name="NetworkManagerNote.Text" xml:space="preserve"><value>Refresh after creating a network. Add a NIC and choose the network to attach it.</value></data>
   <data name="NetworkName.Header" xml:space="preserve"><value>New network name</value></data>
-  <data name="NetworkNote.Text" xml:space="preserve"><value>Note: Default behavior is use the default switch.</value></data>
+  <data name="NetworkNote.Text" xml:space="preserve"><value>Use the default network for automatic internet access, or choose a network configured on this computer.</value></data>
   <data name="NetworkPreflight.Content" xml:space="preserve"><value>Check host</value></data>
   <data name="NetworkRetry.Content" xml:space="preserve"><value>Retry sync</value></data>
   <data name="NetworkStatus.Content" xml:space="preserve"><value>Current status</value></data>
@@ -563,8 +563,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="ReloadButton.AutomationProperties.Name" xml:space="preserve"><value>Reload configuration</value></data>
   <data name="ReloadButtonTextBlock.Text" xml:space="preserve"><value>Reload</value></data>
   <data name="Remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="ReservedShareNote.Text" xml:space="preserve"><value>Note: If you have set the &quot;EnableHostDriverStore&quot; true, you should not use the names mentioned in &quot;EnableHostDriverStore&quot; related document for the current Plan 9 share.</value></data>
-  <data name="ReservedVirtualSmbShareNote.Text" xml:space="preserve"><value>Note: If you have set the &quot;EnableHostDriverStore&quot; true, you should not use the names mentioned in &quot;EnableHostDriverStore&quot; related document for the current Virtual SMB share.</value></data>
+  <data name="ReservedShareNote.Text" xml:space="preserve"><value>When sharing host graphics drivers, keep their reserved share names unchanged.</value></data>
+  <data name="ReservedVirtualSmbShareNote.Text" xml:space="preserve"><value>When sharing host graphics drivers, keep their reserved share names unchanged.</value></data>
   <data name="ResolutionNote.Text" xml:space="preserve"><value>Note: Only the Basic Session Mode is constrainted with this setting.</value></data>
   <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>Resource allocation</value></data>
   <data name="RuleCreateButton.Content" xml:space="preserve"><value>Create rule</value></data>
@@ -684,7 +684,7 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>Acquire backup privilege</value></data>
   <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>Use the identity of the share root when opening files.</value></data>
   <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
-  <data name="VirtualSmbShareDescription.Text" xml:space="preserve"><value>The Virtual SMB shares setting object array of virtual machine.</value></data>
+  <data name="VirtualSmbShareDescription.Text" xml:space="preserve"><value>Share a folder from this computer with a Windows guest. Choose the folder, its name and access permissions.</value></data>
   <data name="VirtualSmbShareNameHelp" xml:space="preserve"><value>The guest access name of the current Virtual SMB share.</value></data>
   <data name="VirtualSmbShareNameLabel" xml:space="preserve"><value>Name</value></data>
   <data name="VirtualSmbSharePathHelp" xml:space="preserve"><value>The host path of the current Virtual SMB share.</value></data>
@@ -836,4 +836,50 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VmmsTitle.Text" xml:space="preserve"><value>Hyper-V virtual machine manager</value></data>
   <data name="VmmsTpmDisable.Content" xml:space="preserve"><value>Disable virtual TPM (Generation 2)</value></data>
   <data name="VmmsTpmEnable.Content" xml:space="preserve"><value>Enable virtual TPM (Generation 2)</value></data>
+  <data name="NetworkMode.Header" xml:space="preserve"><value>Connection type</value></data>
+  <data name="NetworkModeAutomatic.Content" xml:space="preserve"><value>Shared internet connection (automatic)</value></data>
+  <data name="NetworkModeNat.Content" xml:space="preserve"><value>NAT with a custom IPv4 subnet</value></data>
+  <data name="NetworkSubnet.Header" xml:space="preserve"><value>IPv4 subnet (CIDR)</value></data>
+  <data name="NetworkGateway.Header" xml:space="preserve"><value>Gateway IPv4 address (optional)</value></data>
+  <data name="NetworkNatNote.Text" xml:space="preserve"><value>Choose a subnet that does not overlap an existing network.</value></data>
+  <data name="NetworkExpert.Content" xml:space="preserve"><value>Customize network settings (expert)</value></data>
+  <data name="HcnExpert.Content" xml:space="preserve"><value>Edit native network resource settings (expert)</value></data>
+  <data name="HcsQueryExpert.Content" xml:space="preserve"><value>Customize diagnostic query (expert)</value></data>
+  <data name="HcsExtensionsExpert.Content" xml:space="preserve"><value>Additional system settings (expert)</value></data>
+  <data name="DetailsNetworkPropertiesTextBox.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsNetworkDiagnosticsTextBox.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsHostManagementResult.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsHcnResultTextBox.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsDiskResultTextBox.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsGuestToolsResult.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="DetailsVmmsResultTextBox.Content" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="ResultWaiting" xml:space="preserve"><value>No operation has been performed.</value></data>
+  <data name="ResultSuccess" xml:space="preserve"><value>Operation completed.</value></data>
+  <data name="ResultFailure" xml:space="preserve"><value>Operation failed.</value></data>
+  <data name="ResultInfo" xml:space="preserve"><value>Information retrieved.</value></data>
+  <data name="ResultCount" xml:space="preserve"><value>Number of items</value></data>
+  <data name="ResultName" xml:space="preserve"><value>Name</value></data>
+  <data name="ResultType" xml:space="preserve"><value>Type</value></data>
+  <data name="ResultState" xml:space="preserve"><value>State</value></data>
+  <data name="ResultSize" xml:space="preserve"><value>Capacity (MiB)</value></data>
+  <data name="ResultPhysicalSize" xml:space="preserve"><value>Size on disk (MiB)</value></data>
+  <data name="ResultHost" xml:space="preserve"><value>Computer name</value></data>
+  <data name="ResultAlive" xml:space="preserve"><value>Guest service</value></data>
+  <data name="ResultYes" xml:space="preserve"><value>Available</value></data>
+  <data name="ResultNo" xml:space="preserve"><value>Unavailable</value></data>
+  <data name="ResultPath" xml:space="preserve"><value>Path</value></data>
+  <data name="ResultError" xml:space="preserve"><value>Reason</value></data>
+  <data name="ResultAddress" xml:space="preserve"><value>Address</value></data>
+  <data name="ResultApi" xml:space="preserve"><value>Windows network service</value></data>
+  <data name="ResultWsl" xml:space="preserve"><value>WSL network dependency</value></data>
+  <data name="ResultHcn" xml:space="preserve"><value>Host network connectivity</value></data>
+  <data name="ResultRefresh" xml:space="preserve"><value>Network list updated.</value></data>
+  <data name="ResultCreateNetwork" xml:space="preserve"><value>Virtual network created.</value></data>
+  <data name="ResultDeleteNetwork" xml:space="preserve"><value>Virtual network deleted.</value></data>
+  <data name="DefaultNetworkChoice" xml:space="preserve"><value>Default network (recommended)</value></data>
+  <data name="AdapterExpert" xml:space="preserve"><value>Advanced adapter settings</value></data>
+  <data name="GpuExpert" xml:space="preserve"><value>Advanced graphics adapter settings</value></data>
+  <data name="InvalidIpv4Subnet" xml:space="preserve"><value>Enter a valid IPv4 subnet, for example 192.168.100.0/24.</value></data>
+  <data name="InvalidIpv4Gateway" xml:space="preserve"><value>Enter a valid gateway address in the selected subnet.</value></data>
+  <data name="HcnExpertRequired" xml:space="preserve"><value>Enable expert settings to create or modify this resource. Common virtual networks can be created under Host networking.</value></data>
 </root>
