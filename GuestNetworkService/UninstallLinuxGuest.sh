@@ -5,7 +5,8 @@ if systemctl cat nanabox-gns.service >/dev/null 2>&1; then
     systemctl disable --now nanabox-gns.service
 fi
 rm -f /etc/systemd/system/nanabox-gns.service /etc/systemd/system/nanabox-gns.service.d/50-options.conf
-rm -f /opt/nanabox-gns/gns.py
+if [ "$(readlink /usr/local/bin/nanabox-bind || true)" = /opt/nanabox-gns/nanabox-bind ]; then rm -f /usr/local/bin/nanabox-bind; fi
+rm -f /opt/nanabox-gns/gns.py /opt/nanabox-gns/libnanabox-bind.so /opt/nanabox-gns/nanabox-bind
 rmdir /opt/nanabox-gns /etc/systemd/system/nanabox-gns.service.d 2>/dev/null || true
 systemctl daemon-reload
 resolver_file=/etc/systemd/resolved.conf.d/90-nanabox-dns-tunnel.conf

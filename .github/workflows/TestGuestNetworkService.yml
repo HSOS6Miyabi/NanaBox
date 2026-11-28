@@ -44,4 +44,5 @@ jobs:
             GuestNetworkService/*.ps1
             GuestNetworkService/*.sh
             GuestNetworkService/*.service
+            GuestNetworkService/*.c
             GuestNetworkService/README.md

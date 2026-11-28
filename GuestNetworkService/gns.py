@@ -24,6 +24,9 @@ import sys
 
 PORT = 27453
 DNS_PORT = 27454
+BIND_PORT = 27455
+BIND_SOCKET = '/run/nanabox-gns/bind.sock'
+BIND_REQUEST_SIZE = 20
 DNS_SERVICE = f'{DNS_PORT:08x}-facb-11e6-bd58-64006a7986d3'
 SERVICE = f'{PORT:08x}-facb-11e6-bd58-64006a7986d3'
 LIMIT = 256 * 1024
@@ -1645,6 +1648,232 @@ class DnsTunnel:
         self.close()
 
 
+def bound_port_keys():
+    """Read Linux inet_diag, including TCP sockets bound but not listening."""
+    result = set()
+    deadline = time.monotonic() + 3
+    with socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, 4) as diag:
+        diag.bind((0, 0))
+        for sequence, (family, protocol) in enumerate(
+                ((socket.AF_INET, 6), (socket.AF_INET6, 6),
+                 (socket.AF_INET, 17), (socket.AF_INET6, 17)), 1):
+            # inet_diag_req_v2 with all states (including TCP_BOUND_INACTIVE).
+            payload = struct.pack('=BBBBI', family, protocol, 0, 0, 0xffffffff) + bytes(48)
+            diag.sendto(struct.pack('=IHHII', len(payload) + 16, 20, 0x301, sequence, 0) + payload, (0, 0))
+            done = False
+            while not done:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('Socket diagnostics timed out')
+                diag.settimeout(remaining)
+                data, _, flags, peer = diag.recvmsg(262144)
+                if flags & socket.MSG_TRUNC or peer[0] != 0:
+                    raise RuntimeError('Incomplete socket diagnostic response')
+                offset = 0
+                while offset + 16 <= len(data):
+                    length, kind, nlflags, seq, _ = struct.unpack_from('=IHHII', data, offset)
+                    if length < 16 or offset + length > len(data) or seq != sequence or nlflags & 0x10:
+                        raise RuntimeError('Invalid or interrupted socket diagnostic response')
+                    body = data[offset + 16:offset + length]
+                    offset += (length + 3) & ~3
+                    if kind == 3:
+                        if len(body) >= 4 and struct.unpack_from('=i', body)[0]:
+                            raise RuntimeError('Socket diagnostic dump failed')
+                        done = True
+                    elif kind == 2:
+                        code = struct.unpack_from('=i', body)[0]
+                        if code:
+                            raise OSError(-code, os.strerror(-code))
+                    elif kind == 20 and len(body) >= 72:
+                        port = struct.unpack_from('!H', body, 4)[0]
+                        if port:
+                            result.add((protocol, port))
+    return result
+
+
+def check_bind_support():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(('127.0.0.1', 0))
+        if (6, probe.getsockname()[1]) not in bound_port_keys():
+            raise RuntimeError('Bind coordination requires Linux support for bound-inactive TCP diagnostics (Linux 6.7+)')
+    return True
+
+
+def bind_request_key(request):
+    if len(request) != BIND_REQUEST_SIZE:
+        raise ValueError('Invalid bind request size')
+    proto, family, port = struct.unpack_from('!BBH', request)
+    if proto not in (6, 17) or family not in (4, 6) or not port:
+        raise ValueError('Invalid bind request')
+    if family == 4 and any(request[8:]):
+        raise ValueError('Invalid IPv4 address padding')
+    return proto, port
+
+
+class BindCoordinator:
+    """Local application broker for one host-initiated Hyper-V channel."""
+    def __init__(self, path, group=None, inspect_ports=bound_port_keys, clock=time.monotonic):
+        self.path = pathlib.Path(path)
+        self.group = group
+        self.inspect_ports = inspect_ports
+        self.clock = clock
+        self.lock = threading.Lock()
+        self.pending = {}
+        self.channel = None
+        self.local_listener = None
+        self.host_listener = None
+        self.stopping = threading.Event()
+        self.threads = []
+        self.failures = 0
+        self.conflicts = 0
+
+    def attach(self, channel):
+        channel.settimeout(3)
+        with self.lock:
+            if self.stopping.is_set():
+                channel.close()
+                return
+            if self.channel is not None:
+                self.channel.close()
+            self.channel = channel
+
+    def _exchange(self, request):
+        # Called under the lock. A lost response never permits a new bind.
+        if self.channel is None:
+            return 2
+        try:
+            self.channel.sendall(request)
+            status = read_exact(self.channel, 1)[0]
+            if status not in (0, 1, 2):
+                raise ValueError('Invalid host bind status')
+            return status
+        except (OSError, EOFError, ValueError):
+            self.channel.close()
+            self.channel = None
+            self.failures += 1
+            return 2
+
+    def reserve(self, request):
+        key = bind_request_key(request)
+        with self.lock:
+            if self.stopping.is_set() or (request not in self.pending and len(self.pending) >= 4096):
+                return 2
+            status = self._exchange(request)
+            if status == 0:
+                # Keep the reservation while the application's actual bind is
+                # still in progress. Failed binds age out automatically.
+                self.pending[request] = self.clock() + 15
+            elif status == 1:
+                self.conflicts += 1
+            return status
+
+    def renew(self):
+        live = self.inspect_ports()
+        now = self.clock()
+        with self.lock:
+            requests = list(self.pending)
+        for request in requests:
+            key = bind_request_key(request)
+            with self.lock:
+                expiry = self.pending.get(request)
+                if expiry is None:
+                    continue
+                if expiry <= now and key not in live:
+                    del self.pending[request]
+                    continue
+                status = self._exchange(request)
+                if status:
+                    self.failures += 1
+            if self.stopping.is_set():
+                break
+        with self.lock:
+            self._exchange(bytes(BIND_REQUEST_SIZE))
+
+    def _renew_loop(self):
+        while not self.stopping.wait(5):
+            try:
+                self.renew()
+            except (OSError, RuntimeError, ValueError) as exc:
+                self.failures += 1
+                print(f'Bind coordination: {exc}', file=sys.stderr)
+                with self.lock:
+                    self._exchange(bytes(BIND_REQUEST_SIZE))
+
+    def _accept_local(self):
+        while not self.stopping.is_set():
+            try:
+                conn, _ = self.local_listener.accept()
+            except TimeoutError:
+                continue
+            except OSError:
+                break
+            with conn:
+                conn.settimeout(3)
+                try:
+                    pid, _, _ = struct.unpack('=iii', conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+                    # Port sharing is for the mirrored network namespace, not
+                    # for separate container or application namespaces.
+                    if os.readlink(f'/proc/{pid}/ns/net') != os.readlink('/proc/self/ns/net'):
+                        conn.sendall(b'\x02')
+                        continue
+                    status = self.reserve(read_exact(conn, BIND_REQUEST_SIZE))
+                    conn.sendall(bytes([status]))
+                except (OSError, ValueError, EOFError):
+                    continue
+
+    def _accept_host(self):
+        while not self.stopping.is_set():
+            try:
+                conn, peer = self.host_listener.accept()
+            except TimeoutError:
+                continue
+            except OSError:
+                break
+            if peer[0] != socket.VMADDR_CID_HOST:
+                conn.close()
+            else:
+                self.attach(conn)
+
+    def start(self, listen_host=True):
+        if self.path.is_symlink() or self.path.exists():
+            raise RuntimeError('Bind coordination socket already exists')
+        self.local_listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            self.local_listener.bind(str(self.path))
+            if self.group is not None:
+                os.chown(self.path, -1, self.group)
+            os.chmod(self.path, 0o660)
+            self.local_listener.listen(64)
+            self.local_listener.settimeout(0.5)
+            if listen_host:
+                self.host_listener = socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)
+                self.host_listener.bind((socket.VMADDR_CID_ANY, BIND_PORT))
+                self.host_listener.listen(1)
+                self.host_listener.settimeout(0.5)
+            for target in ([self._accept_local, self._renew_loop] +
+                           ([self._accept_host] if listen_host else [])):
+                thread = threading.Thread(target=target, daemon=True)
+                thread.start()
+                self.threads.append(thread)
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self):
+        self.stopping.set()
+        for listener in (self.local_listener, self.host_listener):
+            if listener is not None:
+                listener.close()
+        with self.lock:
+            if self.channel is not None:
+                self.channel.close()
+                self.channel = None
+        for thread in self.threads:
+            thread.join(timeout=5)
+        if self.local_listener is not None and self.path.is_socket():
+            self.path.unlink()
+
+
 def prepare_tunnel_snapshot(settings, tunnel, windows):
     if not settings['DnsTunnel']:
         return settings
@@ -1698,17 +1927,27 @@ def handle(sock, backend, tools=None, dns_tunnel=None):
         send(sock, {'Version': 1, 'Success': False, 'Error': 'Guest response cannot be encoded or exceeds the message limit'})
 
 
-def serve(exchange_root=None, allow_clock_set=False, enable_dns_tunnel=False, loopback_state=None):
+def serve(exchange_root=None, allow_clock_set=False, enable_dns_tunnel=False, loopback_state=None, bind_coordination=False):
     exchange = FileExchange(exchange_root) if exchange_root is not None else None
     tools = GuestTools(exchange, allow_clock_set)
     windows = platform.system() == 'Windows'
     backend = WindowsBackend() if windows else LinuxBackend(loopback_state=loopback_state)
     tunnel = DnsTunnel() if enable_dns_tunnel else None
+    coordinator = None
     try:
+        if bind_coordination:
+            if windows:
+                raise RuntimeError('Bind coordination requires a Linux guest')
+            import grp
+            check_bind_support()
+            coordinator = BindCoordinator(BIND_SOCKET, grp.getgrnam('nanabox-bind').gr_gid)
+            coordinator.start()
         if tunnel is not None:
             tunnel.start_host_listener(windows)
         serve_network(backend, tools, windows, tunnel)
     finally:
+        if coordinator is not None:
+            coordinator.close()
         if tunnel is not None:
             tunnel.close()
 
@@ -1752,6 +1991,8 @@ def main():
     server.add_argument('--allow-clock-set', action='store_true', help='Allow the parent partition to synchronize the guest clock')
     server.add_argument('--dns-tunnel', action='store_true', help='Enable the loopback DNS proxy on port 53')
     server.add_argument('--loopback-state', type=pathlib.Path, help='Enable Linux GELNIC routing and store its prior settings')
+    server.add_argument('--bind-coordination', action='store_true', help='Enable the Linux application bind broker')
+    commands.add_parser('check-bind-support', help='Verify Linux bound socket diagnostic support')
     clear = commands.add_parser('clear-loopback', help='Restore ordinary Linux loopback routing')
     clear.add_argument('state', type=pathlib.Path)
     host = commands.add_parser('send')
@@ -1762,7 +2003,9 @@ def main():
     query.add_argument('resource', choices=QUERY_CAPABILITIES[:3])
     options = cli.parse_args()
     if options.command == 'serve':
-        serve(options.exchange_root, options.allow_clock_set, options.dns_tunnel, options.loopback_state)
+        serve(options.exchange_root, options.allow_clock_set, options.dns_tunnel, options.loopback_state, options.bind_coordination)
+    elif options.command == 'check-bind-support':
+        check_bind_support()
     elif options.command == 'clear-loopback':
         if platform.system() != 'Linux':
             raise RuntimeError('Linux is required')
