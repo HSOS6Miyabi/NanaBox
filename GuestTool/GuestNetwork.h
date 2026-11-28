@@ -194,8 +194,8 @@
         }
         if (resource == "Reconcile" && action == "Update")
         {
-            auto interface = NormalizeResource("Interface","Update",s.at("Interface"));
-            if (!Boolean(interface,"Mirrored")) GuestFail("Reconcile requires a dedicated mirrored interface");
+            auto adapterSettings = NormalizeResource("Interface","Update",s.at("Interface"));
+            if (!Boolean(adapterSettings,"Mirrored")) GuestFail("Reconcile requires a dedicated mirrored interface");
             auto const& addresses = s.at("Addresses");
             auto const& routes = s.at("Routes");
             if (!addresses.is_array() || !routes.is_array() || addresses.size() > 256 || routes.size() > 4096)
@@ -205,23 +205,23 @@
             for (auto const& raw : addresses)
             {
                 auto v = NormalizeResource("IPAddress","Update",raw);
-                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
+                if (v.at("Family") == 6 && adapterSettings.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
                 if (!ak.insert(AddressKey(v)).second) GuestFail("Duplicate address");
                 a.push_back(v);
             }
             for (auto const& raw : routes)
             {
                 auto v = NormalizeResource("Route","Update",raw);
-                if (v.at("Family") == 6 && interface.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
+                if (v.at("Family") == 6 && adapterSettings.at("Mtu") < 1280) GuestFail("IPv6 requires MTU 1280");
                 if (!rk.insert(RouteKey(v)).second) GuestFail("Duplicate route");
                 r.push_back(v);
             }
             auto const& dnsRaw = s.at("DNS");
             auto dns = NormalizeResource("DNS",dnsRaw.value("ServerList",Json::array()).empty() ? "Remove" : "Update",dnsRaw);
-            if (!Boolean(interface,"Connected") && (!a.empty() || !r.empty() || !dns.at("Servers").empty()))
+            if (!Boolean(adapterSettings,"Connected") && (!a.empty() || !r.empty() || !dns.at("Servers").empty()))
                 GuestFail("Disconnected adapter must have an empty network configuration");
             std::sort(r.begin(),r.end(),[](auto const& l,auto const& q){return RouteOrder(l)<RouteOrder(q);});
-            return {{"Interface",interface},{"Addresses",a},{"Routes",r},{"DNS",dns},
+            return {{"Interface",adapterSettings},{"Addresses",a},{"Routes",r},{"DNS",dns},
                 {"PortRange",NormalizeResource("PortRange","Update",s.at("PortRange"))},
                 {"DiscoverPorts",Boolean(s,"DiscoverPorts")},{"DnsTunnel",Boolean(s,"DnsTunnel")}};
         }
@@ -480,19 +480,19 @@
             args.insert(args.end(),{"lookup",std::to_string(table),"protocol","242"});
             Run(args);
         }
-        void Policy(std::string const& dev,std::uint64_t table,Json const& interface,
+        void Policy(std::string const& dev,std::uint64_t table,Json const& adapterSettings,
             NetworkEntries const& addresses,NetworkEntries const& routes)
         {
             for(int family:{4,6})
             {
                 NetworkEntries desired;
                 std::set<Rule> wanted,actual;
-                if(Boolean(interface,"Connected"))
+                if(Boolean(adapterSettings,"Connected"))
                     for(auto const& route:routes) if(route.second.at("Family")==family)desired.insert(route);
                 if(!desired.empty())
                 {
                     wanted.emplace(20000,"all",dev);
-                    auto metric=interface.value(family==4?"IPv4Metric":"IPv6Metric",std::uint64_t(0));
+                    auto metric=adapterSettings.value(family==4?"IPv4Metric":"IPv6Metric",std::uint64_t(0));
                     auto priority=21000+std::min<std::uint64_t>(metric,9999);
                     for(auto const& a:addresses)if(a.second.at("Family")==family)
                     {
@@ -619,14 +619,14 @@
         Json Reconcile(std::string const& target,Json const& s)
         {
             auto dev=Adapter(target);
-            auto const& interface=s.at("Interface");
+            auto const& adapterSettings=s.at("Interface");
             NetworkEntries addresses,routes;
             for(auto const& a:s.at("Addresses"))addresses.emplace(AddressKey(a),a);
             for(auto r:s.at("Routes"))
             {
                 auto family=r.at("Family").get<int>();
                 auto metric=std::min<std::uint64_t>(UINT32_MAX,r.at("Metric").get<std::uint64_t>()+
-                    interface.value(family==4?"IPv4Metric":"IPv6Metric",std::uint64_t(0)));
+                    adapterSettings.value(family==4?"IPv4Metric":"IPv6Metric",std::uint64_t(0)));
                 if(family==6 && !metric)metric=1;
                 r["Metric"]=metric;routes.emplace(RouteKey(r),r);
             }
@@ -639,8 +639,8 @@
                 if(Words(Run({"sysctl","-n",key}))!=std::vector<std::string>{std::get<2>(v)})
                     Run({"sysctl","-w",key+"="+std::get<2>(v)});
             }
-            if(link.at("mtu")!=interface.at("Mtu"))Run({"ip","link","set","dev",dev,"mtu",Scalar(interface.at("Mtu"))});
-            if(Boolean(interface,"Connected")&&!Up(link))Run({"ip","link","set","dev",dev,"up"});
+            if(link.at("mtu")!=adapterSettings.at("Mtu"))Run({"ip","link","set","dev",dev,"mtu",Scalar(adapterSettings.at("Mtu"))});
+            if(Boolean(adapterSettings,"Connected")&&!Up(link))Run({"ip","link","set","dev",dev,"up"});
             for(auto const& route:Ordered(Routes(dev,true),true))if(!routes.count(RouteKey(route)))ChangeRoute(dev,"del",route);
             auto actual=Addresses(dev);
             for(auto const& a:actual)if(!addresses.count(a.first))ChangeAddress(dev,"del",a.second);
@@ -648,7 +648,7 @@
             auto current=Routes(dev);
             for(auto const& route:Ordered(routes))if(!current.count(RouteKey(route)))ChangeRoute(dev,"add",route);
             auto table=Table(Integer(link.at("ifindex"),1,0x7fffffff));
-            Policy(dev,table,interface,addresses,routes);ReapRules();
+            Policy(dev,table,adapterSettings,addresses,routes);ReapRules();
             auto dns=s.at("DNS").at("Servers").get<std::vector<std::string>>();
             if(Resolver("dns",dev)!=dns)SetResolver("dns",dev,dns);
             std::vector<std::string> domains;
@@ -659,16 +659,16 @@
             std::vector<std::string> range={Scalar(ports.at("Start")),Scalar(ports.at("End"))};
             if(Words(Run({"sysctl","-n","net.ipv4.ip_local_port_range"}))!=range)
                 Apply(target,"PortRange","Update",ports);
-            if(!Boolean(interface,"Connected")&&Up(Link(dev)))Run({"ip","link","set","dev",dev,"down"});
+            if(!Boolean(adapterSettings,"Connected")&&Up(Link(dev)))Run({"ip","link","set","dev",dev,"down"});
             actual=Addresses(dev);current=Routes(dev);link=Link(dev);
             if(actual.size()!=addresses.size())GuestFail("Guest addresses did not converge");
             for(auto const& a:addresses)if(!actual.count(a.first))GuestFail("Guest addresses did not converge");
             for(auto const& r:routes)if(!current.count(r.first))GuestFail("Guest routes did not converge");
             for(auto const& r:Routes(dev,true))if(!routes.count(r.first))GuestFail("Stale managed route remains");
-            if(Up(link)!=Boolean(interface,"Connected")||link.at("mtu")!=interface.at("Mtu"))GuestFail("Guest link state did not converge");
+            if(Up(link)!=Boolean(adapterSettings,"Connected")||link.at("mtu")!=adapterSettings.at("Mtu"))GuestFail("Guest link state did not converge");
             if(Resolver("dns",dev)!=dns || (suffix&&Resolver("domain",dev)!=domains) ||
                 Words(Run({"sysctl","-n","net.ipv4.ip_local_port_range"}))!=range)GuestFail("Guest resolver or port range did not converge");
-            return {{"PolicyRoutingTable",table},{"ListeningPorts",Boolean(s,"DiscoverPorts")&&Boolean(interface,"Connected")?
+            return {{"PolicyRoutingTable",table},{"ListeningPorts",Boolean(s,"DiscoverPorts")&&Boolean(adapterSettings,"Connected")?
                 ListeningPorts(s.at("Addresses")):Json::array()}};
         }
     };
