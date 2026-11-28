@@ -58,7 +58,11 @@ namespace NanaBox
             }
             std::lock_guard Lock(Data->Mutex);
             Json Result = Json::object();
-            if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
+            if (Action == "VirtualSmbShares")
+                Result = {{"Backend", "VirtualSmb"}, {"Mounted", true}, {"VirtualSmbShares", Json::array({
+                    Json{{"Name", "Projects"}, {"Target", "C:\\ProgramData\\NanaBox Guest Shares\\Projects"},
+                        {"ReadOnly", true}, {"Mounted", true}}})}};
+            else if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
             {
                 if (Action != "Plan9Shares")
                 {

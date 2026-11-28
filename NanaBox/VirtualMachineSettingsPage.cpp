@@ -450,6 +450,7 @@ namespace winrt::NanaBox::implementation
         {
             this->GuestTypeRow().Visibility(this->m_MainWindow ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->GuestTypeComboBox().SelectedIndex(static_cast<std::int32_t>(this->m_Configuration.GuestType));
+            this->GuestTypeSelectionChanged(nullptr, nullptr);
             this->NameTextBox().Text(
                 winrt::to_hstring(this->m_Configuration.Name));
             this->NameRow().Visibility(this->m_MainWindow
@@ -1576,6 +1577,18 @@ namespace winrt::NanaBox::implementation
     }
 
 
+    void VirtualMachineSettingsPage::GuestTypeSelectionChanged(winrt::IInspectable const&,
+        winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+    {
+        if (!this->GuestTypeComboBox() || !this->GuestManualMountPanel() ||
+            !this->GuestLinuxShareNote() || !this->GuestWindowsShareNote()) return;
+        auto Type = static_cast<NanaBox::GuestType>(this->GuestTypeComboBox().SelectedIndex());
+        bool WindowsGuest = Type == NanaBox::GuestType::Windows;
+        this->GuestManualMountPanel().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+        this->GuestLinuxShareNote().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+        this->GuestWindowsShareNote().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+    }
+
     void VirtualMachineSettingsPage::GuestToolsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
     {
         try
@@ -1589,6 +1602,8 @@ namespace winrt::NanaBox::implementation
                 return;
             }
             if (this->m_GuestToolsRunning) return;
+            if (Resource == "Plan9Shares" && static_cast<NanaBox::GuestType>(this->GuestTypeComboBox().SelectedIndex()) ==
+                NanaBox::GuestType::Windows) Resource = "VirtualSmbShares";
 
             if (Resource == "BrowseUpload" || Resource == "BrowseDownload")
             {

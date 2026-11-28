@@ -90,6 +90,7 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& Sender,
             winrt::RoutedEventArgs const& Arguments);
 
+        void GuestTypeSelectionChanged(winrt::IInspectable const&, winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&);
         void GuestToolsButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&);
         winrt::fire_and_forget RunGuestToolsQuery(std::string Resource,
             std::function<std::string(std::string const&)> Query);

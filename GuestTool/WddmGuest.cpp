@@ -588,6 +588,8 @@ namespace
     {
         DriverMount Mount;
         RestartTracker Restart;
+        std::string VerifiedGeneration;
+        std::set<std::wstring> VerifiedImages;
         std::map<std::string, std::unique_ptr<DriverMount>> ExtraMounts;
         Json Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", Json::array()}};
         Links ReadLinks(Key const& key, wchar_t const* name = L"Links")
@@ -673,6 +675,8 @@ namespace
         {
             auto result = Last;
             result["Mounted"] = Mount.Ready();
+            result["Backend"] = NativeMode ? "VirtualSmb" : "Plan9";
+            result["NativeTransportActive"] = NativeActive.load();
             return result;
         }
         Json Update(Json const& settings)
@@ -744,6 +748,12 @@ namespace
                 return Last;
             }
             Last["Mounted"] = true;
+            auto generation = DriverGeneration(wddm);
+            if (generation != VerifiedGeneration)
+            {
+                VerifiedImages.clear();
+                VerifiedGeneration = generation;
+            }
             std::set<std::wstring> packages;
             std::vector<std::wstring> directories;
             for (auto const& value : wddm.at("Packages"))
@@ -857,7 +867,11 @@ namespace
                     }
                     else
                     {
-                        if (NativeMode) VerifyImageMapping(item.Source);
+                        if (NativeMode && !VerifiedImages.count(item.Source.wstring()))
+                        {
+                            VerifyImageMapping(item.Source);
+                            VerifiedImages.insert(item.Source.wstring());
+                        }
                         if (existing == links.end() && ExistsEntry(target))
                         {
                             if (backups.count(id) || ExistsEntry(BackupPath(target)) || !PlainFile(target))
@@ -919,7 +933,7 @@ namespace
             {
                 try
                 {
-                    Last["Devices"] = Restart.Update(DriverGeneration(wddm), VirtualRenderDevices(),
+                    Last["Devices"] = Restart.Update(generation, VirtualRenderDevices(),
                         RestartVirtualRenderDevice, std::chrono::steady_clock::now());
                     if (Last["Devices"].empty()) Last["RestartStatus"] = "WaitingForVirtualRenderDevice";
                     for (auto const& device : Last["Devices"])

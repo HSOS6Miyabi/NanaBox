@@ -183,6 +183,18 @@ try {
         $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Mount'}
         Assert-Equal $result.Data.Shares[0].MountPoint '/mnt/Projects' 'Plan9 custom mount point'
         Assert-Equal $result.Data.Shares[0].Mounted $true 'Plan9 mounted'
+        Select-Tab 'TabGeneral'
+        Select-Choice 'GuestTypeComboBox' 'GuestWindows'
+        Select-Tab 'TabGuestTools'
+        Invoke-Control 'GuestPlan9Button'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'VirtualSmbShares'}
+        Assert-Equal $result.Data.Backend 'VirtualSmb' 'Native Windows share backend'
+        Assert-Equal $result.Data.VirtualSmbShares[0].Target 'C:\ProgramData\NanaBox Guest Shares\Projects' 'Windows share mount point'
+        Assert-Missing 'GuestPlan9MountButton'
+        Assert-Missing 'GuestPlan9UnmountButton'
+        Select-Tab 'TabGeneral'
+        Select-Choice 'GuestTypeComboBox' 'GuestLinux'
+        Select-Tab 'TabGuestTools'
         Invoke-Control 'GuestInformationButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
         Invoke-Control 'GuestDiagnosticsButton'

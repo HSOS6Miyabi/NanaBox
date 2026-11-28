@@ -1748,25 +1748,29 @@ struct NanaBox::Plan9MountManager::Impl
                     Wddm["ExtraFiles"] = Json::array();
                     Wddm["VirtualSmbErrors"] = Json::array();
                     Wddm["Plan9Errors"] = Json::array();
+                    auto GuestStatus = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
+                        {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, 5, Plan9ServiceId);
+                    bool NativeSmb = GuestStatus.value("Backend", std::string("Plan9")) == "VirtualSmb";
                     for (auto const& Extra : ExtraShares)
                     {
                         if (Stop) break;
                         try
                         {
-                            AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra);
-                            PublishedManifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
-                                {"ReadOnly", true}, {"AutoMount", true}});
+                            AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra, NativeSmb);
+                            if (NativeSmb)
+                                SmbManifest.push_back({{"Name", Extra.at("Name")}, {"ReadOnly", true}});
+                            else
+                                PublishedManifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
+                                    {"ReadOnly", true}, {"AutoMount", true}});
+                            for (auto const& File : Extra.at("AllowedFiles"))
+                                Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
+                                    {"Directory", Extra.at("Directory")}, {"Source", File}, {"Destination", File}});
                         }
-                        catch (...) { Wddm["Plan9Errors"].push_back("Cannot share supplemental GPU driver files using Plan 9"); }
-                        try
+                        catch (...)
                         {
-                            AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra, true);
-                            SmbManifest.push_back({{"Name", Extra.at("Name")}, {"ReadOnly", true}});
+                            Wddm["Errors"].push_back(NativeSmb ? "Cannot share supplemental GPU driver files using Virtual SMB"
+                                : "Cannot share supplemental GPU driver files using Plan 9");
                         }
-                        catch (...) { Wddm["VirtualSmbErrors"].push_back("Cannot share supplemental GPU driver files using Virtual SMB"); }
-                        for (auto const& File : Extra.at("AllowedFiles"))
-                            Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
-                                {"Directory", Extra.at("Directory")}, {"Source", File}, {"Destination", File}});
                     }
                     Settings = {{"Shares", PublishedManifest}, {"VirtualSmbShares", SmbManifest},
                         {"GpuEnabled", true}, {"Wddm", Wddm}};
@@ -1820,12 +1824,12 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
     std::atomic<bool> LocalStop{false};
     auto const& Stop = Cancellation ? *Cancellation : LocalStop;
-    if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
+    if (Action == "Plan9Shares" || Action == "VirtualSmbShares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
     {
         RegisterGuestSocket(false, false, true);
         Json Settings = Json::object();
         auto Verb = Action == "Plan9Mount" ? "Mount" : Action == "Plan9Unmount" ? "Unmount" : "Query";
-        if (Action != "Plan9Shares") Settings["Name"] = GuestName;
+        if (Action == "Plan9Mount" || Action == "Plan9Unmount") Settings["Name"] = GuestName;
         if (Action == "Plan9Mount") Settings["Target"] = winrt::to_string(LocalPath);
         auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
             {"RequestType", Verb}, {"Settings", Settings}}, Stop, 30, Plan9ServiceId);
