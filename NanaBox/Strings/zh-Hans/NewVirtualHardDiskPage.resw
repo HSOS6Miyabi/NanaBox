@@ -149,4 +149,7 @@
     <value>创建虚拟硬盘已完成</value>
     <comment>Create Virtual Hard Disk Completed</comment>
   </data>
+  <data name="DiskValidationMessage.Text" xml:space="preserve">
+    <value>请选择有效的 VHD/VHDX 文件，并输入符合要求的磁盘容量。</value>
+  </data>
 </root>

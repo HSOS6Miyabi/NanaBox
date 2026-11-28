@@ -12,9 +12,13 @@ function Find-Control([string]$Id,[switch]$Optional) {
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$Id)
     do {
         if ($process.HasExited) { throw "Quick start exited: $($process.ExitCode)" }
-        foreach ($w in $root.FindAll($children,$pidCondition)) {
-            $e = $w.FindFirst($desc,$condition)
-            if ($null -ne $e) { return $e }
+        foreach ($handle in [NanaBoxNativeDialogs]::Windows($process.Id,$false)) {
+            if (-not [NanaBoxNativeDialogs]::IsWindowEnabled($handle)) { continue }
+            try {
+                $w = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+                $e = $w.FindFirst($desc,$condition)
+                if ($null -ne $e -and -not $e.Current.IsOffscreen) { return $e }
+            } catch [System.Windows.Automation.ElementNotAvailableException] {}
         }
         if ($Optional) { return $null }
         Start-Sleep -Milliseconds 200
@@ -61,14 +65,18 @@ try {
     Invoke-Control 'QuickStartCreateVirtualHardDiskButton'
     $null = Find-Control 'CreateButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
-    Invoke-ModalAction $process.Id 'CreateButton' { Invoke-NativeDialogButton $process.Id 1 }
+    Invoke-Control 'CreateButton'
+    $message = Find-Control 'DiskValidationMessage'
+    if ([string]::IsNullOrWhiteSpace($message.Current.Name)) { throw 'Missing disk validation message' }
     $diskWindow = Find-OwnedWindowContaining 'CreateButton'
     Invoke-Control 'CancelButton'
     Wait-NativeWindowClosed $diskWindow 'CreateButton'
     Invoke-Control 'QuickStartResizeVirtualHardDiskButton'
     $null = Find-Control 'ResizeButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
-    Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-NativeDialogButton $process.Id 1 }
+    Invoke-Control 'ResizeButton'
+    $message = Find-Control 'DiskValidationMessage'
+    if ([string]::IsNullOrWhiteSpace($message.Current.Name)) { throw 'Missing disk validation message' }
     $diskWindow = Find-OwnedWindowContaining 'ResizeButton'
     Invoke-Control 'CancelButton'
     Wait-NativeWindowClosed $diskWindow 'ResizeButton'

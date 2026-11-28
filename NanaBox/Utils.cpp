@@ -993,7 +993,7 @@ winrt::handle ShowNewVirtualHardDiskDialog(
         ::ShowXamlDialog(
             WindowHandle,
             480,
-            320,
+            400,
             winrt::get_abi(Window),
             ParentWindowHandle);
 
@@ -1107,7 +1107,7 @@ winrt::handle ShowResizeVirtualHardDiskDialog(
         ::ShowXamlDialog(
             WindowHandle,
             480,
-            320,
+            400,
             winrt::get_abi(Window),
             ParentWindowHandle);
 

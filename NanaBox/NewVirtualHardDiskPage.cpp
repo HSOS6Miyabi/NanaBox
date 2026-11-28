@@ -147,12 +147,11 @@ namespace winrt::NanaBox::implementation
         }
         catch (...)
         {
-            ::MessageBoxW(this->m_WindowHandle,
-                L"Specify a valid VHD/VHDX path and capacity.",
-                Mile::WinRT::GetLocalizedString(L"Messages/ErrorInstructionText").c_str(),
-                MB_OK | MB_ICONERROR);
+            this->DiskValidationMessage().Visibility(winrt::Windows::UI::Xaml::Visibility::Visible);
             return;
         }
+
+        this->DiskValidationMessage().Visibility(winrt::Windows::UI::Xaml::Visibility::Collapsed);
 
         winrt::hstring SuccessInstructionText =
             Mile::WinRT::GetLocalizedString(

@@ -70,6 +70,15 @@
           <x:String>TiB (1024 GiB)</x:String>
         </ComboBox>
       </Grid>
+      <TextBlock
+        x:Name="DiskValidationMessage"
+        x:Uid="/ResizeVirtualHardDiskPage/DiskValidationMessage"
+        AutomationProperties.AutomationId="DiskValidationMessage"
+        AutomationProperties.LiveSetting="Assertive"
+        Margin="0,12,0,0"
+        Text="Specify a valid VHD/VHDX path and capacity."
+        TextWrapping="Wrap"
+        Visibility="Collapsed" />
     </StackPanel>
 
     <Grid Grid.Row="1" Padding="24">

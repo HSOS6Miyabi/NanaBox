@@ -149,4 +149,7 @@
     <value>Create Virtual Hard Disk Completed</value>
     <comment>Create Virtual Hard Disk Completed</comment>
   </data>
+  <data name="DiskValidationMessage.Text" xml:space="preserve">
+    <value>Specify a valid VHD/VHDX path and capacity.</value>
+  </data>
 </root>
