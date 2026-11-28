@@ -21,6 +21,9 @@ jobs:
     - name: Validate PowerShell scripts
       shell: powershell
       run: .\Tests\ValidateScripts.ps1
+    - name: Test embedded Hyper-V management commands
+      shell: powershell
+      run: .\Tests\VmmsCommands.ps1
     - uses: microsoft/setup-msbuild@v3
     - name: Clear local NuGet cache (workaround for failed restores on windows-latest)
       run: dotnet nuget locals all --clear
