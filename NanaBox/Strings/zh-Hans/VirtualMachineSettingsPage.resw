@@ -182,8 +182,8 @@
   <data name="ClearCom2.Content" xml:space="preserve"><value>断开 COM2</value></data>
   <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode 输入（Linux）</value></data>
   <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>仅在当前 Linux 应用程序支持 Ctrl+Shift+U Unicode 输入时启用。无法直接输入的字符将通过十六进制码位输入。</value></data>
-  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请与客户机的键盘布局保持一致：美式 00000409、英式 00000809、日语 00000411、德语 00000407、法语 0000040C，或输入 Host 使用宿主机布局。</value></data>
-  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>剪贴板键盘布局</value></data>
+  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请选择与客户机一致的键盘布局。将剪贴板文本转换为键盘输入时会使用此布局。</value></data>
+  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>自定义键盘布局代码</value></data>
   <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>原生 Unicode 输入（Windows）</value></data>
   <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>需要在客户机中使用 EnableUnicodeInput 选项安装 GuestTool。文本将输入当前控制台或增强会话中具有焦点的窗口。不支持安全桌面。</value></data>
   <data name="ComPort1Label.Text" xml:space="preserve"><value>COM1 命名管道路径</value></data>
@@ -378,7 +378,7 @@
   <data name="HostNetworksTitle.Text" xml:space="preserve"><value>本机虚拟网络</value></data>
   <data name="InspectNetwork.Content" xml:space="preserve"><value>查看属性</value></data>
   <data name="InvalidValue" xml:space="preserve"><value>设置值无效：%s</value></data>
-  <data name="KeyboardNote.Text" xml:space="preserve"><value>注意：需要使用虚拟键码的十进制值。</value></data>
+  <data name="KeyboardNote.Text" xml:space="preserve"><value>请选择与各快捷键说明中的修饰键配合使用的按键。其他按键可选择自定义按键代码。</value></data>
   <data name="KeyboardTitle.Text" xml:space="preserve"><value>键盘</value></data>
   <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve"><value>新交换机名称</value></data>
   <data name="ManagedSwitchNote.Text" xml:space="preserve"><value>创建和删除 NanaBox 管理的虚拟交换机。交换机对应的 HCN 网络可在网卡设置中选择。</value></data>
@@ -908,4 +908,27 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="HcnSelectParentNetwork" xml:space="preserve"><value>请选择受管理的所属虚拟网络。如果列表为空，请先创建网络。</value></data>
   <data name="HcnInvalidAddress" xml:space="preserve"><value>请输入有效的 IPv4 地址。</value></data>
   <data name="HcnInvalidPort" xml:space="preserve"><value>请输入 1 至 65535 之间的端口号。</value></data>
+  <data name="ClipboardKeyboardLayoutChoice.Header" xml:space="preserve"><value>剪贴板输入键盘布局</value></data>
+  <data name="KeyCustom" xml:space="preserve"><value>自定义按键代码…</value></data>
+  <data name="LayoutCustom" xml:space="preserve"><value>自定义键盘布局…</value></data>
+  <data name="KeyBreak" xml:space="preserve"><value>Break 键</value></data>
+  <data name="KeyDefault" xml:space="preserve"><value>默认</value></data>
+  <data name="KeyPageUp" xml:space="preserve"><value>Page Up</value></data>
+  <data name="KeyPageDown" xml:space="preserve"><value>Page Down</value></data>
+  <data name="KeyLeft" xml:space="preserve"><value>向左方向键</value></data>
+  <data name="KeyRight" xml:space="preserve"><value>向右方向键</value></data>
+  <data name="KeyUp" xml:space="preserve"><value>向上方向键</value></data>
+  <data name="KeyDown" xml:space="preserve"><value>向下方向键</value></data>
+  <data name="KeySpace" xml:space="preserve"><value>空格键</value></data>
+  <data name="KeyEnter" xml:space="preserve"><value>回车键</value></data>
+  <data name="KeyEscape" xml:space="preserve"><value>Esc 键</value></data>
+  <data name="LayoutHost" xml:space="preserve"><value>使用宿主机键盘布局</value></data>
+  <data name="LayoutUs" xml:space="preserve"><value>英语（美国）</value></data>
+  <data name="LayoutUk" xml:space="preserve"><value>英语（英国）</value></data>
+  <data name="LayoutJapanese" xml:space="preserve"><value>日语</value></data>
+  <data name="LayoutGerman" xml:space="preserve"><value>德语</value></data>
+  <data name="LayoutFrench" xml:space="preserve"><value>法语</value></data>
+  <data name="LayoutChinese" xml:space="preserve"><value>中文（简体）</value></data>
+  <data name="LayoutKorean" xml:space="preserve"><value>韩语</value></data>
+  <data name="LayoutSpanish" xml:space="preserve"><value>西班牙语</value></data>
 </root>

@@ -439,6 +439,92 @@ namespace
         Picker.Items().Append(Item);
     }
 
+
+    using ValueChoices = std::vector<std::pair<winrt::hstring, winrt::hstring>>;
+
+    void BindValuePicker(winrt::ComboBox const& Picker, winrt::TextBox const& Input)
+    {
+        winrt::AutomationProperties::SetName(Picker, winrt::AutomationProperties::GetName(Input));
+        winrt::AutomationProperties::SetHelpText(Picker, winrt::AutomationProperties::GetHelpText(Input));
+        Picker.SelectionChanged([Weak = winrt::make_weak(Input)](
+            winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
+        {
+            if (auto Target = Weak.get())
+            {
+                auto Choice = Sender.as<winrt::ComboBox>().SelectedItem().try_as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>();
+                if (!Choice) return;
+                auto Value = winrt::unbox_value<winrt::hstring>(Choice.Tag());
+                bool Custom = Value == L"@custom";
+                Target.Visibility(Custom ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+                if (!Custom && Target.Text() != Value) Target.Text(Value);
+            }
+        });
+    }
+
+    void PopulateValuePicker(winrt::ComboBox const& Picker, winrt::TextBox const& Input,
+        ValueChoices const& Choices, LPCWSTR CustomResource)
+    {
+        auto Current = Input.Text();
+        Picker.Items().Clear();
+        int Selection = static_cast<int>(Choices.size());
+        auto Prefix = winrt::AutomationProperties::GetAutomationId(Picker);
+        for (auto const& Choice : Choices)
+        {
+            if (Choice.second == Current) Selection = static_cast<int>(Picker.Items().Size());
+            ::AddPickerItem(Picker, Choice.first, Choice.second);
+            winrt::AutomationProperties::SetAutomationId(Picker.Items().GetAt(Picker.Items().Size() - 1)
+                .as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>(),
+                winrt::hstring(std::wstring(Prefix.c_str()) + L"_" + Choice.second.c_str()));
+        }
+        ::AddPickerItem(Picker, ::GetSettingsString(CustomResource), L"@custom");
+        Picker.SelectedIndex(Selection);
+        Input.Visibility(Selection == static_cast<int>(Choices.size()) ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+    }
+
+    ValueChoices KeyboardLayouts()
+    {
+        return {
+            {::GetSettingsString(L"LayoutHost"), L"Host"},
+            {::GetSettingsString(L"LayoutUs"), L"00000409"},
+            {::GetSettingsString(L"LayoutUk"), L"00000809"},
+            {::GetSettingsString(L"LayoutJapanese"), L"00000411"},
+            {::GetSettingsString(L"LayoutGerman"), L"00000407"},
+            {::GetSettingsString(L"LayoutFrench"), L"0000040C"},
+            {::GetSettingsString(L"LayoutChinese"), L"00000804"},
+            {::GetSettingsString(L"LayoutKorean"), L"00000412"},
+            {::GetSettingsString(L"LayoutSpanish"), L"0000040A"}
+        };
+    }
+
+    ValueChoices HotkeyChoices()
+    {
+        ValueChoices Choices = {
+            {::GetSettingsString(L"KeyDefault"), L"0"},
+            {::GetSettingsString(L"KeyBreak"), winrt::to_hstring(VK_CANCEL)},
+            {L"Home", winrt::to_hstring(VK_HOME)},
+            {L"End", winrt::to_hstring(VK_END)},
+            {L"Insert", winrt::to_hstring(VK_INSERT)},
+            {L"Delete", winrt::to_hstring(VK_DELETE)},
+            {::GetSettingsString(L"KeyPageUp"), winrt::to_hstring(VK_PRIOR)},
+            {::GetSettingsString(L"KeyPageDown"), winrt::to_hstring(VK_NEXT)},
+            {::GetSettingsString(L"KeyLeft"), winrt::to_hstring(VK_LEFT)},
+            {::GetSettingsString(L"KeyRight"), winrt::to_hstring(VK_RIGHT)},
+            {::GetSettingsString(L"KeyUp"), winrt::to_hstring(VK_UP)},
+            {::GetSettingsString(L"KeyDown"), winrt::to_hstring(VK_DOWN)},
+            {::GetSettingsString(L"KeySpace"), winrt::to_hstring(VK_SPACE)},
+            {::GetSettingsString(L"KeyEnter"), winrt::to_hstring(VK_RETURN)},
+            {::GetSettingsString(L"KeyEscape"), winrt::to_hstring(VK_ESCAPE)},
+            {L"Tab", winrt::to_hstring(VK_TAB)}
+        };
+        for (int Key = 'A'; Key <= 'Z'; ++Key)
+            Choices.emplace_back(winrt::hstring(std::wstring(1, static_cast<wchar_t>(Key))), winrt::to_hstring(Key));
+        for (int Key = '0'; Key <= '9'; ++Key)
+            Choices.emplace_back(winrt::hstring(std::wstring(1, static_cast<wchar_t>(Key))), winrt::to_hstring(Key));
+        for (int Key = VK_F1; Key <= VK_F24; ++Key)
+            Choices.emplace_back(winrt::hstring(L"F" + std::to_wstring(Key - VK_F1 + 1)), winrt::to_hstring(Key));
+        return Choices;
+    }
+
     void FillNetworkPicker(winrt::ComboBox const& Picker, std::vector<::NanaBox::HostNetworkInfo> const& Networks,
         bool AttachableOnly = false, winrt::hstring const& CurrentNetwork = {})
     {
@@ -735,6 +821,16 @@ namespace winrt::NanaBox::implementation
         this->NetworkExpertCheckBox().Checked([UpdateNetworkMode](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateNetworkMode(); });
         this->NetworkExpertCheckBox().Unchecked([UpdateNetworkMode](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateNetworkMode(); });
         UpdateNetworkMode();
+        ::BindValuePicker(this->ClipboardKeyboardLayoutComboBox(), this->ClipboardKeyboardLayoutTextBox());
+        ::BindValuePicker(this->FullScreenHotkeyComboBox(), this->FullScreenHotkeyTextBox());
+        ::BindValuePicker(this->CtrlEscHotkeyComboBox(), this->CtrlEscHotkeyTextBox());
+        ::BindValuePicker(this->AltEscHotkeyComboBox(), this->AltEscHotkeyTextBox());
+        ::BindValuePicker(this->AltTabHotkeyComboBox(), this->AltTabHotkeyTextBox());
+        ::BindValuePicker(this->AltShiftTabHotkeyComboBox(), this->AltShiftTabHotkeyTextBox());
+        ::BindValuePicker(this->AltSpaceHotkeyComboBox(), this->AltSpaceHotkeyTextBox());
+        ::BindValuePicker(this->CtrlAltDelHotkeyComboBox(), this->CtrlAltDelHotkeyTextBox());
+        ::BindValuePicker(this->FocusReleaseLeftHotkeyComboBox(), this->FocusReleaseLeftHotkeyTextBox());
+        ::BindValuePicker(this->FocusReleaseRightHotkeyComboBox(), this->FocusReleaseRightHotkeyTextBox());
         this->AssignmentModeComboBox().SelectionChanged([
             WeakSection = winrt::make_weak(this->GpuDeviceSection())](
                 winrt::IInspectable const& Sender,
@@ -927,6 +1023,17 @@ namespace winrt::NanaBox::implementation
                 winrt::to_hstring(Configuration.FocusReleaseLeftHotkey));
             this->FocusReleaseRightHotkeyTextBox().Text(
                 winrt::to_hstring(Configuration.FocusReleaseRightHotkey));
+            ::PopulateValuePicker(this->ClipboardKeyboardLayoutComboBox(), this->ClipboardKeyboardLayoutTextBox(), ::KeyboardLayouts(), L"LayoutCustom");
+            auto KeyChoices = ::HotkeyChoices();
+            ::PopulateValuePicker(this->FullScreenHotkeyComboBox(), this->FullScreenHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->CtrlEscHotkeyComboBox(), this->CtrlEscHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->AltEscHotkeyComboBox(), this->AltEscHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->AltTabHotkeyComboBox(), this->AltTabHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->AltShiftTabHotkeyComboBox(), this->AltShiftTabHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->AltSpaceHotkeyComboBox(), this->AltSpaceHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->CtrlAltDelHotkeyComboBox(), this->CtrlAltDelHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->FocusReleaseLeftHotkeyComboBox(), this->FocusReleaseLeftHotkeyTextBox(), KeyChoices, L"KeyCustom");
+            ::PopulateValuePicker(this->FocusReleaseRightHotkeyComboBox(), this->FocusReleaseRightHotkeyTextBox(), KeyChoices, L"KeyCustom");
         }
 
         {

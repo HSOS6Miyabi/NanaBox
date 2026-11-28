@@ -21,6 +21,9 @@ jobs:
     - name: Validate PowerShell scripts
       shell: powershell
       run: .\Tests\ValidateScripts.ps1
+    - name: Validate settings localization and XAML structure
+      shell: powershell
+      run: .\Tests\ValidateSettingsResources.ps1
     - name: Test embedded Hyper-V management commands
       shell: powershell
       run: .\Tests\VmmsCommands.ps1

@@ -182,8 +182,8 @@
   <data name="ClearCom2.Content" xml:space="preserve"><value>Disconnect COM2</value></data>
   <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode input (Linux)</value></data>
   <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points.</value></data>
-  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host.</value></data>
-  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
+  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Choose the keyboard layout that matches the guest. This is used when sending clipboard text as keystrokes.</value></data>
+  <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Custom keyboard layout code</value></data>
   <data name="ClipboardWindowsUnicodeCheckBox.Content" xml:space="preserve"><value>Native Unicode input (Windows)</value></data>
   <data name="ClipboardWindowsUnicodeHelp.Text" xml:space="preserve"><value>Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded.</value></data>
   <data name="ComPort1Label.Text" xml:space="preserve"><value>COM1 pipe path</value></data>
@@ -378,7 +378,7 @@
   <data name="HostNetworksTitle.Text" xml:space="preserve"><value>Virtual networks on this computer</value></data>
   <data name="InspectNetwork.Content" xml:space="preserve"><value>Properties</value></data>
   <data name="InvalidValue" xml:space="preserve"><value>Invalid setting: %s</value></data>
-  <data name="KeyboardNote.Text" xml:space="preserve"><value>Note: You need to use the decimal value of the virtual-key code.</value></data>
+  <data name="KeyboardNote.Text" xml:space="preserve"><value>Choose the key to press with the modifier keys described for each shortcut. For other keys, choose a custom key code.</value></data>
   <data name="KeyboardTitle.Text" xml:space="preserve"><value>Keyboard</value></data>
   <data name="ManagedSwitchNameTextBox.Header" xml:space="preserve"><value>New switch name</value></data>
   <data name="ManagedSwitchNote.Text" xml:space="preserve"><value>Create and remove NanaBox-managed switches. Connect a VM through the HCN network picker when the switch is exposed by HCN.</value></data>
@@ -908,4 +908,27 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="HcnSelectParentNetwork" xml:space="preserve"><value>Select a managed parent network. Create one first if the list is empty.</value></data>
   <data name="HcnInvalidAddress" xml:space="preserve"><value>Enter a valid IPv4 address.</value></data>
   <data name="HcnInvalidPort" xml:space="preserve"><value>Enter a port number between 1 and 65535.</value></data>
+  <data name="ClipboardKeyboardLayoutChoice.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
+  <data name="KeyCustom" xml:space="preserve"><value>Custom key code…</value></data>
+  <data name="LayoutCustom" xml:space="preserve"><value>Custom keyboard layout…</value></data>
+  <data name="KeyBreak" xml:space="preserve"><value>Break</value></data>
+  <data name="KeyDefault" xml:space="preserve"><value>Default</value></data>
+  <data name="KeyPageUp" xml:space="preserve"><value>Page Up</value></data>
+  <data name="KeyPageDown" xml:space="preserve"><value>Page Down</value></data>
+  <data name="KeyLeft" xml:space="preserve"><value>Left arrow</value></data>
+  <data name="KeyRight" xml:space="preserve"><value>Right arrow</value></data>
+  <data name="KeyUp" xml:space="preserve"><value>Up arrow</value></data>
+  <data name="KeyDown" xml:space="preserve"><value>Down arrow</value></data>
+  <data name="KeySpace" xml:space="preserve"><value>Space</value></data>
+  <data name="KeyEnter" xml:space="preserve"><value>Enter</value></data>
+  <data name="KeyEscape" xml:space="preserve"><value>Esc</value></data>
+  <data name="LayoutHost" xml:space="preserve"><value>Use the host keyboard layout</value></data>
+  <data name="LayoutUs" xml:space="preserve"><value>English (United States)</value></data>
+  <data name="LayoutUk" xml:space="preserve"><value>English (United Kingdom)</value></data>
+  <data name="LayoutJapanese" xml:space="preserve"><value>Japanese</value></data>
+  <data name="LayoutGerman" xml:space="preserve"><value>German</value></data>
+  <data name="LayoutFrench" xml:space="preserve"><value>French</value></data>
+  <data name="LayoutChinese" xml:space="preserve"><value>Chinese (Simplified)</value></data>
+  <data name="LayoutKorean" xml:space="preserve"><value>Korean</value></data>
+  <data name="LayoutSpanish" xml:space="preserve"><value>Spanish</value></data>
 </root>

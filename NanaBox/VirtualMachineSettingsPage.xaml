@@ -690,11 +690,12 @@
                 AutomationProperties.Name="Send keyboard shortcuts to the guest"
                 ToolTipService.ToolTip="Send keyboard shortcuts to the guest." AutomationProperties.AutomationId="RedirectKeyCombinationsCheckBox" />
             </Grid>
-            <TextBox x:Name="ClipboardKeyboardLayoutTextBox" x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutTextBox"
-              Header="Clipboard keyboard layout" PlaceholderText="00000409 or Host"
+            <ComboBox x:Name="ClipboardKeyboardLayoutComboBox" x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutChoice" Header="Clipboard keyboard layout" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="ClipboardKeyboardLayoutComboBox" />
+            <TextBox Visibility="Collapsed" x:Name="ClipboardKeyboardLayoutTextBox" x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutTextBox"
+              Header="Custom keyboard layout code" PlaceholderText="00000409"
               AutomationProperties.AutomationId="ClipboardKeyboardLayoutTextBox" />
             <TextBlock x:Name="SettingsLabel61" x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutHelp"
-              Text="Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host."
+              Text="Choose the keyboard layout that matches the guest. This is used when sending clipboard text as keystrokes."
               TextWrapping="Wrap" Opacity="0.8" />
             <CheckBox x:Name="ClipboardGtkUnicodeCheckBox" x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeCheckBox"
               Content="GTK Unicode input (Linux)" AutomationProperties.AutomationId="ClipboardGtkUnicodeCheckBox" />
@@ -718,15 +719,18 @@
                 VerticalAlignment="Center"
                 Text="Full Screen Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="FullScreenHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FullScreenHotkeyComboBox" />
+                <TextBox
                 x:Name="FullScreenHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/FullScreenHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode."
                 AutomationProperties.Name="Full Screen Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for switching to full-screen mode." AutomationProperties.AutomationId="FullScreenHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -740,15 +744,18 @@
                 VerticalAlignment="Center"
                 Text="Ctrl+Esc Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="CtrlEscHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="CtrlEscHotkeyComboBox" />
+                <TextBox
                 x:Name="CtrlEscHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/CtrlEscHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC."
                 AutomationProperties.Name="Ctrl+Esc Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for CTRL+ESC." AutomationProperties.AutomationId="CtrlEscHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -762,15 +769,18 @@
                 VerticalAlignment="Center"
                 Text="Alt+Esc Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="AltEscHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="AltEscHotkeyComboBox" />
+                <TextBox
                 x:Name="AltEscHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/AltEscHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC."
                 AutomationProperties.Name="Alt+Esc Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC." AutomationProperties.AutomationId="AltEscHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -784,15 +794,18 @@
                 VerticalAlignment="Center"
                 Text="Alt+Tab Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="AltTabHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="AltTabHotkeyComboBox" />
+                <TextBox
                 x:Name="AltTabHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/AltTabHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB."
                 AutomationProperties.Name="Alt+Tab Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+TAB." AutomationProperties.AutomationId="AltTabHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -806,15 +819,18 @@
                 VerticalAlignment="Center"
                 Text="Alt+Shift+Tab Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="AltShiftTabHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="AltShiftTabHotkeyComboBox" />
+                <TextBox
                 x:Name="AltShiftTabHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/AltShiftTabHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB."
                 AutomationProperties.Name="Alt+Shift+Tab Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SHIFT+TAB." AutomationProperties.AutomationId="AltShiftTabHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -828,15 +844,18 @@
                 VerticalAlignment="Center"
                 Text="Alt+Space Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="AltSpaceHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="AltSpaceHotkeyComboBox" />
+                <TextBox
                 x:Name="AltSpaceHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/AltSpaceHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE."
                 AutomationProperties.Name="Alt+Space Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+SPACE." AutomationProperties.AutomationId="AltSpaceHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -850,15 +869,18 @@
                 VerticalAlignment="Center"
                 Text="Ctrl+Alt+Delete Hotkey"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="CtrlAltDelHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="CtrlAltDelHotkeyComboBox" />
+                <TextBox
                 x:Name="CtrlAltDelHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/CtrlAltDelHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS)."
                 AutomationProperties.Name="Ctrl+Alt+Delete Hotkey"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to CTRL+ALT to determine the hotkey replacement for CTRL+ALT+DELETE, also called the secure attention sequence (SAS)." AutomationProperties.AutomationId="CtrlAltDelHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -872,15 +894,18 @@
                 VerticalAlignment="Center"
                 Text="Focus Release Hotkey (Left)"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="FocusReleaseLeftHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FocusReleaseLeftHotkeyComboBox" />
+                <TextBox
                 x:Name="FocusReleaseLeftHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/FocusReleaseLeftHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow."
                 AutomationProperties.Name="Focus Release Hotkey (Left)"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Left Arrow." AutomationProperties.AutomationId="FocusReleaseLeftHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -894,21 +919,24 @@
                 VerticalAlignment="Center"
                 Text="Focus Release Hotkey (Right)"
                 TextWrapping="Wrap" />
-              <TextBox
+              <StackPanel Grid.Column="2" Spacing="4">
+                <ComboBox x:Name="FocusReleaseRightHotkeyComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FocusReleaseRightHotkeyComboBox" />
+                <TextBox
                 x:Name="FocusReleaseRightHotkeyTextBox"
                 x:Uid="/VirtualMachineSettingsPage/FocusReleaseRightHotkeyTextBox"
-                Grid.Column="2"
+                Visibility="Collapsed"
                 MinWidth="0"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 AutomationProperties.HelpText="(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow."
                 AutomationProperties.Name="Focus Release Hotkey (Right)"
                 ToolTipService.ToolTip="(Optional) Specifies the virtual-key code to add to Ctrl+Alt to determine the hotkey replacement for Ctrl+Alt+Right Arrow." AutomationProperties.AutomationId="FocusReleaseRightHotkeyTextBox" />
+              </StackPanel>
             </Grid>
             <TextBlock x:Name="SettingsLabel73"
               x:Uid="/VirtualMachineSettingsPage/KeyboardNote"
               FontSize="12"
               Opacity="0.75"
-              Text="Note: You need to use the decimal value of the virtual-key code."
+              Text="Choose the key to press with the modifier keys described for each shortcut. For other keys, choose a custom key code."
               TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel74"
               x:Uid="/VirtualMachineSettingsPage/EnhancedSessionTitle"

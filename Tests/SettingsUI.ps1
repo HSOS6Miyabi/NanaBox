@@ -151,11 +151,28 @@ function Capture([string]$name) {
 try {
     $status = Get-Text 'ConfigurationStatusTextBox'
     if ($status -match 'VirtualMachineSettingsPage/|^\[') { throw "Unresolved settings resource: $status" }
+    $window = $root.FindAll($children,$pidCondition) | Select-Object -First 1
+    $transform = Pattern $window ([System.Windows.Automation.TransformPattern]::Pattern)
+    if (-not $transform.Current.CanResize) { throw 'Settings window is not resizable' }
+    $transform.Resize(680,520)
+    Start-Sleep -Milliseconds 400
     foreach ($section in @('TabGeneral','TabGpu','TabStorage','TabNetwork','TabShares','TabSession','TabSerial','TabGuestTools','TabHostManagement','TabVmms','TabHcn','TabAdvanced')) {
         Select-Tab $section
         $item = Find-Control $section
-        if ($item.Current.IsOffscreen) { throw "Navigation item is not visible: $section" }
+        $bounds = $item.Current.BoundingRectangle
+        $navigationBounds = (Find-Control 'SettingsNavigation').Current.BoundingRectangle
+        if ($item.Current.IsOffscreen -or $bounds.Left -lt ($navigationBounds.Left-2) -or $bounds.Right -gt ($navigationBounds.Right+2)) {
+            throw "Navigation item is clipped in a small window: $section"
+        }
         if ([string]::IsNullOrWhiteSpace($item.Current.Name) -or $item.Current.Name -match 'VirtualMachineSettingsPage/|^\[') { throw "Unresolved navigation label: $section" }
+    }
+    Select-Tab 'TabNetwork'
+    Capture 'network-small-window'
+    $transform.Resize(900,700)
+    Start-Sleep -Milliseconds 400
+    foreach ($section in @('TabGeneral','TabGpu','TabStorage','TabNetwork','TabShares','TabHostManagement')) {
+        Select-Tab $section
+        Capture $section
     }
     Select-Tab 'TabGeneral'
     if (-not $HostIntegration) {
@@ -890,11 +907,11 @@ try {
     Invoke-Control 'RefreshDriveButton'
     Invoke-Control 'RefreshDeviceButton'
     Set-Check 'RedirectKeyCombinationsCheckBox' $false
-    Set-Text 'ClipboardKeyboardLayoutTextBox' '00000407'
+    Select-Choice 'ClipboardKeyboardLayoutComboBox' 'ClipboardKeyboardLayoutComboBox_00000407'
     Assert-Equal (Find-Control 'ClipboardWindowsUnicodeCheckBox').Current.IsEnabled $false 'Windows Unicode control disabled for Linux'
     Set-Check 'ClipboardGtkUnicodeCheckBox' $true
     foreach ($id in @('FullScreen','CtrlEsc','AltEsc','AltTab','AltShiftTab','AltSpace','CtrlAltDel','FocusReleaseLeft','FocusReleaseRight')) {
-        Set-Text ($id+'HotkeyTextBox') '65'
+        Select-Choice ($id+'HotkeyComboBox') ($id+'HotkeyComboBox_65')
     }
     foreach ($id in @('Audio','AudioCapture','Drives','Printers','Ports','SmartCards','Clipboard','Devices','POSDevices','DynamicDrives','DynamicDevices')) {
         Set-Check ('Redirect'+$id+'CheckBox') $true
