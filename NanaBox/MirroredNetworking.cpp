@@ -813,6 +813,7 @@ struct NanaBox::MirroredNetworking::Impl
         for (auto const& Value : Configuration.MirroredIgnoredPorts)
             if (!IgnoredPorts.insert(ParsePort(Value)).second)
                 throw winrt::hresult_invalid_argument(L"Duplicate ignored mirrored port");
+        if (Configuration.MirroredDnsTunneling) IgnoredPorts.insert(53);
         for (auto const& List : {Configuration.MirroredTcpPorts, Configuration.MirroredUdpPorts})
             for (auto const& Value : List)
                 if (IgnoredPorts.count(ParsePort(Value)))
@@ -1224,8 +1225,20 @@ struct NanaBox::MirroredNetworking::Impl
                         if (Configuration.MirroredDnsTunneling) LocalPorts.insert(53);
                         auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "LoopbackReconcile"},
                             {"RequestType", "Update"}, {"Settings", {{"Enabled", true}, {"AdapterMac", Adapter},
-                                {"Interfaces", Interfaces}, {"LocalPorts", LocalPorts}}}}, Stop);
+                                {"Interfaces", Interfaces}, {"LocalPorts", LocalPorts}, {"DiscoverPorts", Configuration.MirroredAutoReservePorts}}}}, Stop);
                         if (!Reply.value("Loopback", false)) throw winrt::hresult_error(E_FAIL, L"Guest loopback configuration failed");
+                        if (Configuration.MirroredAutoReservePorts)
+                        {
+                            for (auto const& Item : Reply.at("ListeningPorts"))
+                            {
+                                auto Protocol = Item.at("Protocol").get<std::string>();
+                                unsigned Port = Item.at("Port").get<unsigned>();
+                                if ((Protocol != "TCP" && Protocol != "UDP") || !Port || Port > 65535)
+                                    throw winrt::hresult_invalid_argument(L"Invalid guest listening port");
+                                if (LocalPorts.count(Port) || (Port >= Range.startingPort && Port <= Range.endingPort)) continue;
+                                Ports.emplace(Protocol == "TCP" ? HCN_PORT_PROTOCOL_TCP : HCN_PORT_PROTOCOL_UDP, static_cast<USHORT>(Port));
+                            }
+                        }
                         Report["Loopback"] = Reply;
                         for (auto& Details : Report["Endpoints"])
                             if (Details.value("Gelnic", false)) Details["GuestAcknowledged"] = true;

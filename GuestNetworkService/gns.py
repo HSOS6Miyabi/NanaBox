@@ -122,8 +122,11 @@ def normalize(request):
         if not isinstance(ignored, list) or len(ignored) > 256:
             raise ValueError('Too many local-only ports')
         ignored = sorted({number(port, 1, 65535) for port in ignored})
+        discover = settings.get('DiscoverPorts', False)
+        if type(discover) is not bool:
+            raise ValueError('Invalid loopback discovery setting')
         return '', resource, 'Update', {'Enabled': True, 'AdapterMac': adapter,
-                                      'Interfaces': result, 'LocalPorts': ignored}
+                                      'Interfaces': result, 'LocalPorts': ignored, 'DiscoverPorts': discover}
     if resource in ('FileExchange', 'TimeSync'):
         action = request.get('RequestType')
         settings = normalize_tools(resource, action, request.get('Settings'))
@@ -266,7 +269,7 @@ def decode_proc_address(value, family):
     return address.ipv4_mapped if family == 6 and address.ipv4_mapped else address
 
 
-def linux_listening_ports(proc, addresses):
+def linux_listening_ports(proc, addresses, include_loopback=False):
     accepted = {ipaddress.ip_address(a['Address']) for a in addresses}
     ports = set()
     for protocol in ('TCP', 'UDP'):
@@ -287,7 +290,8 @@ def linux_listening_ports(proc, addresses):
                 raw, port = fields[1].rsplit(':', 1)
                 address = decode_proc_address(raw, family)
                 port = int(port, 16)
-                if port and not address.is_loopback and (address.is_unspecified or address in accepted):
+                if port and ((not address.is_loopback and (address.is_unspecified or address in accepted)) or
+                             (include_loopback and address == ipaddress.IPv4Address('127.0.0.1'))):
                     ports.add((protocol, port))
     return [{'Protocol': protocol, 'Port': port} for protocol, port in sorted(ports)]
 
@@ -323,7 +327,7 @@ class LoopbackRouting:
 
     @staticmethod
     def _key(row):
-        proto = str(row.get('ipproto', ''))
+        proto = str(row.get('ipproto', '')).removeprefix('ipproto-')
         proto = {'6': 'tcp', '17': 'udp'}.get(proto, proto)
         dport = str(row.get('dport', ''))
         if '-' in dport:
@@ -530,7 +534,11 @@ class LinuxBackend:
             return {'Loopback': False}
         gelnic = self.adapter(settings['AdapterMac'])
         interfaces = {self.adapter(target): addresses for target, addresses in settings['Interfaces'].items()}
-        return self.loopback.reconcile(gelnic, interfaces, settings['LocalPorts'])
+        result = self.loopback.reconcile(gelnic, interfaces, settings['LocalPorts'])
+        if settings.get('DiscoverPorts', False):
+            result['ListeningPorts'] = [entry for entry in linux_listening_ports('/proc/net', [], include_loopback=True)
+                                        if entry['Port'] not in settings['LocalPorts']]
+        return result
 
     def adapter(self, target):
         matches = []

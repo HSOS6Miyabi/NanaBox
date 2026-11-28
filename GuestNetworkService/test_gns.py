@@ -73,6 +73,7 @@ class ProtocolTests(unittest.TestCase):
             p.joinpath('tcp').write_text('header\n' +
                 line(proc4('0.0.0.0', 8080), proc4('0.0.0.0', 0), '0A') +
                 line(proc4('127.0.0.1', 8081), proc4('0.0.0.0', 0), '0A') +
+                line(proc4('127.0.0.53', 53), proc4('0.0.0.0', 0), '0A') +
                 line(proc4('192.0.2.10', 8082), proc4('0.0.0.0', 0), '0A') +
                 line(proc4('192.0.2.20', 8083), proc4('0.0.0.0', 0), '0A'))
             p.joinpath('udp').write_text('header\n' +
@@ -81,6 +82,14 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(gns.linux_listening_ports(p, [{'Address': '192.0.2.10'}]), [
                 {'Protocol': 'TCP', 'Port': 8080}, {'Protocol': 'TCP', 'Port': 8082},
                 {'Protocol': 'UDP', 'Port': 5353}])
+            self.assertEqual(gns.linux_listening_ports(p, [], include_loopback=True), [
+                {'Protocol': 'TCP', 'Port': 8080}, {'Protocol': 'TCP', 'Port': 8081},
+                {'Protocol': 'UDP', 'Port': 5353}])
+
+    def test_numeric_loopback_protocols(self):
+        for value, expected in [('6', 'tcp'), ('17', 'udp'), ('ipproto-6', 'tcp'), ('ipproto-17', 'udp'), ('tcp', 'tcp')]:
+            row = {'priority': 0, 'table': 'local', 'ipproto': value, 'dst': '127.0.0.1', 'dport': '53-53'}
+            self.assertEqual(gns.LoopbackRouting._key(row), (0, '255', '', expected, '127.0.0.1/32', '53'))
 
     def test_validation(self):
         value = gns.normalize(request(Address='2001:db8::123', OnLinkPrefixLength=64))

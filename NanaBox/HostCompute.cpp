@@ -14,13 +14,13 @@
 #pragma comment(lib, "computenetwork.lib")
 
 #include <Mile.Json.h>
-#include <Mile.Helpers.CppBase.h>
 #include <SetupAPI.h>
 #include <wincrypt.h>
 #include <cwchar>
 #include <string>
 #pragma comment(lib, "crypt32.lib")
 #include <memory>
+#include <type_traits>
 #include <string_view>
 #include <vector>
 #pragma comment(lib, "setupapi.lib")
@@ -1130,7 +1130,8 @@ namespace
         auto Attributes = std::make_unique<BYTE[]>(AttributeSize);
         auto AttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(Attributes.get());
         winrt::check_bool(::InitializeProcThreadAttributeList(AttributeList, 1, 0, &AttributeSize));
-        auto DeleteAttributes = Mile::ScopeExitTaskHandler([&]() { ::DeleteProcThreadAttributeList(AttributeList); });
+        std::unique_ptr<std::remove_pointer_t<LPPROC_THREAD_ATTRIBUTE_LIST>, decltype(&::DeleteProcThreadAttributeList)>
+            DeleteAttributes(AttributeList, &::DeleteProcThreadAttributeList);
         HANDLE Inherited[] = {Input.get(), Output.get()};
         winrt::check_bool(::UpdateProcThreadAttribute(AttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
             Inherited, sizeof(Inherited), nullptr, nullptr));
