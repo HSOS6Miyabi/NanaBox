@@ -1,5 +1,6 @@
 """Exercise the production Windows 9P process manager against a loopback 9P server."""
 import json
+import ctypes
 import pathlib
 import subprocess
 import sys
@@ -37,6 +38,20 @@ def run(manager, helper):
                     row=send("Query")["Shares"][0]
                     if row["Mounted"]: return row
                     time.sleep(.1)
+                path=pathlib.Path(row["MountPoint"])
+                print("Mount directory:",path.exists(),"Entries:",list(path.iterdir()) if path.exists() else [],
+                      "Server operations:",first.calls,"Server error:",first.error,flush=True)
+                kernel=ctypes.WinDLL("kernel32",use_last_error=True)
+                kernel.GetVolumePathNameW.argtypes=[ctypes.c_wchar_p,ctypes.c_wchar_p,ctypes.c_uint32]
+                kernel.GetVolumeInformationW.argtypes=[ctypes.c_wchar_p,ctypes.c_wchar_p,ctypes.c_uint32,
+                    ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_uint32]
+                rootbuf=ctypes.create_unicode_buffer(260)
+                vol=ctypes.create_unicode_buffer(260)
+                fs=ctypes.create_unicode_buffer(260)
+                value=str(path)+"\\"
+                print("GetVolumePathNameW",kernel.GetVolumePathNameW(value,rootbuf,260),rootbuf.value)
+                result=kernel.GetVolumeInformationW(value,vol,260,None,None,None,fs,260)
+                print("GetVolumeInformationW",result,vol.value,fs.value,ctypes.get_last_error())
                 raise AssertionError("Automatic mount not ready: "+str(row))
             def closed(server):
                 server.thread.join(10)

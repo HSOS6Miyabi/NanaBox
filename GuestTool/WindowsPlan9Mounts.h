@@ -148,7 +148,17 @@ public:
     {
         if(!Alive()) return false;
         auto label=L"NanaBox9P-"+std::to_wstring(Pid);
-        return Mounted(Target,label.c_str());
+        // Directory mount points may be NTFS reparse points rather than
+        // registered volume mount paths. Query the mounted directory handle.
+        auto attributes=GetFileAttributesW(Target.c_str());
+        if(attributes==INVALID_FILE_ATTRIBUTES || !(attributes&FILE_ATTRIBUTE_DIRECTORY)) return false;
+        NativeHandle directory(CreateFileW(Target.c_str(),FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,nullptr));
+        if(!directory.Valid()) return false;
+        wchar_t volume[MAX_PATH]{},filesystem[MAX_PATH]{};
+        return GetVolumeInformationByHandleW(directory.Get(),volume,MAX_PATH,nullptr,nullptr,nullptr,filesystem,MAX_PATH) &&
+            Equal(volume,label) && Equal(filesystem,L"NanaBox9P");
     }
     void Signal() const {if(Alive()) SetEvent(StopEvent.Get());}
     void WaitReady()
