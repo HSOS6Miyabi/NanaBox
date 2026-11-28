@@ -59,12 +59,35 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .\GuestTool\nanabox-gpu.exe --self-test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and test native Linux GuestTool
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y nlohmann-json3-dev libssl-dev
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/GuestTool.cpp -lcrypto -o GuestTool/nanabox-guest-tool
+          GuestTool/nanabox-guest-tool --self-test
+      - name: Build and test native Windows GuestTool
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'MSVC was not found' }
+          $inc = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\include"
+          $cmd = 'call "' + $vs + '\VC\Auxiliary\Build\vcvars64.bat" && cl /nologo /EHsc /std:c++17 /W4 /O2 /MT /I"' + $inc + '" GuestTool\GuestTool.cpp /Fe:GuestTool\nanabox-guest-tool.exe'
+          cmd /c $cmd
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\GuestTool\nanabox-guest-tool.exe --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
           name: NanaBox-GuestTool-${{ matrix.os }}
           path: |
             GuestTool/gns.py
+            GuestTool/GuestTool.cpp
+            GuestTool/nanabox-guest-tool
+            GuestTool/nanabox-guest-tool.exe
             GuestTool/nanabox-plan9
             GuestTool/Plan9.cpp
             GuestTool/WddmGuest.cpp
