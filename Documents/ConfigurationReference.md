@@ -1163,6 +1163,8 @@ Set `MirroredNetworking` to `true` on a compatible Windows host with the WSL net
 
 `MirroredAutoReservePorts` defaults to `true`. The service periodically detects guest listening TCP and bound UDP ports and requests their HCN reservations. Set it to `false` to use only explicit reservations. `MirroredTcpPorts` and `MirroredUdpPorts` are arrays of port numbers from 1 to 65535, reserved before the guest starts. Use explicit reservations for services that require a port before the first synchronization cycle. Port conflicts are displayed in the status. Automatic reservation is periodic and does not intercept each bind operation.
 
+`MirroredDnsTunneling` (default `false`) sends DNS queries to the Windows host resolver through Hyper-V sockets. Enable DNS tunneling when installing the guest service as well. See the [guest service guide](../GuestNetworkService/README.md).
+
 `MirroredFirewallCreatorId` optionally selects a registered Hyper-V firewall VM creator GUID. Configure its policy and rules in Host management. A compatible HCN/Hyper-V firewall implementation is required. Saving VM state temporarily removes dynamic mirrored interfaces and releases GPU assignments. On restoration, NanaBox creates mirrored endpoints again and restores the configured GPU assignments; connections using removed interfaces may need to reconnect.
 
 ### Display options

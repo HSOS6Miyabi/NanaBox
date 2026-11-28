@@ -1262,6 +1262,9 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
         throw std::exception("Invalid Memory Size");
     }
 
+    if (Result.MirroredDnsTunneling && !Result.MirroredNetworking)
+        throw std::exception("DNS tunneling requires mirrored networking");
+
     return Result;
 }
 

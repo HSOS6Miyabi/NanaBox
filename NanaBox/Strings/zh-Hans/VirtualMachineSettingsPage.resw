@@ -1989,4 +1989,6 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve">
     <value>压缩复制流量</value>
   </data>
+  <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>通过宿主机解析 DNS（需要客户机服务）</value></data>
+  <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS 隧道需要启用镜像网络。</value></data>
 </root>

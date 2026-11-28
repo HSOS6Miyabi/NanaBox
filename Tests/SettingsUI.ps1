@@ -254,6 +254,7 @@ try {
     }
     Set-Check 'MirroredNetworkingCheckBox' $true
     Set-Check 'MirroredAutoReservePortsCheckBox' $false
+    Set-Check 'MirroredDnsTunnelingCheckBox' $true
     Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'
     Set-Text 'MirroredTcpPortsTextBox' '8080'
     Set-Text 'MirroredUdpPortsTextBox' '5353'
@@ -566,6 +567,7 @@ try {
     Assert-Equal $saved.Gpu.SelectedDevices[0] 'UI-test-GPU' 'Selected GPU'
     Assert-Equal $saved.MirroredNetworking $true 'Mirrored mode'
     Assert-Equal $saved.MirroredAutoReservePorts $false 'Automatic mirrored port reservations'
+    Assert-Equal $saved.MirroredDnsTunneling $true 'Mirrored DNS tunneling'
     Assert-Equal $saved.MirroredTcpPorts[0] '8080' 'Mirrored TCP port'
     Assert-Equal $saved.MirroredUdpPorts[0] '5353' 'Mirrored UDP port'
     Assert-Equal $saved.MirroredIgnoredPorts[0] '53' 'Excluded automatic port'

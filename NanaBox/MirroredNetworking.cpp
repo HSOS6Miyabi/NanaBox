@@ -8,6 +8,7 @@
 #include <ShlObj.h>
 #include <knownfolders.h>
 #include <wincrypt.h>
+#include <windns.h>
 #include <array>
 #include <algorithm>
 #include <functional>
@@ -36,6 +37,7 @@ namespace
     using Json = nlohmann::json;
     using namespace NanaBox;
     constexpr GUID GnsServiceId{27453, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
+    constexpr GUID DnsServiceId{27454, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr std::uint32_t MaxMessage = 256 * 1024;
 
     std::string GuidString(GUID const& Value)
@@ -140,18 +142,15 @@ namespace
         }
     }
 
-    Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop,
-        unsigned TimeoutSeconds = 90)
+    void ConnectGuest(Socket& Connection, winrt::guid const& RuntimeId, GUID const& ServiceId,
+        std::atomic<bool> const& Stop)
     {
-        auto Body = Request.dump();
-        if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
-        Socket Connection;
         Connection.Value = ::socket(AF_HYPERV, SOCK_STREAM, HV_PROTOCOL_RAW);
         if (Connection.Value == INVALID_SOCKET) CheckSocket(SOCKET_ERROR);
         SOCKADDR_HV Address{};
         Address.Family = AF_HYPERV;
         Address.VmId = RuntimeId;
-        Address.ServiceId = GnsServiceId;
+        Address.ServiceId = ServiceId;
         u_long NonBlocking = 1;
         CheckSocket(::ioctlsocket(Connection.Value, FIONBIO, &NonBlocking));
         int Connected = ::connect(Connection.Value, reinterpret_cast<sockaddr*>(&Address), sizeof(Address));
@@ -165,6 +164,15 @@ namespace
             CheckSocket(::getsockopt(Connection.Value, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&ConnectError), &Length));
             if (ConnectError) winrt::throw_hresult(HRESULT_FROM_WIN32(ConnectError));
         }
+    }
+
+    Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop,
+        unsigned TimeoutSeconds = 90)
+    {
+        auto Body = Request.dump();
+        if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
+        Socket Connection;
+        ConnectGuest(Connection, RuntimeId, GnsServiceId, Stop);
         auto End = std::chrono::steady_clock::now() + std::chrono::seconds(TimeoutSeconds);
         auto Length = ::htonl(static_cast<u_long>(Body.size()));
         Transfer(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length), true, End, Stop);
@@ -325,10 +333,12 @@ namespace
         return Result;
     }
 
-    void RegisterGuestSocket()
+    void RegisterGuestSocket(bool Dns = false)
     {
-        constexpr wchar_t Path[] = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
-        constexpr wchar_t Name[] = L"NanaBox Guest Network Service";
+        auto Path = Dns
+            ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3e-facb-11e6-bd58-64006a7986d3}"
+            : L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
+        auto Name = Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
         HKEY Key = nullptr;
         DWORD Disposition = 0;
         winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, Path, 0, nullptr, 0,
@@ -337,7 +347,7 @@ namespace
         if (Disposition == REG_CREATED_NEW_KEY)
         {
             winrt::check_win32(::RegSetValueExW(Key, L"ElementName", 0, REG_SZ,
-                reinterpret_cast<BYTE const*>(Name), sizeof(Name)));
+                reinterpret_cast<BYTE const*>(Name), static_cast<DWORD>((::wcslen(Name) + 1) * sizeof(wchar_t))));
         }
         else
         {
@@ -365,6 +375,180 @@ namespace
         if (!Address) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND), winrt::to_hstring(Name));
         return reinterpret_cast<T>(Address);
     }
+
+    // The host opens connections to the guest just as it does for GNS.
+    // No wildcard host socket or network-facing DNS listener is required.
+    struct DnsTunnel
+    {
+        using Query = decltype(&::DnsQueryRaw);
+        using Cancel = decltype(&::DnsCancelQueryRaw);
+        using Free = decltype(&::DnsQueryRawResultFree);
+
+        winrt::guid RuntimeId;
+        HMODULE Module = nullptr;
+        Query QueryRaw = nullptr;
+        Cancel CancelRaw = nullptr;
+        Free FreeResult = nullptr;
+        std::atomic<bool> Stop{false};
+        std::atomic<unsigned> Connected{0};
+        std::atomic<std::uint64_t> Queries{0}, Failures{0};
+        std::vector<std::thread> Workers;
+
+        explicit DnsTunnel(winrt::guid const& Id) : RuntimeId(Id) {}
+
+        ~DnsTunnel()
+        {
+            Stop = true;
+            for (auto& Worker : Workers)
+                if (Worker.joinable()) Worker.join();
+            if (Module) ::FreeLibrary(Module);
+        }
+
+        void Start()
+        {
+            Module = ::LoadLibraryExW(L"dnsapi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+            if (!Module) winrt::throw_last_error();
+            QueryRaw = Import<Query>(Module, "DnsQueryRaw");
+            CancelRaw = Import<Cancel>(Module, "DnsCancelQueryRaw");
+            FreeResult = Import<Free>(Module, "DnsQueryRawResultFree");
+            if (QueryRaw(nullptr, nullptr) == ERROR_CALL_NOT_IMPLEMENTED)
+                winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_CALL_NOT_IMPLEMENTED));
+            RegisterGuestSocket(true);
+            for (unsigned i = 0; i < 4; ++i)
+                Workers.emplace_back([this]() { Run(); });
+        }
+
+        struct Completion
+        {
+            winrt::handle Event;
+            DNS_QUERY_RAW_RESULT* Result = nullptr;
+        };
+
+        static void WINAPI Complete(void* Context, DNS_QUERY_RAW_RESULT* Result) noexcept
+        {
+            auto* State = static_cast<Completion*>(Context);
+            State->Result = Result;
+            ::SetEvent(State->Event.get());
+        }
+
+        static bool ValidQuery(std::vector<BYTE> const& Bytes)
+        {
+            if (Bytes.size() < 18 || Bytes.size() > 65536 || Bytes[0] > 1)
+                return false;
+            auto* Dns = Bytes.data() + 1;
+            auto Size = Bytes.size() - 1;
+            // Standard unicast query, one question, no answer or authority records.
+            if ((Dns[2] & 0xf8) || Dns[4] || Dns[5] != 1 ||
+                Dns[6] || Dns[7] || Dns[8] || Dns[9])
+                return false;
+            size_t Offset = 12;
+            while (Offset < Size && Offset < 267)
+            {
+                auto Length = Dns[Offset++];
+                if (!Length) return Offset + 4 <= Size;
+                if (Length > 63 || Offset + Length >= Size) return false;
+                Offset += Length;
+            }
+            return false;
+        }
+
+        std::vector<BYTE> Resolve(std::vector<BYTE> const& Bytes)
+        {
+            if (!ValidQuery(Bytes) || Stop) return {};
+            bool Tcp = Bytes[0] == 1;
+            auto Length = Bytes.size() - 1;
+            std::vector<BYTE> Packet;
+            if (Tcp)
+            {
+                Packet.push_back(static_cast<BYTE>(Length >> 8));
+                Packet.push_back(static_cast<BYTE>(Length));
+            }
+            Packet.insert(Packet.end(), Bytes.begin() + 1, Bytes.end());
+            Completion State;
+            State.Event.attach(::CreateEventW(nullptr, TRUE, FALSE, nullptr));
+            winrt::check_pointer(State.Event.get());
+            DNS_QUERY_RAW_CANCEL CancelHandle{};
+            DNS_QUERY_RAW_REQUEST Request{};
+            Request.version = 1;
+            Request.resultsVersion = 1;
+            Request.dnsQueryRawSize = static_cast<ULONG>(Packet.size());
+            Request.dnsQueryRaw = Packet.data();
+            Request.queryOptions = DNS_QUERY_NO_MULTICAST;
+            Request.protocol = Tcp ? DNS_PROTOCOL_TCP : DNS_PROTOCOL_UDP;
+            Request.sourceAddr.Ipv4.sin_family = AF_INET;
+            Request.sourceAddr.Ipv4.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+            Request.queryCompletionCallback = Complete;
+            Request.queryContext = &State;
+            auto Status = QueryRaw(&Request, &CancelHandle);
+            if (Status != DNS_REQUEST_PENDING) return {};
+            auto End = std::chrono::steady_clock::now() + std::chrono::seconds(12);
+            while (::WaitForSingleObject(State.Event.get(), 100) != WAIT_OBJECT_0)
+            {
+                if (Stop || std::chrono::steady_clock::now() >= End)
+                {
+                    // Windows completes the callback after cancellation. Its
+                    // context and cancel handle must remain valid until then.
+                    CancelRaw(&CancelHandle);
+                    ::WaitForSingleObject(State.Event.get(), INFINITE);
+                    break;
+                }
+            }
+            auto ReleaseResult = Mile::ScopeExitTaskHandler([&]() {
+                if (State.Result) FreeResult(State.Result);
+            });
+            if (!State.Result || !State.Result->queryRawResponse || Stop) return {};
+            auto* Data = State.Result->queryRawResponse;
+            auto Size = static_cast<size_t>(State.Result->queryRawResponseSize);
+            if (Tcp)
+            {
+                if (Size < 2 || ((size_t(Data[0]) << 8) | Data[1]) != Size - 2)
+                    return {};
+                Data += 2;
+                Size -= 2;
+            }
+            if (Size < 12 || Size > 65535 || !(Data[2] & 0x80)) return {};
+            std::vector<BYTE> Result(Data, Data + Size);
+            // Keep the client's transaction ID independent of host DNS IDs.
+            Result[0] = Bytes[1];
+            Result[1] = Bytes[2];
+            return Result;
+        }
+
+        void Run() noexcept
+        {
+            while (!Stop)
+            {
+                try
+                {
+                    Socket Connection;
+                    ConnectGuest(Connection, RuntimeId, DnsServiceId, Stop);
+                    ++Connected;
+                    auto Disconnect = Mile::ScopeExitTaskHandler([&]() { --Connected; });
+                    while (!Stop)
+                    {
+                        auto End = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+                        u_long WireSize = 0;
+                        Transfer(Connection.Value, reinterpret_cast<char*>(&WireSize), sizeof(WireSize), false, End, Stop);
+                        auto Size = ::ntohl(WireSize);
+                        if (!Size) continue; // idle heartbeat
+                        if (Size > 65536) throw winrt::hresult_invalid_argument();
+                        std::vector<BYTE> Bytes(Size);
+                        Transfer(Connection.Value, reinterpret_cast<char*>(Bytes.data()), Size, false, End, Stop);
+                        auto Result = Resolve(Bytes);
+                        if (Result.empty()) ++Failures;
+                        else ++Queries;
+                        WireSize = ::htonl(static_cast<u_long>(Result.size()));
+                        End = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                        Transfer(Connection.Value, reinterpret_cast<char*>(&WireSize), sizeof(WireSize), true, End, Stop);
+                        if (!Result.empty())
+                            Transfer(Connection.Value, reinterpret_cast<char*>(Result.data()), Result.size(), true, End, Stop);
+                    }
+                }
+                catch (...) {}
+                if (!Stop) std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+        }
+    };
 
     unsigned ParsePort(std::string const& Value)
     {
@@ -407,6 +591,7 @@ struct NanaBox::MirroredNetworking::Impl
     GUID RpcId{};
     bool RpcRegistered = false;
     bool WsaStarted = false;
+    std::unique_ptr<DnsTunnel> Dns;
     HCN_PORT_RANGE_RESERVATION Range{};
     std::vector<HANDLE> Reservations;
     using PortKey = std::pair<HCN_PORT_PROTOCOL, USHORT>;
@@ -528,6 +713,7 @@ struct NanaBox::MirroredNetworking::Impl
     ~Impl()
     {
         StopWorker();
+        Dns.reset();
         UnsubscribeHost();
         for (auto& Entry : Endpoints)
         {
@@ -557,6 +743,10 @@ struct NanaBox::MirroredNetworking::Impl
         std::lock_guard Lock(Mutex);
         auto Result = CurrentDiagnostics;
         Result["Mode"] = "Mirrored";
+        Result["DnsTunneling"] = Configuration.MirroredDnsTunneling;
+        if (Dns)
+            Result["DnsTunnel"] = {{"ConnectedChannels", Dns->Connected.load()},
+                {"ResolvedQueries", Dns->Queries.load()}, {"FailedQueries", Dns->Failures.load()}};
         Result["RuntimeId"] = GuidString(RuntimeId);
         Result["Status"] = winrt::to_string(CurrentStatus);
         if (LastSuccessfulSync) Result["SecondsSinceLastSuccessfulSync"] = (::GetTickCount64() - LastSuccessfulSync) / 1000;
@@ -618,6 +808,11 @@ struct NanaBox::MirroredNetworking::Impl
                 if (IgnoredPorts.count(ParsePort(Value)))
                     throw winrt::hresult_invalid_argument(L"An ignored mirrored port cannot be explicitly reserved");
         RegisterGuestSocket();
+        if (Configuration.MirroredDnsTunneling)
+        {
+            Dns = std::make_unique<DnsTunnel>(RuntimeId);
+            Dns->Start();
+        }
         SubscribeHost();
         CreateGuestService();
         StartWorker();
@@ -851,6 +1046,7 @@ struct NanaBox::MirroredNetworking::Impl
             {"Settings", {{"Interface", Desired.Interface}, {"Addresses", Addresses},
                 {"Routes", Routes}, {"DNS", {{"ServerList", Desired.Dns}, {"Suffix", Desired.DnsSuffix}}},
                 {"DiscoverPorts", Configuration.MirroredAutoReservePorts},
+                {"DnsTunnel", Configuration.MirroredDnsTunneling},
                 {"PortRange", {{"Start", Range.startingPort}, {"End", Range.endingPort}}}}}}, Stop);
         Details["HostInterfaceId"] = GuidString(Entry.HostInterface);
         Details["EndpointId"] = GuidString(Entry.Id);
@@ -860,6 +1056,12 @@ struct NanaBox::MirroredNetworking::Impl
         Details["Routes"] = Routes;
         Details["DnsServers"] = Desired.Dns;
         Details["DnsSuffix"] = Desired.DnsSuffix;
+        if (Configuration.MirroredDnsTunneling)
+        {
+            if (!Reply.value("DnsTunnel", false))
+                throw winrt::hresult_error(E_FAIL, L"The guest service must enable DNS tunneling.");
+            Details["DnsTunnel"] = true;
+        }
         Details["GuestAcknowledged"] = true;
         std::set<PortKey> Ports;
         if (Configuration.MirroredAutoReservePorts)

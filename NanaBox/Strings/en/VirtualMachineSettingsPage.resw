@@ -1989,4 +1989,6 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsReplicaCompressionCheckBox.Content" xml:space="preserve">
     <value>Compress replication traffic</value>
   </data>
+  <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>Tunnel DNS through the host resolver (guest service required)</value></data>
+  <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS tunneling requires mirrored networking.</value></data>
 </root>

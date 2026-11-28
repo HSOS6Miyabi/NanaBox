@@ -968,6 +968,7 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     }
     if (!Value.MirroredAutoReservePorts)
         Result["MirroredAutoReservePorts"] = false;
+    if (Value.MirroredDnsTunneling) Result["MirroredDnsTunneling"] = true;
     if (!Value.MirroredFirewallCreatorId.empty())
     {
         Result["MirroredFirewallCreatorId"] = Value.MirroredFirewallCreatorId;
@@ -1184,6 +1185,7 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
         Mile::Json::GetSubKey(Value, "MirroredNetworking"));
     Result.MirroredAutoReservePorts = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "MirroredAutoReservePorts"), Result.MirroredAutoReservePorts);
+    Result.MirroredDnsTunneling = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredDnsTunneling"));
     Result.MirroredFirewallCreatorId = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "MirroredFirewallCreatorId"));
     for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredTcpPorts")))
