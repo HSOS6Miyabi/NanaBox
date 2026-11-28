@@ -21,6 +21,8 @@
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include <shellapi.h>
+#include <commctrl.h>
+#pragma comment(lib, "comctl32.lib")
 #include <virtdisk.h>
 #pragma comment(lib, "virtdisk.lib")
 #include "SponsorPage.h"
@@ -197,6 +199,25 @@ int WINAPI wWinMain(
             try { NanaBox::NormalizeNetworkAdapterIds(Duplicate); }
             catch (winrt::hresult_error const&) { RejectedDuplicate = true; }
             if (!RejectedDuplicate) return 25;
+            for (bool Pending : {false, true})
+            for (bool Restarting : {false, true})
+            for (bool Restart : {false, true})
+            for (bool Fail : {false, true})
+            {
+                bool P = Pending, R = Restarting, Caught = false;
+                unsigned Calls = 0;
+                try
+                {
+                    NanaBox::RequestVmStop(Restart, P, R, [&]()
+                    {
+                        ++Calls;
+                        if (Fail) throw std::runtime_error("Injected stop failure");
+                    });
+                }
+                catch (std::runtime_error const&) { Caught = true; }
+                if (Calls != 1 || Caught != Fail || P != (Fail ? Pending : true) ||
+                    R != (Fail ? Restarting : Restart)) return 28;
+            }
             // Fault injection covers every forward operation in the save transaction.
             for (auto InitiallyPaused : {false, true})
             for (int Fail = 0; Fail <= 7; ++Fail)
@@ -299,6 +320,58 @@ int WINAPI wWinMain(
                 return 0;
             }
             catch (...) { return 18; }
+        }
+        // Exercise the real XAML toolbar without creating a VM or RDP connection.
+        if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-toolbar"))
+        {
+            if (ArgumentCount != 3) return ERROR_INVALID_PARAMETER;
+            try
+            {
+                struct CommandLog
+                {
+                    std::wstring Path;
+                    std::string Content;
+                    bool Failed = false;
+                } Log{::GetAbsolutePath(Arguments[2]), {}};
+                ::WriteAllTextToUtf8TextFile(Log.Path, Log.Content);
+                HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
+                if (!WindowHandle) return -1;
+                auto CloseWindow = Mile::ScopeExitTaskHandler([&]()
+                {
+                    if (::IsWindow(WindowHandle)) ::DestroyWindow(WindowHandle);
+                });
+                if (!::SetWindowSubclass(WindowHandle,
+                    [](HWND Window, UINT Message, WPARAM WParam, LPARAM LParam,
+                        UINT_PTR, DWORD_PTR Reference) -> LRESULT
+                    {
+                        if (Message == WM_COMMAND && HIWORD(WParam) == BN_CLICKED &&
+                            LOWORD(WParam) >= NanaBox::MainWindowCommands::EnterBasicSession &&
+                            LOWORD(WParam) <= NanaBox::MainWindowCommands::Sponsor)
+                        {
+                            auto& State = *reinterpret_cast<CommandLog*>(Reference);
+                            try
+                            {
+                                State.Content += std::to_string(LOWORD(WParam)) + "\n";
+                                ::WriteAllTextToUtf8TextFile(State.Path, State.Content);
+                            }
+                            catch (...)
+                            {
+                                State.Failed = true;
+                                ::PostMessageW(Window, WM_CLOSE, 0, 0);
+                            }
+                            return 0;
+                        }
+                        return ::DefSubclassProc(Window, Message, WParam, LParam);
+                    }, 1, reinterpret_cast<DWORD_PTR>(&Log))) return -1;
+                auto Page = winrt::make<winrt::NanaBox::implementation::MainWindowControl>(
+                    WindowHandle, false);
+                if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
+                    return -1;
+                ::SetWindowTextW(WindowHandle, L"NanaBox Toolbar Test");
+                auto Result = ::ShowXamlWindow(WindowHandle, 1000, 220, nullptr);
+                return Log.Failed ? -1 : Result;
+            }
+            catch (...) { return -1; }
         }
         if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--edit-config"))
         {

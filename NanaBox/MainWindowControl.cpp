@@ -37,8 +37,8 @@ namespace winrt
 namespace winrt::NanaBox::implementation
 {
     MainWindowControl::MainWindowControl(
-        _In_ HWND WindowHandle) :
-        m_WindowHandle(WindowHandle)
+        _In_ HWND WindowHandle, bool EnableStore) :
+        m_WindowHandle(WindowHandle), m_EnableStore(EnableStore)
     {
 
     }
@@ -50,12 +50,17 @@ namespace winrt::NanaBox::implementation
         this->m_DispatcherQueue =
             winrt::DispatcherQueue::GetForCurrentThread();
 
-        this->m_StoreContext = winrt::StoreContext::GetDefault();
-        if (this->m_StoreContext)
+        if (this->m_EnableStore)
         {
-            winrt::check_hresult(
-                this->m_StoreContext.as<IInitializeWithWindow>()->Initialize(
-                    this->m_WindowHandle));
+            try
+            {
+                this->m_StoreContext = winrt::StoreContext::GetDefault();
+                if (this->m_StoreContext)
+                    winrt::check_hresult(
+                        this->m_StoreContext.as<IInitializeWithWindow>()->Initialize(
+                            this->m_WindowHandle));
+            }
+            catch (...) { this->m_StoreContext = nullptr; }
         }
     }
 
@@ -66,7 +71,7 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
-        this->RefreshSponsorButtonContent();
+        if (this->m_EnableStore) this->RefreshSponsorButtonContent();
     }
 
     void MainWindowControl::EnhancedSessionButtonClick(
@@ -306,7 +311,15 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
-        winrt::handle(Mile::CreateThread([=]()
+        ::PostMessageW(this->m_WindowHandle, WM_COMMAND,
+            MAKEWPARAM(NanaBox::MainWindowCommands::Sponsor, BN_CLICKED), 0);
+    }
+
+    void MainWindowControl::AcquireSponsorEdition()
+    {
+        auto Weak = this->get_weak();
+        auto Dispatcher = this->m_DispatcherQueue;
+        winrt::handle(Mile::CreateThread([Weak, Dispatcher]()
         {
             DWORD ShellProcessId = ::GetShellProcessId();
             if (static_cast<DWORD>(-1) == ShellProcessId)
@@ -356,6 +369,11 @@ namespace winrt::NanaBox::implementation
                 return;
             }
 
+            auto FreeAttributes = Mile::ScopeExitTaskHandler([&]()
+            {
+                ::DeleteProcThreadAttributeList(AttributeList);
+            });
+
             if (!::UpdateProcThreadAttribute(
                 AttributeList,
                 0,
@@ -399,11 +417,15 @@ namespace winrt::NanaBox::implementation
                 L"Software\\NanaBox",
                 L"SponsorEdition");
 
-            this->RefreshSponsorButtonContent();
+            if (Dispatcher)
+                Dispatcher.TryEnqueue(winrt::DispatcherQueuePriority::Normal, [Weak]()
+                {
+                    if (auto Instance = Weak.get()) Instance->RefreshSponsorButtonContent();
+                });
         }));
     }
 
-    bool MainWindowControl::CheckSponsorEditionLicense()
+    bool MainWindowControl::CheckSponsorEditionLicense(winrt::StoreContext const& Context)
     {
         {
             DWORD Data = 0;
@@ -423,10 +445,10 @@ namespace winrt::NanaBox::implementation
 
         bool Sponsored = false;
 
-        if (this->m_StoreContext)
+        if (Context)
         {
             winrt::StoreProductQueryResult ProductQueryResult =
-                this->m_StoreContext.GetStoreProductsAsync(
+                Context.GetStoreProductsAsync(
                     { L"Durable" },
                     { L"9P3KMWM424WK" }).get();
             for (auto Item : ProductQueryResult.Products())
@@ -452,24 +474,28 @@ namespace winrt::NanaBox::implementation
 
     void MainWindowControl::RefreshSponsorButtonContent()
     {
-        winrt::handle(Mile::CreateThread([=]()
+        auto Weak = this->get_weak();
+        auto Dispatcher = this->m_DispatcherQueue;
+        auto Context = this->m_StoreContext;
+        winrt::handle(Mile::CreateThread([Weak, Dispatcher, Context]()
         {
-            bool Sponsored = this->CheckSponsorEditionLicense();
-
-            if (!this->m_DispatcherQueue)
+            try
             {
-                return;
+                winrt::init_apartment(winrt::apartment_type::multi_threaded);
+                auto Apartment = Mile::ScopeExitTaskHandler([]() { winrt::uninit_apartment(); });
+                bool Sponsored = MainWindowControl::CheckSponsorEditionLicense(Context);
+                if (Dispatcher)
+                    Dispatcher.TryEnqueue(winrt::DispatcherQueuePriority::Normal, [Weak, Sponsored]()
+                    {
+                        if (auto Instance = Weak.get())
+                            Instance->SponsorButton().Content(
+                                winrt::box_value(Mile::WinRT::GetLocalizedString(
+                                    Sponsored
+                                    ? L"MainWindow/SponsorButton/SponsoredText"
+                                    : L"MainWindow/SponsorButton/AcquireText")));
+                    });
             }
-            this->m_DispatcherQueue.TryEnqueue(
-                winrt::DispatcherQueuePriority::Normal,
-                [=]()
-            {
-                this->SponsorButton().Content(
-                    winrt::box_value(Mile::WinRT::GetLocalizedString(
-                        Sponsored
-                        ? L"MainWindow/SponsorButton/SponsoredText"
-                        : L"MainWindow/SponsorButton/AcquireText")));
-            });
+            catch (...) {}
         }));
     }
 }

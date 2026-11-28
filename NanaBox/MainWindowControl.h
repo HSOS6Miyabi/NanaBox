@@ -42,6 +42,7 @@ namespace NanaBox
             ShutdownVirtualMachine = 0x1011,
             PowerOffVirtualMachine = 0x1012,
             SaveVirtualMachine = 0x1013,
+            Sponsor = 0x1014,
         };
     }
 }
@@ -58,7 +59,8 @@ namespace winrt::NanaBox::implementation
     public:
 
         MainWindowControl(
-            _In_ HWND WindowHandle = nullptr);
+            _In_ HWND WindowHandle = nullptr,
+            bool EnableStore = true);
 
         void InitializeComponent();
 
@@ -124,13 +126,16 @@ namespace winrt::NanaBox::implementation
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
+        void AcquireSponsorEdition();
+
     private:
 
         HWND m_WindowHandle;
+        bool m_EnableStore;
         winrt::DispatcherQueue m_DispatcherQueue = nullptr;
         winrt::StoreContext m_StoreContext = nullptr;
 
-        bool CheckSponsorEditionLicense();
+        static bool CheckSponsorEditionLicense(winrt::StoreContext const& Context);
 
         void RefreshSponsorButtonContent();
     };

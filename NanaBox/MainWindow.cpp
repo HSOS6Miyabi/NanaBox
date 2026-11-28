@@ -177,13 +177,12 @@ void NanaBox::MainWindow::OnCommand(
                 if (WasPaused) this->SetVirtualMachinePaused(false);
                 try
                 {
-                    this->m_VirtualMachineRestarting = nID == NanaBox::MainWindowCommands::RestartVirtualMachine;
-                    this->m_VirtualMachine->Shutdown();
-                    this->m_PowerTransitionPending = true;
+                    NanaBox::RequestVmStop(nID == NanaBox::MainWindowCommands::RestartVirtualMachine,
+                        this->m_PowerTransitionPending, this->m_VirtualMachineRestarting,
+                        [&]() { this->m_VirtualMachine->Shutdown(); });
                 }
                 catch (...)
                 {
-                    this->m_VirtualMachineRestarting = false;
                     if (WasPaused) { try { this->SetVirtualMachinePaused(true); } catch (...) {} }
                     throw;
                 }
@@ -194,14 +193,12 @@ void NanaBox::MainWindow::OnCommand(
                 Mile::WinRT::GetLocalizedString(L"MainWindow/ForcePowerOffConfirm").c_str(),
                 L"NanaBox", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES)
             {
-                this->m_VirtualMachineRestarting = false;
-                this->m_VirtualMachine->Terminate();
-                this->m_PowerTransitionPending = true;
+                NanaBox::RequestVmStop(false, this->m_PowerTransitionPending,
+                    this->m_VirtualMachineRestarting, [&]() { this->m_VirtualMachine->Terminate(); });
             }
         }
         catch (...)
         {
-            this->m_PowerTransitionPending = false;
             ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError());
         }
         this->UpdatePowerControls();
@@ -316,6 +313,12 @@ void NanaBox::MainWindow::OnCommand(
     {
         ::ShowAboutDialog(this->m_hWnd);
 
+        break;
+    }
+    case NanaBox::MainWindowCommands::Sponsor:
+    {
+        winrt::get_self<winrt::NanaBox::implementation::MainWindowControl>(
+            this->m_MainWindowControl)->AcquireSponsorEdition();
         break;
     }
     default:
@@ -659,9 +662,8 @@ void NanaBox::MainWindow::OnClose()
     {
         try
         {
-            this->m_VirtualMachineRestarting = false;
-            this->m_VirtualMachine->Terminate();
-            this->m_PowerTransitionPending = true;
+            NanaBox::RequestVmStop(false, this->m_PowerTransitionPending,
+                this->m_VirtualMachineRestarting, [&]() { this->m_VirtualMachine->Terminate(); });
         }
         catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
         this->UpdatePowerControls();

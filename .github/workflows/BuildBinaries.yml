@@ -55,6 +55,11 @@ jobs:
       timeout-minutes: 12
       run: |
         & .\Tests\SettingsUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
+    - name: Main window toolbar commands
+      shell: powershell
+      timeout-minutes: 5
+      run: |
+        & .\Tests\ToolbarUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI\Toolbar"
     - name: Upload GUI test diagnostics
       if: always()
       uses: actions/upload-artifact@v7

@@ -5,6 +5,14 @@
 
 namespace NanaBox
 {
+    template<typename Operation>
+    inline void RequestVmStop(bool Restart, bool& Pending, bool& Restarting, Operation&& Stop)
+    {
+        Stop();
+        Restarting = Restart;
+        Pending = true;
+    }
+
     struct SaveStateOperations
     {
         std::function<void()> ResumeVm, PauseVm, DetachNetwork, RestoreNetwork,
