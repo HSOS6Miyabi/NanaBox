@@ -1,6 +1,6 @@
 # NanaBox Guest Network Service
 
-A guest network configuration agent for Windows and Linux virtual machines. It accepts versioned network configuration requests from the Hyper-V parent partition over Hyper-V sockets (Linux VSOCK port 27453). It identifies a hardware network adapter by its MAC address and applies IPv4/IPv6 addresses, routes, DNS servers and interface state/MTU. It does not accept executable commands.
+NanaBox GuestTool provides guest networking, diagnostics, file exchange and shared-folder management for Windows and Linux virtual machines. It accepts versioned network configuration requests from the Hyper-V parent partition over Hyper-V sockets (Linux VSOCK port 27453). It identifies a hardware network adapter by its MAC address and applies IPv4/IPv6 addresses, routes, DNS servers and interface state/MTU. It does not accept executable commands.
 
 The NanaBox host's MirroredNetworking component registers an HCN guest network service using Microsoft's installed WSL RPC dependency, creates endpoints on HCN flow-steering networks, reserves an ephemeral port range and configured TCP/UDP listening ports, and synchronizes host interface changes over this protocol. Enable Mirrored networking in the VM's Network settings before boot. Use a dedicated guest with its network manager configured for host-managed adapters. The host supports explicit listening-port reservations and optional periodic discovery of non-loopback guest TCP listeners and bound UDP ports. Explicit reservations are acquired before starting the synchronization worker.
 
@@ -74,7 +74,7 @@ Messages use a 4-byte big-endian length followed by UTF-8 JSON (maximum 256 KiB)
 ## Testing
 
 ```sh
-python -m unittest discover -s GuestNetworkService -v
+python -m unittest discover -s GuestTool -v
 ```
 
 The tests verify protocol framing, validation, error replies and command generation for both platforms without modifying runner network settings. Actual Hyper-V socket connectivity and network changes require a Hyper-V host and installed guest agent.
@@ -119,6 +119,10 @@ Enable `MirroredBindCoordination` in the VM network settings and install the gue
 
 ### Plan 9 directory sharing (Linux)
 
-Configure Plan9 shares in the NanaBox VM settings. The Linux installer enables the Plan 9 mount service by default; use `--disable-plan9` to opt out. The service receives the inventory over a separate Hyper-V socket and automatically mounts enabled shares under `/media/<share-name>`. It passes an AF_VSOCK connection directly to the Linux kernel's 9p fd transport, without exposing a TCP port or copying the shared files. Linux requires `CONFIG_9P_FS`, `CONFIG_NET_9P_FD` and Hyper-V sockets. The service must run in the system mount namespace.
+Configure Plan9 shares in the NanaBox VM settings. The Linux installer enables the native C++ Plan 9 mount service by default; use `--disable-plan9` to opt out. The service receives the inventory over a separate Hyper-V socket and automatically mounts enabled shares under `/media/<share-name>`. It passes an AF_VSOCK connection directly to the Linux kernel's 9p fd transport, without exposing a TCP port or copying the shared files. Linux requires `CONFIG_9P_FS`, `CONFIG_NET_9P_FD` and Hyper-V sockets. The service must run in the system mount namespace.
 
 Use `sudo nanabox-plan9 list` to view the available shares, mount points and errors. `sudo nanabox-plan9 mount ShareName` mounts a share on demand; `sudo nanabox-plan9 mount ShareName /mnt/my-share` selects an empty directory with root-owned, non-writable parents. `sudo nanabox-plan9 unmount ShareName` safely unmounts a managed share and suppresses its automatic mounting until explicitly mounted again or the host changes its definition. An explicit mount can specify `--read-only`; it cannot downgrade a read-only host share. The mount service refuses to replace existing filesystems or nonempty directories and uses nosuid and nodev. Busy mounts are reported and never forcibly detached. Stop the service or unmount before changing access mode or removing the host share. Windows guests require a separate Windows 9P filesystem driver.
+
+### Linux GPU driver integration
+
+Select Linux as the guest operating system and enable Share Host Driver Store in the VM GPU settings. The read-only driver repository and host lxss libraries are mounted at `/usr/lib/wsl/drivers` and `/usr/lib/wsl/lib`. The native mount service manages its own loader configuration and login-shell PATH, LD_LIBRARY_PATH and LIBRARY_PATH entries while the library share is mounted. Existing unrelated configuration files are preserved. Linux packages include the native executable; building from source requires a C++17 compiler and Boost.JSON headers. Applications that already loaded GPU libraries may need restarting after a host driver update. A compatible guest dxgkrnl driver and GPU-PV support remain required.

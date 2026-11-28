@@ -33,7 +33,16 @@ if [ "$bind" -eq 1 ]; then
     fi
 fi
 if [ -e /usr/local/bin/nanabox-plan9 ] || [ -L /usr/local/bin/nanabox-plan9 ]; then
-    [ "$(readlink /usr/local/bin/nanabox-plan9 || true)" = /opt/nanabox-gns/plan9.py ] || { echo 'nanabox-plan9 already exists.' >&2; exit 1; }
+    case "$(readlink /usr/local/bin/nanabox-plan9 || true)" in
+        /opt/nanabox-gns/plan9.py|/opt/nanabox-gns/nanabox-plan9) ;;
+        *) echo 'nanabox-plan9 already exists.' >&2; exit 1 ;;
+    esac
+fi
+if [ "$plan9" -eq 1 ] && [ ! -x "$source_dir/nanabox-plan9" ]; then
+    command -v g++ >/dev/null || { echo 'Install a C++17 compiler and Boost.JSON headers, or use the prebuilt GuestTool package.' >&2; exit 1; }
+    native_temp=$(mktemp)
+    trap 'rm -f "$native_temp"' EXIT HUP INT TERM
+    g++ -std=c++17 -O2 -pthread "$source_dir/Plan9.cpp" -o "$native_temp"
 fi
 if systemctl is-active --quiet nanabox-plan9.service; then
     systemctl stop nanabox-plan9.service
@@ -97,13 +106,17 @@ printf '[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /opt/nanabox-gns/gn
 chmod 0644 "$temporary"
 mv -f "$temporary" /etc/systemd/system/nanabox-gns.service.d/50-options.conf
 if [ "$plan9" -eq 1 ]; then
-    install -o root -g root -m 0755 "$source_dir/plan9.py" /opt/nanabox-gns/plan9.py
+    install -o root -g root -m 0755 "${native_temp:-$source_dir/nanabox-plan9}" /opt/nanabox-gns/nanabox-plan9
+    rm -f /opt/nanabox-gns/plan9.py
+    if [ -n "${native_temp:-}" ]; then rm -f "$native_temp"; fi
     install -o root -g root -m 0644 "$source_dir/nanabox-plan9.service" /etc/systemd/system/nanabox-plan9.service
-    ln -sfn /opt/nanabox-gns/plan9.py /usr/local/bin/nanabox-plan9
+    ln -sfn /opt/nanabox-gns/nanabox-plan9 /usr/local/bin/nanabox-plan9
 else
     if systemctl cat nanabox-plan9.service >/dev/null 2>&1; then systemctl disable --now nanabox-plan9.service; fi
-    if [ "$(readlink /usr/local/bin/nanabox-plan9 || true)" = /opt/nanabox-gns/plan9.py ]; then rm -f /usr/local/bin/nanabox-plan9; fi
-    rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py
+    case "$(readlink /usr/local/bin/nanabox-plan9 || true)" in
+        /opt/nanabox-gns/plan9.py|/opt/nanabox-gns/nanabox-plan9) rm -f /usr/local/bin/nanabox-plan9 ;;
+    esac
+    rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py /opt/nanabox-gns/nanabox-plan9
 fi
 systemctl daemon-reload
 systemctl enable --now nanabox-gns.service

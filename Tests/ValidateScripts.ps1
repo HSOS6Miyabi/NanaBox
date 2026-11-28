@@ -17,7 +17,7 @@ $hostSource = [IO.File]::ReadAllText((Join-Path $root 'NanaBox\HostCompute.cpp')
 $embedded = [regex]::Matches($hostSource, 'LR"PS\(([\s\S]*?)\)PS"')
 if ($embedded.Count -lt 2) { throw 'Host management scripts missing' }
 foreach ($script in $embedded) { Assert-Parsed 'HostCompute management script' $script.Groups[1].Value }
-$guestSource = [IO.File]::ReadAllText((Join-Path $root 'GuestNetworkService\gns.py'))
+$guestSource = [IO.File]::ReadAllText((Join-Path $root 'GuestTool\gns.py'))
 $embedded = [regex]::Matches($guestSource, "(?s)^WINDOWS_\w+ = r'''(.*?)'''", [System.Text.RegularExpressions.RegexOptions]::Multiline)
 if ($embedded.Count -lt 2) { throw 'Windows guest scripts missing' }
 foreach ($script in $embedded) { Assert-Parsed 'Windows guest script' $script.Groups[1].Value }

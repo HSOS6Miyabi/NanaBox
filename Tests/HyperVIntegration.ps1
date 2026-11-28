@@ -87,7 +87,7 @@ function Guest-Request([string]$runtimeId,[string]$resource,$settings) {
     $file = Join-Path $env:TEMP ('NanaBox-GNS-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
         @{Version=1; ResourceType=$resource; RequestType='Query'; Settings=$settings} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $file -Encoding UTF8
-        $agent = Join-Path $PSScriptRoot '..\GuestNetworkService\gns.py'
+        $agent = Join-Path $PSScriptRoot '..\GuestTool\gns.py'
         $response = & python $agent send $runtimeId $file
         if ($LASTEXITCODE -ne 0) { throw "Guest request $resource failed: $response" }
         $reply = $response | ConvertFrom-Json

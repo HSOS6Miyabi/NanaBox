@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/python3 -I /opt/nanabox-gns/plan9.py serve
-ExecStopPost=/usr/bin/python3 -I /opt/nanabox-gns/plan9.py cleanup
+ExecStart=/opt/nanabox-gns/nanabox-plan9 serve
+ExecStopPost=/opt/nanabox-gns/nanabox-plan9 cleanup
 Restart=on-failure
 RestartSec=5
 RuntimeDirectory=nanabox-plan9

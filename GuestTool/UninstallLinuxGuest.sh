@@ -4,11 +4,15 @@ if [ "$(id -u)" -ne 0 ]; then echo 'Run as root.' >&2; exit 1; fi
 if systemctl cat nanabox-plan9.service >/dev/null 2>&1; then
     systemctl disable --now nanabox-plan9.service
 fi
-if [ -f /opt/nanabox-gns/plan9.py ]; then
+if [ -x /opt/nanabox-gns/nanabox-plan9 ]; then
+    /opt/nanabox-gns/nanabox-plan9 cleanup
+elif [ -f /opt/nanabox-gns/plan9.py ]; then
     python3 -I /opt/nanabox-gns/plan9.py cleanup
 fi
-if [ "$(readlink /usr/local/bin/nanabox-plan9 || true)" = /opt/nanabox-gns/plan9.py ]; then rm -f /usr/local/bin/nanabox-plan9; fi
-rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py
+case "$(readlink /usr/local/bin/nanabox-plan9 || true)" in
+    /opt/nanabox-gns/plan9.py|/opt/nanabox-gns/nanabox-plan9) rm -f /usr/local/bin/nanabox-plan9 ;;
+esac
+rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py /opt/nanabox-gns/nanabox-plan9
 if systemctl cat nanabox-gns.service >/dev/null 2>&1; then
     systemctl disable --now nanabox-gns.service
 fi
