@@ -160,8 +160,8 @@ namespace NanaBox
                 else if (Action == "HcnCreate")
                 {
                     auto Id = NewId();
-                    auto Name = Kind == "Network" ? Text("Name") : Kind;
-                    Objects.push_back({{"Id", Id}, {"Kind", Kind}, {"Name", Name + " [managed]"},
+                    auto ResourceName = Kind == "Network" ? Text("Name") : Kind;
+                    Objects.push_back({{"Id", Id}, {"Kind", Kind}, {"Name", ResourceName + " [managed]"},
                         {"Managed", true}, {"Properties", A.at("Settings")}});
                     Result = {{"Id", Id}, {"Kind", Kind}};
                 }
