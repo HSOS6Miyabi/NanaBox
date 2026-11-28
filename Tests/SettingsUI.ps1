@@ -145,6 +145,13 @@ function Capture([string]$name) {
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
 try {
+    if (-not $HostIntegration) {
+        Invoke-Control 'OpenButton'
+        $opened = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'OpenConfiguration'}
+        Assert-Equal $opened.Path $config 'Opened configuration path'
+        Invoke-Control 'ReferenceButton'
+        $null = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'Reference'}
+    }
     Select-Tab 'TabGeneral'
     Set-Text 'NameTextBox' 'UI automation saved'
     Set-Text 'ProcessorCountTextBox' '4'
@@ -204,6 +211,14 @@ try {
     $diagnostics = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Mode -eq 'HostPreflight'}
     if ($null -eq $diagnostics.ApiAvailable -or $null -eq $diagnostics.WslDependencyAvailable -or $null -eq $diagnostics.HcnReachable) { throw 'Incomplete host diagnostic result' }
     Invoke-Control 'NetworkCopyButton'
+    if (-not $HostIntegration) {
+        Invoke-Control 'NetworkStatusButton'
+        $null = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Success -and $v.Mode -eq 'VmNetwork' -and -not $v.RetryRequested}
+        Invoke-Control 'NetworkRetryButton'
+        $null = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Success -and $v.Mode -eq 'VmNetwork' -and $v.RetryRequested}
+    } else {
+        if ((Find-Control 'NetworkStatusButton').Current.IsEnabled -or (Find-Control 'NetworkRetryButton').Current.IsEnabled) { throw 'Offline network controls must be disabled' }
+    }
     Set-Check 'MirroredNetworkingCheckBox' $true
     Set-Check 'MirroredAutoReservePortsCheckBox' $false
     Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'

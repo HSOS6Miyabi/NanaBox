@@ -37,13 +37,13 @@
       <Button
         Grid.Column="0"
         HorizontalAlignment="Stretch"
-        Click="GitHubButtonClick"
+        Click="GitHubButtonClick" AutomationProperties.AutomationId="AboutGitHubButton"
         Content="GitHub" />
       <Button
         x:Uid="/AboutPage/CancelButton"
         Grid.Column="2"
         HorizontalAlignment="Stretch"
-        Click="CancelButtonClick"
+        Click="CancelButtonClick" AutomationProperties.AutomationId="AboutCancelButton"
         Content="[Cancel]" />
     </Grid>
   </Grid>

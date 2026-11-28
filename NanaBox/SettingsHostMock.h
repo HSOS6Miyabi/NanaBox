@@ -19,6 +19,20 @@ namespace NanaBox
         };
         auto Data = std::make_shared<State>();
         auto Operations = std::make_shared<SettingsHostOperations>();
+        Operations->NetworkDiagnostics = [](bool Retry)
+        {
+            return winrt::to_hstring(Json{{"Success", true}, {"Mode", "VmNetwork"},
+                {"RetryRequested", Retry}}.dump(2));
+        };
+        Operations->ExternalAction = [](winrt::hstring const& Action, std::wstring const& Path)
+        {
+            if (Action != L"OpenConfiguration" && Action != L"Reference")
+                throw winrt::hresult_invalid_argument();
+            if (Action == L"OpenConfiguration" && Path.empty())
+                throw winrt::hresult_invalid_argument();
+            return winrt::to_hstring(Json{{"Success", true}, {"Operation", winrt::to_string(Action)},
+                {"Path", winrt::to_string(Path)}}.dump(2));
+        };
         auto NewId = []()
         {
             GUID Id{};

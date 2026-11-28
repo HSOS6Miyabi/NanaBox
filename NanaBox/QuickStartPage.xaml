@@ -48,7 +48,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Launch Virtual Machine]"
-        Click="LaunchVirtualMachineButtonClick">
+        Click="LaunchVirtualMachineButtonClick" AutomationProperties.AutomationId="QuickStartLaunchVirtualMachineButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Play" />
           <TextBlock x:Uid="/QuickStartPage/LaunchVirtualMachineButtonTextBlock" Text="[Launch Virtual Machine]" />
@@ -61,7 +61,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Create Virtual Machine]"
-        Click="CreateVirtualMachineButtonClick">
+        Click="CreateVirtualMachineButtonClick" AutomationProperties.AutomationId="QuickStartCreateVirtualMachineButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Add" />
           <TextBlock x:Uid="/QuickStartPage/CreateVirtualMachineButtonTextBlock" Text="[Create Virtual Machine]" />
@@ -74,7 +74,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Virtual Machine Settings]"
-        Click="VirtualMachineSettingsButtonClick">
+        Click="VirtualMachineSettingsButtonClick" AutomationProperties.AutomationId="QuickStartVirtualMachineSettingsButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Setting" />
           <TextBlock x:Uid="/QuickStartPage/VirtualMachineSettingsButtonTextBlock" Text="[Virtual Machine Settings]" />
@@ -87,7 +87,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Create Virtual Hard Disk]"
-        Click="CreateVirtualHardDiskButtonClick">
+        Click="CreateVirtualHardDiskButtonClick" AutomationProperties.AutomationId="QuickStartCreateVirtualHardDiskButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Add" />
           <TextBlock x:Uid="/QuickStartPage/CreateVirtualHardDiskButtonTextBlock" Text="[Create Virtual Hard Disk]" />
@@ -100,7 +100,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Resize Virtual Hard Disk]"
-        Click="ResizeVirtualHardDiskButtonClick">
+        Click="ResizeVirtualHardDiskButtonClick" AutomationProperties.AutomationId="QuickStartResizeVirtualHardDiskButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Zoom" />
           <TextBlock x:Uid="/QuickStartPage/ResizeVirtualHardDiskButtonTextBlock" Text="[Resize Virtual Hard Disk]" />
@@ -113,7 +113,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[Compact Virtual Hard Disk]"
-        Click="CompactVirtualHardDiskButtonClick">
+        Click="CompactVirtualHardDiskButtonClick" AutomationProperties.AutomationId="QuickStartCompactVirtualHardDiskButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="BackToWindow" />
           <TextBlock x:Uid="/QuickStartPage/CompactVirtualHardDiskButtonTextBlock" Text="[Compact Virtual Hard Disk]" />
@@ -126,7 +126,7 @@
         VerticalAlignment="Stretch"
         HorizontalContentAlignment="Stretch"
         AutomationProperties.Name="[About NanaBox]"
-        Click="AboutButtonClick">
+        Click="AboutButtonClick" AutomationProperties.AutomationId="QuickStartAboutButton">
         <StackPanel Margin="16,0" Orientation="Horizontal">
           <SymbolIcon Margin="0,0,16,0" Symbol="Help" />
           <TextBlock x:Uid="/QuickStartPage/AboutButtonTextBlock" Text="[About NanaBox]" />

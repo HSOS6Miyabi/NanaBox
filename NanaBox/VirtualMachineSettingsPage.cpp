@@ -505,8 +505,9 @@ namespace winrt::NanaBox::implementation
         }
 
         {
-            this->NetworkStatusButton().IsEnabled(this->m_MainWindow != nullptr);
-            this->NetworkRetryButton().IsEnabled(this->m_MainWindow != nullptr && this->m_Configuration.MirroredNetworking);
+            this->NetworkStatusButton().IsEnabled(this->m_MainWindow != nullptr || bool(this->m_HostOperations->NetworkDiagnostics));
+            this->NetworkRetryButton().IsEnabled((this->m_MainWindow != nullptr && this->m_Configuration.MirroredNetworking) ||
+                bool(this->m_HostOperations->NetworkDiagnostics));
             this->MirroredNetworkingPanel().Visibility(this->m_MainWindow
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
@@ -1161,6 +1162,11 @@ namespace winrt::NanaBox::implementation
         {
             auto Path = this->m_ConfigurationFilePath;
             if (Path.empty()) return;
+            if (this->m_HostOperations->ExternalAction)
+            {
+                this->ConfigurationStatusTextBox().Text(this->m_HostOperations->ExternalAction(L"OpenConfiguration", Path));
+                return;
+            }
             ::ShowMessageDialog(this->m_WindowHandle,
                 Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsInstructionText"),
                 Mile::WinRT::GetLocalizedString(L"VirtualMachineSettingsPage/SettingsContentText"));
@@ -1180,7 +1186,14 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(Sender);
         UNREFERENCED_PARAMETER(Arguments);
 
-        ::LaunchDocumentation();
+        try
+        {
+            if (this->m_HostOperations->ExternalAction)
+                this->ConfigurationStatusTextBox().Text(this->m_HostOperations->ExternalAction(L"Reference", L""));
+            else
+                ::LaunchDocumentation();
+        }
+        catch (...) { ::ShowSettingsError(this->m_WindowHandle); }
     }
 
     void VirtualMachineSettingsPage::ValidateConfigurationButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
@@ -1581,6 +1594,11 @@ namespace winrt::NanaBox::implementation
                 Data.SetText(this->NetworkDiagnosticsTextBox().Text());
                 winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(Data);
                 winrt::Windows::ApplicationModel::DataTransfer::Clipboard::Flush();
+                return;
+            }
+            if (Action != L"Host" && this->m_HostOperations->NetworkDiagnostics)
+            {
+                this->NetworkDiagnosticsTextBox().Text(this->m_HostOperations->NetworkDiagnostics(Action == L"Retry"));
                 return;
             }
             if (Action == L"Host" || !this->m_MainWindow)

@@ -353,6 +353,26 @@ int WINAPI wWinMain(
             }
             catch (...) { return 18; }
         }
+        if (ArgumentCount == 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-quickstart"))
+        {
+            try
+            {
+                std::wstring ConfigurationFilePath;
+                HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
+                if (!WindowHandle) return -1;
+                auto CloseWindow = Mile::ScopeExitTaskHandler([&]()
+                {
+                    if (::IsWindow(WindowHandle)) ::DestroyWindow(WindowHandle);
+                });
+                auto Page = winrt::make<winrt::NanaBox::implementation::QuickStartPage>(
+                    WindowHandle, &ConfigurationFilePath);
+                if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
+                    return -1;
+                ::SetWindowTextW(WindowHandle, L"NanaBox Quick Start Test");
+                return ::ShowXamlWindow(WindowHandle, 460, 460, nullptr);
+            }
+            catch (...) { return -1; }
+        }
         // Exercise the real XAML toolbar without creating a VM or RDP connection.
         if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-toolbar"))
         {

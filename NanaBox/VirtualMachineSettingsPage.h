@@ -22,6 +22,8 @@ namespace NanaBox
         std::function<void(winrt::hstring const&, bool)> CreateNetwork = CreateManagedNetwork;
         std::function<void(winrt::guid const&)> DeleteNetwork = DeleteManagedNetwork;
         std::function<winrt::hstring(winrt::hstring const&, winrt::hstring const&)> Manage = RunHostManagement;
+        std::function<winrt::hstring(bool)> NetworkDiagnostics;
+        std::function<winrt::hstring(winrt::hstring const&, std::wstring const&)> ExternalAction;
     };
 }
 

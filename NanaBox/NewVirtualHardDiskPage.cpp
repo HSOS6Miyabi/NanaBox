@@ -64,51 +64,42 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
-        winrt::handle(Mile::CreateThread([=]()
+        try
         {
-            try
+            COMDLG_FILTERSPEC SupportedFileTypes[] =
             {
-                COMDLG_FILTERSPEC SupportedFileTypes[] =
-                {
-                    { L"VHDX (*.vhdx)", L"*.vhdx" },
-                    { L"VHD (*.vhd)", L"*.vhd" }
-                };
-                LPWSTR RawFilePath = nullptr;
-                winrt::check_hresult(::ShowFileDialog(
-                    this->m_WindowHandle,
-                    TRUE,
-                    ARRAYSIZE(SupportedFileTypes),
-                    SupportedFileTypes,
-                    nullptr,
-                    L"vhdx",
-                    nullptr,
-                    &RawFilePath));
-                auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
-                {
-                    ::CoTaskMemFree(RawFilePath);
-                });
-                std::wstring FilePath(RawFilePath);
-                if (FilePath.empty())
-                {
-                    return;
-                }
-
-                if (!this->m_DispatcherQueue)
-                {
-                    return;
-                }
-                this->m_DispatcherQueue.TryEnqueue(
-                    winrt::DispatcherQueuePriority::Normal,
-                    [=]()
-                {
-                    this->FileNameTextBox().Text(FilePath);
-                });
-            }
-            catch (...)
+                { L"VHDX (*.vhdx)", L"*.vhdx" },
+                { L"VHD (*.vhd)", L"*.vhd" }
+            };
+            LPWSTR RawFilePath = nullptr;
+            HRESULT Result = ::ShowFileDialog(
+                this->m_WindowHandle,
+                TRUE,
+                ARRAYSIZE(SupportedFileTypes),
+                SupportedFileTypes,
+                nullptr,
+                L"vhdx",
+                nullptr,
+                &RawFilePath);
+            if (Result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+            winrt::check_hresult(Result);
+            if (!RawFilePath) throw winrt::hresult_error(E_UNEXPECTED);
+            auto FreeFilePath = Mile::ScopeExitTaskHandler([RawFilePath]()
             {
-
+                ::CoTaskMemFree(RawFilePath);
+            });
+            std::wstring FilePath(RawFilePath);
+            if (FilePath.empty())
+            {
+                return;
             }
-        }));
+
+            this->FileNameTextBox().Text(FilePath);
+        }
+        catch (...)
+        {
+            ::ShowErrorMessageDialog(this->m_WindowHandle, Mile::WinRT::ToHResultError());
+        }
     }
 
     void NewVirtualHardDiskPage::CreateButtonClick(
