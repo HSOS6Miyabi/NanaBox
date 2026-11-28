@@ -177,6 +177,8 @@ int WINAPI wWinMain(
             NanaBox::VirtualMachineConfiguration Config;
             Config.Name = "SelfTest";
             Config.GuestType = NanaBox::GuestType::Windows;
+            Config.ProcessorCount = 2;
+            Config.MemorySize = 2048;
             {
                 auto InputConfig = Config;
                 InputConfig.Keyboard.ClipboardWindowsUnicode = true;
@@ -187,9 +189,11 @@ int WINAPI wWinMain(
                 try { NanaBox::MakeHcsConfiguration(InputConfig); }
                 catch (std::invalid_argument const&) { Rejected = true; }
                 if (!Rejected) return 54;
+                Rejected = false;
+                try { NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(InputConfig)); }
+                catch (std::invalid_argument const&) { Rejected = true; }
+                if (!Rejected) return 54;
             }
-            Config.ProcessorCount = 2;
-            Config.MemorySize = 2048;
             auto DefaultResources = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Config));
             if (!DefaultResources.AllowMemoryOvercommit || DefaultResources.EnableDeferredCommit ||
                 DefaultResources.ProcessorLimit || DefaultResources.ProcessorWeight ||

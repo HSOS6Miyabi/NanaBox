@@ -297,6 +297,19 @@ nlohmann::json NanaBox::MakePlan9GuestManifest(VirtualMachineConfiguration const
     return Result;
 }
 
+namespace
+{
+void ValidateClipboardConfiguration(NanaBox::VirtualMachineConfiguration const& Configuration)
+{
+    if (!NanaBox::ValidClipboardKeyboardLayout(Configuration.Keyboard.ClipboardKeyboardLayout))
+        throw std::invalid_argument("Clipboard keyboard layout must be Host or an eight-digit hexadecimal KLID.");
+    if (Configuration.Keyboard.ClipboardGtkUnicode && Configuration.GuestType != NanaBox::GuestType::Linux)
+        throw std::invalid_argument("GTK Unicode clipboard input requires a Linux guest.");
+    if (Configuration.Keyboard.ClipboardWindowsUnicode && Configuration.GuestType != NanaBox::GuestType::Windows)
+        throw std::invalid_argument("Windows Unicode clipboard input requires a Windows guest.");
+}
+}
+
 std::string NanaBox::MakeHcsConfiguration(
     NanaBox::VirtualMachineConfiguration const& Configuration)
 {
@@ -306,12 +319,7 @@ std::string NanaBox::MakeHcsConfiguration(
     if (!Configuration.HcsSchemaMinor || Configuration.HcsSchemaMinor > 65535)
         throw std::invalid_argument("Invalid HCS schema minor version");
     NanaBox::ValidatePlan9Shares(Configuration);
-    if (!NanaBox::ValidClipboardKeyboardLayout(Configuration.Keyboard.ClipboardKeyboardLayout))
-        throw std::invalid_argument("Clipboard keyboard layout must be Host or an eight-digit hexadecimal KLID.");
-    if (Configuration.Keyboard.ClipboardGtkUnicode && Configuration.GuestType != NanaBox::GuestType::Linux)
-        throw std::invalid_argument("GTK Unicode clipboard input requires a Linux guest.");
-    if (Configuration.Keyboard.ClipboardWindowsUnicode && Configuration.GuestType != NanaBox::GuestType::Windows)
-        throw std::invalid_argument("Windows Unicode clipboard input requires a Windows guest.");
+    ValidateClipboardConfiguration(Configuration);
     auto Minor = Configuration.HcsSchemaMinor;
     for (auto const& Share : Configuration.Plan9Shares)
         if (!Share.AllowedFiles.empty()) Minor = (std::max)(Minor, 2u);
@@ -1489,6 +1497,7 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
         throw std::exception("Host address loopback requires GELNIC loopback");
 
     NanaBox::ValidatePlan9Shares(Result);
+    ValidateClipboardConfiguration(Result);
     if (!Result.AdditionalHcsSettings.empty())
         (void)NanaBox::MakeHcsConfiguration(Result);
 
