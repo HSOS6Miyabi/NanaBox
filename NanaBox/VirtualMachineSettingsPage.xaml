@@ -1152,6 +1152,12 @@
       <PivotItem x:Uid="/VirtualMachineSettingsPage/TabAdvanced" Header="Advanced" AutomationProperties.AutomationId="TabAdvanced">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="16,4,16,16" Spacing="8">
+            <StackPanel x:Name="HcsExtensionsSection" Spacing="8">
+              <TextBlock x:Uid="/VirtualMachineSettingsPage/HcsExtensionsTitle" Text="Advanced HCS creation settings" FontSize="16" FontWeight="SemiBold" />
+              <TextBox x:Name="HcsSchemaMinorTextBox" x:Uid="/VirtualMachineSettingsPage/HcsSchemaMinor" Header="HCS schema minor version (major 2)" Text="1" AutomationProperties.AutomationId="HcsSchemaMinorTextBox" />
+              <TextBlock x:Uid="/VirtualMachineSettingsPage/HcsExtensionsNote" Text="Enter additional VirtualMachine properties as JSON. Existing managed resources cannot be overwritten. The host validates feature support when creating the VM." TextWrapping="Wrap" Opacity="0.75" />
+              <TextBox x:Name="AdditionalHcsSettingsTextBox" x:Uid="/VirtualMachineSettingsPage/AdditionalHcsSettings" Header="Additional VirtualMachine settings (JSON object)" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxHeight="320" FontFamily="Consolas" AutomationProperties.AutomationId="AdditionalHcsSettingsTextBox" />
+            </StackPanel>
             <StackPanel x:Name="ChipsetInformationSection" Spacing="4">
               <TextBlock
                 x:Uid="/VirtualMachineSettingsPage/ChipsetInformationTitle"

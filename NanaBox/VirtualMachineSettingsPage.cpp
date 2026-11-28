@@ -690,6 +690,10 @@ namespace winrt::NanaBox::implementation
                 : winrt::Visibility::Visible);
             this->PoliciesTextBox().Text(
                 ::MakeSettingLines(this->m_Configuration.Policies));
+            this->HcsExtensionsSection().Visibility(this->m_MainWindow
+                ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+            this->HcsSchemaMinorTextBox().Text(winrt::to_hstring(this->m_Configuration.HcsSchemaMinor));
+            this->AdditionalHcsSettingsTextBox().Text(winrt::to_hstring(this->m_Configuration.AdditionalHcsSettings));
         }
 
         {
@@ -1084,6 +1088,17 @@ namespace winrt::NanaBox::implementation
             {
                 Result.Policies =
                     ::ReadSettingLines(this->PoliciesTextBox());
+                Result.HcsSchemaMinor = ::ReadSettingInteger<std::uint32_t>(this->HcsSchemaMinorTextBox());
+                if (!Result.HcsSchemaMinor || Result.HcsSchemaMinor > 65535)
+                    ::InvalidSetting(::GetSettingsString(L"HcsSchemaMinor.Header"));
+                Result.AdditionalHcsSettings = winrt::to_string(this->AdditionalHcsSettingsTextBox().Text());
+                if (!Result.AdditionalHcsSettings.empty())
+                {
+                    auto Additional = nlohmann::json::parse(Result.AdditionalHcsSettings);
+                    if (!Additional.is_object())
+                        ::InvalidSetting(::GetSettingsString(L"AdditionalHcsSettings.Header"));
+                    Result.AdditionalHcsSettings = Additional.empty() ? std::string() : Additional.dump(2);
+                }
             }
         }
 

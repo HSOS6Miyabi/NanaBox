@@ -1991,4 +1991,8 @@ UseExtendedMaxVpPerSocketLimit</comment>
   </data>
   <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>Tunnel DNS through the host resolver (guest service required)</value></data>
   <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS tunneling requires mirrored networking.</value></data>
+  <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>Advanced HCS creation settings</value></data>
+  <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS schema minor version (major 2)</value></data>
+  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>Enter additional VirtualMachine properties as JSON. Existing managed resources cannot be overwritten. The host validates feature support when creating the VM.</value></data>
+  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
 </root>

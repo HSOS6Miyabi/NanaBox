@@ -164,6 +164,8 @@
           },
           "MirroredNetworking": { "type": "boolean" },
           "MirroredAutoReservePorts": { "type": "boolean", "default": true },
+          "HcsSchemaMinor": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 1 },
+          "AdditionalHcsSettings": { "type": "object", "description": "Additional HCS VirtualMachine creation properties; managed settings cannot be overridden." },
           "MirroredDnsTunneling": { "type": "boolean", "default": false, "description": "Resolve DNS through the Windows host using Hyper-V sockets. Requires mirrored networking and an enabled guest DNS service." },
           "MirroredFirewallCreatorId": { "type": "string" },
           "MirroredTcpPorts": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{1,5}$" } },

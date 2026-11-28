@@ -203,6 +203,8 @@ namespace NanaBox
         ChipsetInformationConfiguration ChipsetInformation;
         VideoMonitorConfiguration VideoMonitor;
         std::vector<std::string> Policies;
+        std::uint32_t HcsSchemaMinor = 1;
+        std::string AdditionalHcsSettings;
         std::vector<Plan9ShareConfiguration> Plan9Shares;
         std::vector<VirtualSmbShareConfiguration> VirtualSmbShares;
     };

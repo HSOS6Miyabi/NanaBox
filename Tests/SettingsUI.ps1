@@ -531,6 +531,8 @@ try {
     }
 
     Select-Tab 'TabAdvanced'
+    Set-Text 'HcsSchemaMinorTextBox' '5'
+    Set-Text 'AdditionalHcsSettingsTextBox' '{"Chipset":{"UseUtc":true}}'
     foreach ($id in @('BaseBoardSerialNumber','ChassisSerialNumber','ChassisAssetTag','Manufacturer','ProductName','ChipsetVersion','SerialNumber','SKUNumber','Family')) {
         Set-Text ($id+'TextBox') ('Test-'+$id)
     }
@@ -554,6 +556,8 @@ try {
     Set-Check 'VirtualSmbShareReadOnlyLabel' $true
     $saved = Save-Config
     Assert-Equal $saved.Name 'UI automation saved' 'Name'
+    Assert-Equal $saved.HcsSchemaMinor 5 'HCS schema minor version'
+    Assert-Equal $saved.AdditionalHcsSettings.Chipset.UseUtc $true 'Advanced HCS properties'
     Assert-Equal $saved.ProcessorCount 4 'CPU'
     Assert-Equal $saved.MemorySize 4096 'Memory'
     Assert-Equal $saved.ProcessorLimit 75000 'CPU limit'

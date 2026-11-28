@@ -969,6 +969,13 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     if (!Value.MirroredAutoReservePorts)
         Result["MirroredAutoReservePorts"] = false;
     if (Value.MirroredDnsTunneling) Result["MirroredDnsTunneling"] = true;
+    if (Value.HcsSchemaMinor != 1) Result["HcsSchemaMinor"] = Value.HcsSchemaMinor;
+    if (!Value.AdditionalHcsSettings.empty())
+    {
+        auto Additional = nlohmann::json::parse(Value.AdditionalHcsSettings);
+        if (!Additional.is_object()) throw std::invalid_argument("AdditionalHcsSettings must be a JSON object");
+        if (!Additional.empty()) Result["AdditionalHcsSettings"] = std::move(Additional);
+    }
     if (!Value.MirroredFirewallCreatorId.empty())
     {
         Result["MirroredFirewallCreatorId"] = Value.MirroredFirewallCreatorId;
@@ -1186,6 +1193,19 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
     Result.MirroredAutoReservePorts = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "MirroredAutoReservePorts"), Result.MirroredAutoReservePorts);
     Result.MirroredDnsTunneling = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredDnsTunneling"));
+    if (Value.contains("HcsSchemaMinor"))
+    {
+        auto const& Minor = Value.at("HcsSchemaMinor");
+        if (!Minor.is_number_integer() || Minor < 1 || Minor > 65535)
+            throw std::invalid_argument("HcsSchemaMinor must be an integer from 1 through 65535");
+        Result.HcsSchemaMinor = Minor.get<std::uint32_t>();
+    }
+    if (Value.contains("AdditionalHcsSettings"))
+    {
+        auto const& Additional = Value.at("AdditionalHcsSettings");
+        if (!Additional.is_object()) throw std::invalid_argument("AdditionalHcsSettings must be a JSON object");
+        if (!Additional.empty()) Result.AdditionalHcsSettings = Additional.dump(2);
+    }
     Result.MirroredFirewallCreatorId = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "MirroredFirewallCreatorId"));
     for (auto const& Port : Mile::Json::ToArray(Mile::Json::GetSubKey(Value, "MirroredTcpPorts")))

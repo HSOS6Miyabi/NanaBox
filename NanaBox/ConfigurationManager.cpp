@@ -18,6 +18,8 @@
 
 #include <Shlwapi.h>
 #include <set>
+#include <algorithm>
+#include <cctype>
 
 namespace NanaBox
 {
@@ -105,13 +107,79 @@ nlohmann::json NanaBox::MakeHcsScsiDeviceConfiguration(
     return Result;
 }
 
+namespace
+{
+    std::string LowerHcsKey(std::string Key)
+    {
+        std::transform(Key.begin(), Key.end(), Key.begin(),
+            [](unsigned char Ch) { return static_cast<char>(std::tolower(Ch)); });
+        return Key;
+    }
+
+    void MergeHcsSettings(nlohmann::json& Target, nlohmann::json const& Additional,
+        std::string const& Path, unsigned Depth = 0)
+    {
+        if (!Additional.is_object() || Depth > 32)
+            throw std::invalid_argument("Invalid HCS settings object or nesting depth: " + Path);
+        // Keep a single source of truth for settings that have dedicated
+        // controls, runtime updates or host-side resource provisioning.
+        static const std::map<std::string, std::set<std::string>> Managed = {
+            {"virtualmachine", {"gueststate", "restorestate"}},
+            {"virtualmachine/chipset", {"baseboardserialnumber", "chassisserialnumber", "chassisassettag", "systeminformation"}},
+            {"virtualmachine/chipset/uefi", {"console", "applysecureboottemplate", "secureboottemplateid"}},
+            {"virtualmachine/computetopology/memory", {"sizeinmb", "allowovercommit", "enabledeferredcommit"}},
+            {"virtualmachine/computetopology/processor", {"count", "limit", "weight", "exposevirtualizationextensions"}},
+            {"virtualmachine/computetopology/compatibility", {"guestfeatureset"}},
+            {"virtualmachine/securitysettings", {"enabletpm", "isolation"}},
+            {"virtualmachine/storageqos", {"iopsmaximum", "bandwidthmaximum"}},
+            {"virtualmachine/devices", {"videomonitor", "enhancedmodevideo", "keyboard", "mouse", "comports",
+                "networkadapters", "scsi", "gpu", "gpupartition", "plan9", "virtualsmb"}}
+        };
+        std::set<std::string> Seen;
+        auto Reserved = Managed.find(LowerHcsKey(Path));
+        for (auto It = Additional.begin(); It != Additional.end(); ++It)
+        {
+            auto Key = LowerHcsKey(It.key());
+            auto Child = Path + "/" + It.key();
+            if (Key.empty() || !Seen.insert(Key).second ||
+                (Reserved != Managed.end() && Reserved->second.count(Key)))
+                throw std::invalid_argument("Duplicate or managed HCS property: " + Child);
+            auto Existing = Target.end();
+            for (auto Current = Target.begin(); Current != Target.end(); ++Current)
+            {
+                if (LowerHcsKey(Current.key()) == Key)
+                {
+                    Existing = Current;
+                    break;
+                }
+            }
+            if (Existing != Target.end())
+            {
+                if (Existing.key() != It.key() || !Existing->is_object() || !It->is_object())
+                    throw std::invalid_argument("HCS property conflicts with a generated setting: " + Child);
+                MergeHcsSettings(*Existing, *It, Child, Depth + 1);
+            }
+            else if (It->is_object())
+            {
+                auto Object = nlohmann::json::object();
+                MergeHcsSettings(Object, *It, Child, Depth + 1);
+                Target[It.key()] = std::move(Object);
+            }
+            else
+                Target[It.key()] = *It;
+        }
+    }
+}
+
 std::string NanaBox::MakeHcsConfiguration(
     NanaBox::VirtualMachineConfiguration const& Configuration)
 {
     nlohmann::json Result;
 
     Result["SchemaVersion"]["Major"] = 2;
-    Result["SchemaVersion"]["Minor"] = 1;
+    if (!Configuration.HcsSchemaMinor || Configuration.HcsSchemaMinor > 65535)
+        throw std::invalid_argument("Invalid HCS schema minor version");
+    Result["SchemaVersion"]["Minor"] = Configuration.HcsSchemaMinor;
 
     Result["Owner"] = Configuration.Name;
 
@@ -523,6 +591,13 @@ std::string NanaBox::MakeHcsConfiguration(
     {
         VirtualMachine["RestoreState"]["SaveStateFilePath"] =
             ::GetAbsoluteUtf8Path(Configuration.SaveStateFile);
+    }
+
+    if (!Configuration.AdditionalHcsSettings.empty())
+    {
+        auto const& Text = Configuration.AdditionalHcsSettings;
+        if (Text.size() > 1024 * 1024) throw std::invalid_argument("Additional HCS settings exceed 1 MiB");
+        MergeHcsSettings(VirtualMachine, nlohmann::json::parse(Text), "VirtualMachine");
     }
 
     Result["VirtualMachine"] = VirtualMachine;
@@ -1264,6 +1339,9 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
 
     if (Result.MirroredDnsTunneling && !Result.MirroredNetworking)
         throw std::exception("DNS tunneling requires mirrored networking");
+
+    if (!Result.AdditionalHcsSettings.empty())
+        (void)NanaBox::MakeHcsConfiguration(Result);
 
     return Result;
 }

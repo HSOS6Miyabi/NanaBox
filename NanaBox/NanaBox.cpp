@@ -112,6 +112,30 @@ int WINAPI wWinMain(
             if (!DefaultResources.AllowMemoryOvercommit || DefaultResources.EnableDeferredCommit ||
                 DefaultResources.ProcessorLimit || DefaultResources.ProcessorWeight ||
                 DefaultResources.StorageIopsMaximum || DefaultResources.StorageBandwidthMaximum) return 29;
+            {
+                auto Extended = Config;
+                Extended.HcsSchemaMinor = 5;
+                Extended.AdditionalHcsSettings = R"({"Chipset":{"UseUtc":true},"ComputeTopology":{"Memory":{"EnableColdDiscardHint":true}}})";
+                auto RoundTrip = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Extended));
+                auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(RoundTrip));
+                if (Hcs["SchemaVersion"]["Minor"] != 5 ||
+                    Hcs["VirtualMachine"]["Chipset"]["UseUtc"] != true ||
+                    Hcs["VirtualMachine"]["ComputeTopology"]["Memory"]["EnableColdDiscardHint"] != true ||
+                    Hcs["VirtualMachine"]["ComputeTopology"]["Memory"]["SizeInMB"] != Config.MemorySize) return 34;
+                for (auto const* Invalid : {
+                    R"({"ComputeTopology":{"Memory":{"SizeInMB":4096}}})",
+                    R"({"computetopology":{"Memory":{"EnableColdDiscardHint":true}}})",
+                    R"({"Devices":{"NetworkAdapters":{"new":{}}}})",
+                    R"({"GuestState":{"GuestStateFilePath":"other.vmgs"}})",
+                    R"({"Chipset":{"UseUtc":true,"useutc":false}})", "[]"})
+                {
+                    Extended.AdditionalHcsSettings = Invalid;
+                    bool Rejected = false;
+                    try { (void)NanaBox::MakeHcsConfiguration(Extended); }
+                    catch (...) { Rejected = true; }
+                    if (!Rejected) return 35;
+                }
+            }
             Config.ProcessorLimit = 75000;
             Config.ProcessorWeight = 250;
             Config.EnableDeferredCommit = true;

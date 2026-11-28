@@ -1991,4 +1991,8 @@ UseExtendedMaxVpPerSocketLimit</comment>
   </data>
   <data name="MirroredDnsTunneling.Content" xml:space="preserve"><value>通过宿主机解析 DNS（需要客户机服务）</value></data>
   <data name="MirroredDnsRequiresMirrored" xml:space="preserve"><value>DNS 隧道需要启用镜像网络。</value></data>
+  <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>HCS 高级创建设置</value></data>
+  <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS 架构次版本号（主版本号为 2）</value></data>
+  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>以 JSON 格式输入附加 VirtualMachine 属性。现有受管理资源不可覆盖。宿主机在创建虚拟机时验证功能是否受支持。</value></data>
+  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>附加 VirtualMachine 设置（JSON 对象）</value></data>
 </root>
