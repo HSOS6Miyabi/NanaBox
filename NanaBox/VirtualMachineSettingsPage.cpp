@@ -325,9 +325,10 @@ namespace
             Field("WslDependencyAvailable", L"ResultWsl");
             Field("HcnReachable", L"ResultHcn");
             Field("Error", L"ResultError");
-            for (auto const& Key : {"Items", "Rules", "Shares", "Networks"})
-                if (Object.contains(Key) && Object[Key].is_array())
-                    Add(L"ResultCount", std::to_wstring(Object[Key].size()));
+            if (!Object.contains("Count"))
+                for (auto const& Key : {"Items", "Rules", "Shares", "Networks"})
+                    if (Object.contains(Key) && Object[Key].is_array())
+                        Add(L"ResultCount", std::to_wstring(Object[Key].size()));
             for (auto const& Entry : {std::pair{"VirtualSize", L"ResultSize"}, std::pair{"PhysicalSize", L"ResultPhysicalSize"}})
                 if (Object.contains(Entry.first) && Object[Entry.first].is_number_unsigned())
                     Add(Entry.second, std::to_wstring(Object[Entry.first].get<std::uint64_t>() / (1024 * 1024)));

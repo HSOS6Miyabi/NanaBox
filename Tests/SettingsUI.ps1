@@ -417,8 +417,11 @@ try {
     if ((Find-Control 'DetailsNetworkPropertiesTextBox').Current.IsOffscreen) { Scroll (Find-Control 'DetailsNetworkPropertiesTextBox') }
     Assert-Equal ((Pattern (Find-Control 'DetailsNetworkPropertiesTextBox') ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState) ([System.Windows.Automation.ToggleState]::Off) 'Technical details hidden by default'
     Set-Check 'DetailsNetworkPropertiesTextBox' $true
-    $tree = Find-Control 'NetworkPropertiesTextBoxTree'
-    Assert-Equal $tree.Current.ControlType ([System.Windows.Automation.ControlType]::Tree) 'Technical details use a property tree'
+    $property = Find-Control 'OperationPropertyLabel'
+    if ([string]::IsNullOrWhiteSpace($property.Current.Name) -or $property.Current.Name -like '*TreeViewNode*') {
+        throw "Technical details did not display a readable property: $($property.Current.Name)"
+    }
+    Capture 'network-property-details'
     Set-Check 'DetailsNetworkPropertiesTextBox' $false
     Select-Tab 'TabNetwork'
     Invoke-Control 'NetworkPreflightButton'

@@ -6,6 +6,14 @@
   xmlns:local="using:NanaBox"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   mc:Ignorable="d">
+  <Page.Resources>
+    <DataTemplate x:Key="OperationPropertyTemplate">
+      <TextBlock Text="{Binding Content}" TextWrapping="Wrap" AutomationProperties.Name="{Binding Content}" AutomationProperties.AutomationId="OperationPropertyLabel" />
+    </DataTemplate>
+    <DataTemplate x:Key="SettingsActionTextTemplate">
+      <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+    </DataTemplate>
+  </Page.Resources>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -286,8 +294,8 @@
                   <TextBox x:Name="ProcessorWeightTextBox" AutomationProperties.Name="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.AutomationId="ProcessorWeightTextBox"  InputScope="Number"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
                 </Grid>
               </StackPanel>
-              <CheckBox x:Name="MemoryOvercommitCheckBox" x:Uid="/VirtualMachineSettingsPage/MemoryOvercommitCheckBox" Content="Allow pagefile-backed virtual machine memory" AutomationProperties.Name="Allow pagefile-backed virtual machine memory" AutomationProperties.AutomationId="MemoryOvercommitCheckBox" />
-              <CheckBox x:Name="DeferredCommitCheckBox" x:Uid="/VirtualMachineSettingsPage/DeferredCommitCheckBox" Content="Defer memory commit until first access" AutomationProperties.Name="Defer memory commit until first access" AutomationProperties.AutomationId="DeferredCommitCheckBox" />
+              <CheckBox x:Name="MemoryOvercommitCheckBox" x:Uid="/VirtualMachineSettingsPage/MemoryOvercommitCheckBox" Content="Allow pagefile-backed virtual machine memory" AutomationProperties.Name="Allow pagefile-backed virtual machine memory" AutomationProperties.AutomationId="MemoryOvercommitCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <CheckBox x:Name="DeferredCommitCheckBox" x:Uid="/VirtualMachineSettingsPage/DeferredCommitCheckBox" Content="Defer memory commit until first access" AutomationProperties.Name="Defer memory commit until first access" AutomationProperties.AutomationId="DeferredCommitCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
               <TextBox x:Name="StorageIopsMaximumTextBox" x:Uid="/VirtualMachineSettingsPage/StorageIopsMaximumTextBox" Header="Storage IOPS limit (0 = default)" AutomationProperties.Name="Storage IOPS limit (0 = default)" AutomationProperties.AutomationId="StorageIopsMaximumTextBox" />
               <TextBox x:Name="StorageBandwidthMaximumTextBox" x:Uid="/VirtualMachineSettingsPage/StorageBandwidthMaximumTextBox" Header="Storage bandwidth limit (bytes/s; 0 = default)" AutomationProperties.Name="Storage bandwidth limit (bytes/s; 0 = default)" AutomationProperties.AutomationId="StorageBandwidthMaximumTextBox" />
             </StackPanel>
@@ -472,15 +480,17 @@
             <TextBox x:Name="DiskPathTextBox" x:Uid="/VirtualMachineSettingsPage/DiskPath" Header="VHD/VHDX path" AutomationProperties.AutomationId="DiskPathTextBox" />
             <Button x:Name="SettingsLabel29" x:Uid="/VirtualMachineSettingsPage/DiskBrowse" Content="Browse existing disk" Tag="Browse" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskBrowse" />
             <TextBox x:Name="DiskSizeTextBox" x:Uid="/VirtualMachineSettingsPage/DiskSize" Header="Capacity (MiB)" Text="32768" AutomationProperties.AutomationId="DiskSizeTextBox" />
-            <StackPanel Orientation="Vertical" Spacing="8" Margin="0,8,0,8">
-              <Button x:Name="SettingsLabel30" x:Uid="/VirtualMachineSettingsPage/DiskCreate" Content="Create VHD" Tag="Create" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCreate" />
-              <Button x:Name="SettingsLabel31" x:Uid="/VirtualMachineSettingsPage/DiskResize" Content="Expand VHD" Tag="Resize" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskResize" />
-              <Button x:Name="SettingsLabel32" x:Uid="/VirtualMachineSettingsPage/DiskCompact" Content="Compact VHD" Tag="Compact" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCompact" />
-              <Button x:Name="SettingsLabel33" x:Uid="/VirtualMachineSettingsPage/DiskInspect" Content="Inspect" Tag="Inspect" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskInspect" />
-            </StackPanel>
+            <Grid Margin="0,8,0,8" ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel30" x:Uid="/VirtualMachineSettingsPage/DiskCreate" Content="Create VHD" Tag="Create" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCreate"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel31" x:Uid="/VirtualMachineSettingsPage/DiskResize" Content="Expand VHD" Tag="Resize" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskResize"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel32" x:Uid="/VirtualMachineSettingsPage/DiskCompact" Content="Compact VHD" Tag="Compact" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskCompact"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel33" x:Uid="/VirtualMachineSettingsPage/DiskInspect" Content="Inspect" Tag="Inspect" Click="DiskManagerButtonClick" AutomationProperties.AutomationId="DiskInspect"  Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SummaryDiskResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryDiskResultTextBox" />
-            <CheckBox x:Name="DetailsDiskResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsDiskResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsDiskResultTextBox" />
-            <TreeView x:Name="DiskResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="DiskResultTextBoxTree" />
+            <CheckBox x:Name="DetailsDiskResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsDiskResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsDiskResultTextBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="DiskResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="DiskResultTextBoxTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
             <StackPanel x:Name="ScsiDevicePanel" Spacing="4" />
             <Button
               x:Name="AddScsiDeviceButton"
@@ -581,15 +591,15 @@
               TextWrapping="Wrap" />
             <StackPanel x:Name="MirroredNetworkingPanel" Spacing="8" Margin="0,12,0,12">
               <TextBlock x:Name="SettingsLabel46" x:Uid="/VirtualMachineSettingsPage/MirroredTitle" Text="Mirrored networking" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <CheckBox x:Name="MirroredNetworkingCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredEnabled" Content="Enable HCN mirrored networking" AutomationProperties.AutomationId="MirroredNetworkingCheckBox" />
+              <CheckBox x:Name="MirroredNetworkingCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredEnabled" Content="Enable HCN mirrored networking" AutomationProperties.AutomationId="MirroredNetworkingCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
               <TextBlock x:Name="SettingsLabel47" x:Uid="/VirtualMachineSettingsPage/MirroredNote" Text="Requires a compatible Windows host, WSL networking dependency and the NanaBox Guest Network Service in the guest. Reserve listening ports before starting the VM." TextWrapping="Wrap" Opacity="0.75" />
               <StackPanel x:Name="MirroredOptionsPanel" Visibility="Collapsed" Spacing="8" Margin="12,4,0,0">
-                <CheckBox x:Name="MirroredAutoReservePortsCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredAutoReserve" Content="Automatically reserve guest listening ports" AutomationProperties.AutomationId="MirroredAutoReservePortsCheckBox" IsChecked="True" />
-                <CheckBox x:Name="MirroredBindCoordinationCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredBindCoordination" Content="Coordinate Linux application port binding with the host" AutomationProperties.AutomationId="MirroredBindCoordinationCheckBox" />
+                <CheckBox x:Name="MirroredAutoReservePortsCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredAutoReserve" Content="Automatically reserve guest listening ports" AutomationProperties.AutomationId="MirroredAutoReservePortsCheckBox" IsChecked="True"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="MirroredBindCoordinationCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredBindCoordination" Content="Coordinate Linux application port binding with the host" AutomationProperties.AutomationId="MirroredBindCoordinationCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <TextBlock x:Name="SettingsLabel48" x:Uid="/VirtualMachineSettingsPage/MirroredBindNote" Text="Install bind coordination in the guest and launch applications with nanabox-bind. Requires Linux 6.7 or newer." TextWrapping="Wrap" Opacity="0.75" />
-                <CheckBox x:Name="MirroredDnsTunnelingCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredDnsTunneling" Content="Tunnel DNS through the host resolver (guest service required)" AutomationProperties.AutomationId="MirroredDnsTunnelingCheckBox" />
-                <CheckBox x:Name="MirroredLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredLoopback" Content="Linux IPv4 localhost interoperability (GELNIC)" AutomationProperties.AutomationId="MirroredLoopbackCheckBox" />
-                <CheckBox x:Name="MirroredHostAddressLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredHostAddressLoopback" Content="Allow loopback through mirrored host IPv4 addresses" AutomationProperties.AutomationId="MirroredHostAddressLoopbackCheckBox" />
+                <CheckBox x:Name="MirroredDnsTunnelingCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredDnsTunneling" Content="Tunnel DNS through the host resolver (guest service required)" AutomationProperties.AutomationId="MirroredDnsTunnelingCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="MirroredLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredLoopback" Content="Linux IPv4 localhost interoperability (GELNIC)" AutomationProperties.AutomationId="MirroredLoopbackCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="MirroredHostAddressLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/MirroredHostAddressLoopback" Content="Allow loopback through mirrored host IPv4 addresses" AutomationProperties.AutomationId="MirroredHostAddressLoopbackCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <TextBlock x:Name="SettingsLabel49" x:Uid="/VirtualMachineSettingsPage/MirroredLoopbackNote" Text="Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged." TextWrapping="Wrap" Opacity="0.75" />
                 <TextBox x:Name="MirroredFirewallCreatorTextBox" x:Uid="/VirtualMachineSettingsPage/MirroredFirewallCreator" Header="Hyper-V firewall creator GUID (optional)" AutomationProperties.AutomationId="MirroredFirewallCreatorTextBox" />
                 <TextBox x:Name="MirroredTcpPortsTextBox" x:Uid="/VirtualMachineSettingsPage/MirroredTcpPorts" Header="Reserved TCP ports (one per line)" AcceptsReturn="True" MinHeight="64" AutomationProperties.AutomationId="MirroredTcpPortsTextBox" />
@@ -598,15 +608,17 @@
               </StackPanel>
             </StackPanel>
             <TextBlock x:Name="SettingsLabel44" x:Uid="/VirtualMachineSettingsPage/NetworkDiagnosticsTitle" Text="Network diagnostics" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
-            <StackPanel Orientation="Vertical" Spacing="8">
-              <Button x:Name="NetworkPreflightButton" x:Uid="/VirtualMachineSettingsPage/NetworkPreflight" Content="Check host" Tag="Host" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkPreflightButton" />
-              <Button x:Name="NetworkStatusButton" x:Uid="/VirtualMachineSettingsPage/NetworkStatus" Content="Current status" Tag="Status" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkStatusButton" />
-              <Button x:Name="NetworkRetryButton" x:Uid="/VirtualMachineSettingsPage/NetworkRetry" Content="Retry sync" Tag="Retry" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkRetryButton" />
-              <Button x:Name="SettingsLabel45" x:Uid="/VirtualMachineSettingsPage/NetworkCopy" Content="Copy" Tag="Copy" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkCopyButton" />
-            </StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="NetworkPreflightButton" x:Uid="/VirtualMachineSettingsPage/NetworkPreflight" Content="Check host" Tag="Host" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkPreflightButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="NetworkStatusButton" x:Uid="/VirtualMachineSettingsPage/NetworkStatus" Content="Current status" Tag="Status" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkStatusButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="NetworkRetryButton" x:Uid="/VirtualMachineSettingsPage/NetworkRetry" Content="Retry sync" Tag="Retry" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkRetryButton"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel45" x:Uid="/VirtualMachineSettingsPage/NetworkCopy" Content="Copy" Tag="Copy" Click="NetworkDiagnosticsButtonClick" AutomationProperties.AutomationId="NetworkCopyButton"  Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SummaryNetworkDiagnosticsTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryNetworkDiagnosticsTextBox" />
-            <CheckBox x:Name="DetailsNetworkDiagnosticsTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkDiagnosticsTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkDiagnosticsTextBox" />
-            <TreeView x:Name="NetworkDiagnosticsTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkDiagnosticsTextBoxTree" />
+            <CheckBox x:Name="DetailsNetworkDiagnosticsTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkDiagnosticsTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkDiagnosticsTextBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="NetworkDiagnosticsTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkDiagnosticsTextBoxTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionShares" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -718,12 +730,12 @@
               Text="Choose the keyboard layout that matches the guest. This is used when sending clipboard text as keystrokes."
               TextWrapping="Wrap" Opacity="0.8" />
             <CheckBox x:Name="ClipboardGtkUnicodeCheckBox" x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeCheckBox"
-              Content="GTK Unicode input (Linux)" AutomationProperties.AutomationId="ClipboardGtkUnicodeCheckBox" />
+              Content="GTK Unicode input (Linux)" AutomationProperties.AutomationId="ClipboardGtkUnicodeCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <TextBlock x:Name="SettingsLabel62" x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeHelp"
               Text="Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points."
               TextWrapping="Wrap" Opacity="0.8" />
             <CheckBox x:Name="ClipboardWindowsUnicodeCheckBox" x:Uid="/VirtualMachineSettingsPage/ClipboardWindowsUnicodeCheckBox"
-              Content="Native Unicode input (Windows)" AutomationProperties.AutomationId="ClipboardWindowsUnicodeCheckBox" />
+              Content="Native Unicode input (Windows)" AutomationProperties.AutomationId="ClipboardWindowsUnicodeCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <TextBlock x:Name="SettingsLabel63" x:Uid="/VirtualMachineSettingsPage/ClipboardWindowsUnicodeHelp"
               Text="Requires GuestTool installed with EnableUnicodeInput. Types into the focused window of the active guest console or enhanced session. Secure desktops are excluded."
               TextWrapping="Wrap" Opacity="0.8" />
@@ -1304,16 +1316,20 @@
                 AutomationProperties.Name="COM2 pipe path"
                 ToolTipService.ToolTip="(Optional) The named pipe path of guest COM2 of virtual machine." AutomationProperties.AutomationId="ComPort2TextBox" />
             </Grid>
-            <StackPanel Orientation="Vertical" Spacing="8">
-              <Button x:Name="SettingsLabel100" x:Uid="/VirtualMachineSettingsPage/GenerateCom1" Content="Generate COM1 pipe" Tag="1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom1" />
-              <Button x:Name="SettingsLabel101" x:Uid="/VirtualMachineSettingsPage/ClearCom1" Content="Disconnect COM1" Tag="Clear1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom1" />
-              <Button x:Name="SettingsLabel102" x:Uid="/VirtualMachineSettingsPage/CheckCom1" Content="Check COM1 pipe" Tag="Check1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom1" />
-            </StackPanel>
-            <StackPanel Orientation="Vertical" Spacing="8">
-              <Button x:Name="SettingsLabel103" x:Uid="/VirtualMachineSettingsPage/GenerateCom2" Content="Generate COM2 pipe" Tag="2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom2" />
-              <Button x:Name="SettingsLabel104" x:Uid="/VirtualMachineSettingsPage/ClearCom2" Content="Disconnect COM2" Tag="Clear2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom2" />
-              <Button x:Name="SettingsLabel105" x:Uid="/VirtualMachineSettingsPage/CheckCom2" Content="Check COM2 pipe" Tag="Check2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom2" />
-            </StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel100" x:Uid="/VirtualMachineSettingsPage/GenerateCom1" Content="Generate COM1 pipe" Tag="1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom1"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel101" x:Uid="/VirtualMachineSettingsPage/ClearCom1" Content="Disconnect COM1" Tag="Clear1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom1"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel102" x:Uid="/VirtualMachineSettingsPage/CheckCom1" Content="Check COM1 pipe" Tag="Check1" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom1"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel103" x:Uid="/VirtualMachineSettingsPage/GenerateCom2" Content="Generate COM2 pipe" Tag="2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="GenerateCom2"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel104" x:Uid="/VirtualMachineSettingsPage/ClearCom2" Content="Disconnect COM2" Tag="Clear2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="ClearCom2"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel105" x:Uid="/VirtualMachineSettingsPage/CheckCom2" Content="Check COM2 pipe" Tag="Check2" Click="SerialPipeButtonClick" AutomationProperties.AutomationId="CheckCom2"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBox x:Name="SerialPipeStatusTextBox" x:Uid="/VirtualMachineSettingsPage/SerialPipeStatus" Header="Pipe status" IsReadOnly="True" AutomationProperties.AutomationId="SerialPipeStatusTextBox" />
             <TextBlock x:Name="SettingsLabel106"
               x:Uid="/VirtualMachineSettingsPage/StateNote"
@@ -1342,43 +1358,65 @@
               <StackPanel x:Name="GuestManualMountPanel" Spacing="8">
               <TextBox x:Name="GuestPlan9NameTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Name" Header="Share name" AutomationProperties.AutomationId="GuestPlan9NameTextBox" />
               <TextBox x:Name="GuestPlan9PathTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Path" Header="Guest mount directory (optional)" AutomationProperties.AutomationId="GuestPlan9PathTextBox" />
-              <StackPanel x:Name="GuestVsmbMountPanel" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
-                <Button x:Name="GuestVsmbMountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbMount" Content="Mount VSMB" Tag="VirtualSmbMount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbMountButton" />
-                <Button x:Name="GuestVsmbUnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbUnmount" Content="Unmount VSMB" Tag="VirtualSmbUnmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbUnmountButton" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="GuestPlan9MountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Mount" Content="Mount 9P" Tag="Plan9Mount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9MountButton" />
-                <Button x:Name="GuestPlan9UnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Unmount" Content="Unmount 9P" Tag="Plan9Unmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9UnmountButton" />
-              </StackPanel>
+              <Grid x:Name="GuestVsmbMountPanel" Visibility="Collapsed" ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="GuestVsmbMountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbMount" Content="Mount VSMB" Tag="VirtualSmbMount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbMountButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestVsmbUnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbUnmount" Content="Unmount VSMB" Tag="VirtualSmbUnmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbUnmountButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
+              <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="GuestPlan9MountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Mount" Content="Mount 9P" Tag="Plan9Mount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9MountButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestPlan9UnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Unmount" Content="Unmount 9P" Tag="Plan9Unmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9UnmountButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
               </StackPanel>
             </StackPanel>
             <TextBlock x:Name="SettingsLabel110" x:Uid="/VirtualMachineSettingsPage/GuestClockTitle" Text="Guest clock" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel111" x:Uid="/VirtualMachineSettingsPage/GuestClockNote" Text="Changing the guest clock requires explicit permission in the guest service." TextWrapping="Wrap" Opacity="0.75" />
-            <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="GuestClockQueryControl" x:Uid="/VirtualMachineSettingsPage/GuestClockQuery" Content="Check clock offset" Tag="TimeQuery" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestClockQueryButton" /><Button x:Name="GuestClockSyncControl" x:Uid="/VirtualMachineSettingsPage/GuestClockSync" Content="Synchronize to host clock" Tag="TimeSync" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestClockSyncButton" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="GuestClockQueryControl" x:Uid="/VirtualMachineSettingsPage/GuestClockQuery" Content="Check clock offset" Tag="TimeQuery" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestClockQueryButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestClockSyncControl" x:Uid="/VirtualMachineSettingsPage/GuestClockSync" Content="Synchronize to host clock" Tag="TimeSync" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestClockSyncButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SettingsLabel112" x:Uid="/VirtualMachineSettingsPage/GuestExchangeTitle" Text="File exchange" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel113" x:Uid="/VirtualMachineSettingsPage/GuestExchangeNote" Text="Files are transferred into the configured exchange directory in the guest. Transfers verify SHA-256 before publishing the destination." TextWrapping="Wrap" Opacity="0.75" />
             <TextBox x:Name="GuestFileNameTextBox" x:Uid="/VirtualMachineSettingsPage/GuestFileName" Header="Guest exchange filename" AutomationProperties.AutomationId="GuestFileNameTextBox" />
             <TextBox x:Name="GuestFilePathTextBox" x:Uid="/VirtualMachineSettingsPage/GuestFilePath" Header="Local file path" AutomationProperties.AutomationId="GuestFilePathTextBox" />
-            <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="GuestBrowseUploadControl" x:Uid="/VirtualMachineSettingsPage/GuestBrowseUpload" Content="Choose source file" Tag="BrowseUpload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestBrowseUploadButton" /><Button x:Name="GuestBrowseDownloadControl" x:Uid="/VirtualMachineSettingsPage/GuestBrowseDownload" Content="Choose destination" Tag="BrowseDownload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestBrowseDownloadButton" /></StackPanel>
-            <CheckBox x:Name="GuestFileOverwriteCheckBox" x:Uid="/VirtualMachineSettingsPage/GuestFileOverwrite" Content="Replace existing destination file" AutomationProperties.AutomationId="GuestFileOverwriteCheckBox" />
-            <StackPanel Orientation="Vertical" Spacing="8"><Button x:Name="GuestUploadControl" x:Uid="/VirtualMachineSettingsPage/GuestUpload" Content="Upload to guest" Tag="FileUpload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestUploadButton" /><Button x:Name="GuestDownloadControl" x:Uid="/VirtualMachineSettingsPage/GuestDownload" Content="Download from guest" Tag="FileDownload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDownloadButton" /><Button x:Name="GuestCancelControl" x:Uid="/VirtualMachineSettingsPage/GuestCancel" Content="Cancel transfer" Tag="Cancel" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestCancelButton" IsEnabled="False" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="GuestBrowseUploadControl" x:Uid="/VirtualMachineSettingsPage/GuestBrowseUpload" Content="Choose source file" Tag="BrowseUpload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestBrowseUploadButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestBrowseDownloadControl" x:Uid="/VirtualMachineSettingsPage/GuestBrowseDownload" Content="Choose destination" Tag="BrowseDownload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestBrowseDownloadButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
+            <CheckBox x:Name="GuestFileOverwriteCheckBox" x:Uid="/VirtualMachineSettingsPage/GuestFileOverwrite" Content="Replace existing destination file" AutomationProperties.AutomationId="GuestFileOverwriteCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="GuestUploadControl" x:Uid="/VirtualMachineSettingsPage/GuestUpload" Content="Upload to guest" Tag="FileUpload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestUploadButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestDownloadControl" x:Uid="/VirtualMachineSettingsPage/GuestDownload" Content="Download from guest" Tag="FileDownload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDownloadButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="GuestCancelControl" x:Uid="/VirtualMachineSettingsPage/GuestCancel" Content="Cancel transfer" Tag="Cancel" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestCancelButton" IsEnabled="False"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SummaryGuestToolsResult" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryGuestToolsResult" />
-            <CheckBox x:Name="DetailsGuestToolsResult" x:Uid="/VirtualMachineSettingsPage/DetailsGuestToolsResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsGuestToolsResult" />
-            <TreeView x:Name="GuestToolsResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="GuestToolsResultTree" />
+            <CheckBox x:Name="DetailsGuestToolsResult" x:Uid="/VirtualMachineSettingsPage/DetailsGuestToolsResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsGuestToolsResult"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="GuestToolsResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="GuestToolsResultTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionHostManagement" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel41" x:Uid="/VirtualMachineSettingsPage/HostNetworksTitle" Text="Virtual networks on this computer" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <ComboBox x:Name="HostNetworksComboBox" x:Uid="/VirtualMachineSettingsPage/HostNetworksPicker" Header="Available networks" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HostNetworksComboBox" />
-            <StackPanel Orientation="Vertical" Spacing="8">
-              <Button x:Name="RefreshNetworksControl" x:Uid="/VirtualMachineSettingsPage/RefreshNetworks" Content="Refresh" Click="RefreshNetworksButtonClick" AutomationProperties.AutomationId="RefreshNetworks" />
-              <Button x:Name="InspectNetworkControl" x:Uid="/VirtualMachineSettingsPage/InspectNetwork" Content="Properties" Click="InspectNetworkButtonClick" AutomationProperties.AutomationId="InspectNetwork" />
-              <Button x:Name="DeleteNetworkControl" x:Uid="/VirtualMachineSettingsPage/DeleteNetwork" Content="Delete managed network" Click="DeleteNetworkButtonClick" AutomationProperties.AutomationId="DeleteNetwork" />
-            </StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="RefreshNetworksControl" x:Uid="/VirtualMachineSettingsPage/RefreshNetworks" Content="Refresh" Click="RefreshNetworksButtonClick" AutomationProperties.AutomationId="RefreshNetworks"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="InspectNetworkControl" x:Uid="/VirtualMachineSettingsPage/InspectNetwork" Content="Properties" Click="InspectNetworkButtonClick" AutomationProperties.AutomationId="InspectNetwork"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="DeleteNetworkControl" x:Uid="/VirtualMachineSettingsPage/DeleteNetwork" Content="Delete managed network" Click="DeleteNetworkButtonClick" AutomationProperties.AutomationId="DeleteNetwork"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SummaryNetworkPropertiesTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryNetworkPropertiesTextBox" />
-            <CheckBox x:Name="DetailsNetworkPropertiesTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkPropertiesTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkPropertiesTextBox" />
-            <TreeView x:Name="NetworkPropertiesTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkPropertiesTextBoxTree" />
+            <CheckBox x:Name="DetailsNetworkPropertiesTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkPropertiesTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkPropertiesTextBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="NetworkPropertiesTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkPropertiesTextBoxTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
             <TextBox x:Name="NetworkNameTextBox" x:Uid="/VirtualMachineSettingsPage/NetworkName" Header="New network name" AutomationProperties.AutomationId="NetworkNameTextBox" />
             <StackPanel x:Name="NetworkBasicPanel" Spacing="8">
               <ComboBox x:Name="NetworkModeComboBox" x:Uid="/VirtualMachineSettingsPage/NetworkMode" Header="Connection type" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="NetworkModeComboBox">
@@ -1391,8 +1429,8 @@
               <TextBlock x:Name="NetworkNatNote" x:Uid="/VirtualMachineSettingsPage/NetworkNatNote" Text="Choose a subnet that does not overlap an existing network." TextWrapping="Wrap" />
             </StackPanel>
             </StackPanel>
-            <CheckBox x:Name="NetworkFirewallCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkFirewall" Content="Enable Hyper-V firewall" AutomationProperties.AutomationId="NetworkFirewallCheckBox" />
-            <CheckBox x:Name="NetworkExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkExpert" Content="Customize network settings (expert)" AutomationProperties.AutomationId="NetworkExpertCheckBox" />
+            <CheckBox x:Name="NetworkFirewallCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkFirewall" Content="Enable Hyper-V firewall" AutomationProperties.AutomationId="NetworkFirewallCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <CheckBox x:Name="NetworkExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/NetworkExpert" Content="Customize network settings (expert)" AutomationProperties.AutomationId="NetworkExpertCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <StackPanel x:Name="NetworkExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
               <TextBlock x:Name="NetworkAdvancedSettingsEditorLabel" x:Uid="/VirtualMachineSettingsPage/NetworkProperties" Text="Custom network properties" TextWrapping="Wrap" />
               <ContentControl x:Name="NetworkAdvancedSettingsEditorContainer" HorizontalContentAlignment="Stretch"><StackPanel x:Name="NetworkAdvancedSettingsEditor" Spacing="8" AutomationProperties.AutomationId="NetworkAdvancedSettingsEditor" /></ContentControl>
@@ -1403,24 +1441,46 @@
             <TextBlock x:Name="SettingsLabel114" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchTitle" Text="Hyper-V virtual switches" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel115" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchNote" Text="Create and remove NanaBox-managed switches. Connect a VM through the HCN network picker when the switch is exposed by HCN." TextWrapping="Wrap" Opacity="0.75" />
             <ComboBox x:Name="ManagedSwitchesComboBox" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchesComboBox" Header="Switches" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="ManagedSwitchesComboBox"></ComboBox>
-            <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SettingsLabel116" x:Uid="/VirtualMachineSettingsPage/SwitchListButton" Content="Refresh switches" Tag="SwitchList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchListButton" /><Button x:Name="SettingsLabel117" x:Uid="/VirtualMachineSettingsPage/SwitchDeleteButton" Content="Delete selected switch" Tag="SwitchDelete" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchDeleteButton" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel116" x:Uid="/VirtualMachineSettingsPage/SwitchListButton" Content="Refresh switches" Tag="SwitchList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchListButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel117" x:Uid="/VirtualMachineSettingsPage/SwitchDeleteButton" Content="Delete selected switch" Tag="SwitchDelete" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchDeleteButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBox x:Name="ManagedSwitchNameTextBox" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchNameTextBox" Header="New switch name" AutomationProperties.AutomationId="ManagedSwitchNameTextBox" />
             <ComboBox x:Name="ManagedSwitchTypeComboBox" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchTypeComboBox" Header="Switch type" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="ManagedSwitchTypeComboBox" SelectedIndex="0"><ComboBoxItem x:Name="SettingsLabel118" Tag="Internal" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchTypeComboBoxInternal" Content="Internal" AutomationProperties.AutomationId="ManagedSwitchTypeComboBoxInternal" /><ComboBoxItem x:Name="SettingsLabel119" Tag="Private" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchTypeComboBoxPrivate" Content="Private" AutomationProperties.AutomationId="ManagedSwitchTypeComboBoxPrivate" /><ComboBoxItem x:Name="SettingsLabel120" Tag="External" x:Uid="/VirtualMachineSettingsPage/ManagedSwitchTypeComboBoxExternal" Content="External" AutomationProperties.AutomationId="ManagedSwitchTypeComboBoxExternal" /></ComboBox>
             <ComboBox x:Name="PhysicalAdaptersComboBox" x:Uid="/VirtualMachineSettingsPage/PhysicalAdaptersComboBox" Header="Physical adapter (external switch)" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="PhysicalAdaptersComboBox"></ComboBox>
-            <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SettingsLabel121" x:Uid="/VirtualMachineSettingsPage/AdapterListButton" Content="Refresh adapters" Tag="AdapterList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="AdapterListButton" /><Button x:Name="SettingsLabel122" x:Uid="/VirtualMachineSettingsPage/SwitchCreateButton" Content="Create switch" Tag="SwitchCreate" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchCreateButton" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel121" x:Uid="/VirtualMachineSettingsPage/AdapterListButton" Content="Refresh adapters" Tag="AdapterList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="AdapterListButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel122" x:Uid="/VirtualMachineSettingsPage/SwitchCreateButton" Content="Create switch" Tag="SwitchCreate" Click="HostManagementButtonClick" AutomationProperties.AutomationId="SwitchCreateButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SettingsLabel123" x:Uid="/VirtualMachineSettingsPage/FirewallManagerTitle" Text="Hyper-V firewall" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel124" x:Uid="/VirtualMachineSettingsPage/FirewallManagerNote" Text="Create a dedicated firewall creator for NanaBox. Changes apply to every endpoint using that creator. External creators are read-only." TextWrapping="Wrap" Opacity="0.75" />
             <ComboBox x:Name="FirewallCreatorsComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallCreatorsComboBox" Header="Firewall creators" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallCreatorsComboBox"></ComboBox>
-            <StackPanel Orientation="Vertical" Spacing="8"><Button x:Name="SettingsLabel125" x:Uid="/VirtualMachineSettingsPage/CreatorListButton" Content="Refresh" Tag="CreatorList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="CreatorListButton" /><Button x:Name="SettingsLabel126" x:Uid="/VirtualMachineSettingsPage/FirewallInspectButton" Content="Inspect" Tag="FirewallInspect" Click="HostManagementButtonClick" AutomationProperties.AutomationId="FirewallInspectButton" /><Button x:Name="SettingsLabel127" x:Uid="/VirtualMachineSettingsPage/UseCreatorButton" Content="Use for mirrored networking" Tag="UseCreator" Click="HostManagementButtonClick" AutomationProperties.AutomationId="UseCreatorButton" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel125" x:Uid="/VirtualMachineSettingsPage/CreatorListButton" Content="Refresh" Tag="CreatorList" Click="HostManagementButtonClick" AutomationProperties.AutomationId="CreatorListButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel126" x:Uid="/VirtualMachineSettingsPage/FirewallInspectButton" Content="Inspect" Tag="FirewallInspect" Click="HostManagementButtonClick" AutomationProperties.AutomationId="FirewallInspectButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel127" x:Uid="/VirtualMachineSettingsPage/UseCreatorButton" Content="Use for mirrored networking" Tag="UseCreator" Click="HostManagementButtonClick" AutomationProperties.AutomationId="UseCreatorButton"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBox x:Name="FirewallCreatorNameTextBox" x:Uid="/VirtualMachineSettingsPage/FirewallCreatorNameTextBox" Header="New creator name" AutomationProperties.AutomationId="FirewallCreatorNameTextBox" />
             <Button x:Name="SettingsLabel128" x:Uid="/VirtualMachineSettingsPage/CreatorRegisterButton" Content="Register creator" Tag="CreatorRegister" Click="HostManagementButtonClick" AutomationProperties.AutomationId="CreatorRegisterButton" />
             <ComboBox x:Name="FirewallInboundComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallInboundComboBox" Header="Default inbound" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallInboundComboBox" SelectedIndex="1"><ComboBoxItem x:Name="SettingsLabel129" Tag="Allow" x:Uid="/VirtualMachineSettingsPage/FirewallInboundComboBoxAllow" Content="Allow" AutomationProperties.AutomationId="FirewallInboundComboBoxAllow" /><ComboBoxItem x:Name="SettingsLabel130" Tag="Block" x:Uid="/VirtualMachineSettingsPage/FirewallInboundComboBoxBlock" Content="Block" AutomationProperties.AutomationId="FirewallInboundComboBoxBlock" /></ComboBox>
             <ComboBox x:Name="FirewallOutboundComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallOutboundComboBox" Header="Default outbound" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallOutboundComboBox" SelectedIndex="0"><ComboBoxItem x:Name="SettingsLabel131" Tag="Allow" x:Uid="/VirtualMachineSettingsPage/FirewallOutboundComboBoxAllow" Content="Allow" AutomationProperties.AutomationId="FirewallOutboundComboBoxAllow" /><ComboBoxItem x:Name="SettingsLabel132" Tag="Block" x:Uid="/VirtualMachineSettingsPage/FirewallOutboundComboBoxBlock" Content="Block" AutomationProperties.AutomationId="FirewallOutboundComboBoxBlock" /></ComboBox>
-            <CheckBox x:Name="FirewallLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/FirewallLoopbackCheckBox" Content="Allow host/guest loopback" IsChecked="True" AutomationProperties.AutomationId="FirewallLoopbackCheckBox" />
-            <CheckBox x:Name="FirewallMergeCheckBox" x:Uid="/VirtualMachineSettingsPage/FirewallMergeCheckBox" Content="Merge host firewall policy" IsChecked="True" AutomationProperties.AutomationId="FirewallMergeCheckBox" />
+            <CheckBox x:Name="FirewallLoopbackCheckBox" x:Uid="/VirtualMachineSettingsPage/FirewallLoopbackCheckBox" Content="Allow host/guest loopback" IsChecked="True" AutomationProperties.AutomationId="FirewallLoopbackCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <CheckBox x:Name="FirewallMergeCheckBox" x:Uid="/VirtualMachineSettingsPage/FirewallMergeCheckBox" Content="Merge host firewall policy" IsChecked="True" AutomationProperties.AutomationId="FirewallMergeCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <Button x:Name="SettingsLabel133" x:Uid="/VirtualMachineSettingsPage/FirewallConfigureButton" Content="Apply firewall settings" Tag="FirewallConfigure" Click="HostManagementButtonClick" AutomationProperties.AutomationId="FirewallConfigureButton" />
             <ComboBox x:Name="FirewallRulesComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallRulesComboBox" Header="Existing firewall rules" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallRulesComboBox"></ComboBox>
-            <StackPanel Orientation="Vertical" Spacing="8"><Button x:Name="SettingsLabel134" x:Uid="/VirtualMachineSettingsPage/RuleEnableButton" Content="Enable" Tag="RuleEnable" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleEnableButton" /><Button x:Name="SettingsLabel135" x:Uid="/VirtualMachineSettingsPage/RuleDisableButton" Content="Disable" Tag="RuleDisable" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleDisableButton" /><Button x:Name="SettingsLabel136" x:Uid="/VirtualMachineSettingsPage/RuleDeleteButton" Content="Delete" Tag="RuleDelete" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleDeleteButton" /></StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel134" x:Uid="/VirtualMachineSettingsPage/RuleEnableButton" Content="Enable" Tag="RuleEnable" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleEnableButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel135" x:Uid="/VirtualMachineSettingsPage/RuleDisableButton" Content="Disable" Tag="RuleDisable" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleDisableButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel136" x:Uid="/VirtualMachineSettingsPage/RuleDeleteButton" Content="Delete" Tag="RuleDelete" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleDeleteButton"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBox x:Name="FirewallRuleNameTextBox" x:Uid="/VirtualMachineSettingsPage/FirewallRuleNameTextBox" Header="New rule name" AutomationProperties.AutomationId="FirewallRuleNameTextBox" />
             <ComboBox x:Name="FirewallDirectionComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallDirectionComboBox" Header="Direction" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallDirectionComboBox" SelectedIndex="0"><ComboBoxItem x:Name="SettingsLabel137" Tag="Inbound" x:Uid="/VirtualMachineSettingsPage/FirewallDirectionComboBoxInbound" Content="Inbound" AutomationProperties.AutomationId="FirewallDirectionComboBoxInbound" /><ComboBoxItem x:Name="SettingsLabel138" Tag="Outbound" x:Uid="/VirtualMachineSettingsPage/FirewallDirectionComboBoxOutbound" Content="Outbound" AutomationProperties.AutomationId="FirewallDirectionComboBoxOutbound" /></ComboBox>
             <ComboBox x:Name="FirewallActionComboBox" x:Uid="/VirtualMachineSettingsPage/FirewallActionComboBox" Header="Rule action" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="FirewallActionComboBox" SelectedIndex="0"><ComboBoxItem x:Name="SettingsLabel139" Tag="Allow" x:Uid="/VirtualMachineSettingsPage/FirewallActionComboBoxAllow" Content="Allow" AutomationProperties.AutomationId="FirewallActionComboBoxAllow" /><ComboBoxItem x:Name="SettingsLabel140" Tag="Block" x:Uid="/VirtualMachineSettingsPage/FirewallActionComboBoxBlock" Content="Block" AutomationProperties.AutomationId="FirewallActionComboBoxBlock" /></ComboBox>
@@ -1428,8 +1488,8 @@
             <TextBox x:Name="FirewallPortsTextBox" x:Uid="/VirtualMachineSettingsPage/FirewallPortsTextBox" Header="Ports (comma-separated, 1–65535)" AutomationProperties.AutomationId="FirewallPortsTextBox" />
             <Button x:Name="SettingsLabel143" x:Uid="/VirtualMachineSettingsPage/RuleCreateButton" Content="Create rule" Tag="RuleCreate" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleCreateButton" />
             <TextBlock x:Name="SummaryHostManagementResult" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryHostManagementResult" />
-            <CheckBox x:Name="DetailsHostManagementResult" x:Uid="/VirtualMachineSettingsPage/DetailsHostManagementResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsHostManagementResult" />
-            <TreeView x:Name="HostManagementResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HostManagementResultTree" />
+            <CheckBox x:Name="DetailsHostManagementResult" x:Uid="/VirtualMachineSettingsPage/DetailsHostManagementResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsHostManagementResult"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="HostManagementResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HostManagementResultTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionVmms" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1438,25 +1498,29 @@
             <TextBlock x:Name="SettingsLabel145" x:Uid="/VirtualMachineSettingsPage/VmmsNote" Text="Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only." TextWrapping="Wrap" Opacity="0.75" />
             <ContentControl x:Name="VmmsForm" HorizontalContentAlignment="Stretch">
               <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button x:Name="SettingsLabel146" x:Uid="/VirtualMachineSettingsPage/VmmsListButton" Content="Refresh VMs" Tag="VmmsList" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsListButton" />
-                  <Button x:Name="SettingsLabel147" x:Uid="/VirtualMachineSettingsPage/HcsInventoryButton" Content="HCS inventory" Tag="HcsInventory" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsInventoryButton" />
-                </StackPanel>
+                <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel146" x:Uid="/VirtualMachineSettingsPage/VmmsListButton" Content="Refresh VMs" Tag="VmmsList" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsListButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel147" x:Uid="/VirtualMachineSettingsPage/HcsInventoryButton" Content="HCS inventory" Tag="HcsInventory" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsInventoryButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
                 <ComboBox x:Name="HcsSystemsComboBox" x:Uid="/VirtualMachineSettingsPage/HcsSystemsComboBox" Header="HCS compute system" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcsSystemsComboBox" />
                 <ComboBox x:Name="HcsQueryModeComboBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryMode" Header="Information to retrieve" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="HcsQueryModeComboBox">
                   <ComboBoxItem x:Name="HcsQueryDefault" x:Uid="/VirtualMachineSettingsPage/HcsQueryDefault" Content="Default information" Tag="Default" AutomationProperties.AutomationId="HcsQueryDefault" />
                   <ComboBoxItem x:Name="HcsQueryBasic" x:Uid="/VirtualMachineSettingsPage/HcsQueryBasic" Content="Basic system information" Tag="Basic" AutomationProperties.AutomationId="HcsQueryBasic" />
                   <ComboBoxItem x:Name="HcsQueryStatistics" x:Uid="/VirtualMachineSettingsPage/HcsQueryStatistics" Content="Performance statistics" Tag="Statistics" AutomationProperties.AutomationId="HcsQueryStatistics" />
                 </ComboBox>
-                <CheckBox x:Name="HcsQueryExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryExpert" Content="Customize diagnostic query (expert)" AutomationProperties.AutomationId="HcsQueryExpertCheckBox" />
+                <CheckBox x:Name="HcsQueryExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryExpert" Content="Customize diagnostic query (expert)" AutomationProperties.AutomationId="HcsQueryExpertCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <StackPanel x:Name="HcsQueryExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
                   <TextBlock x:Name="HcsQueryEditorLabel" x:Uid="/VirtualMachineSettingsPage/HcsQueryProperties" Text="Diagnostic query properties" TextWrapping="Wrap" />
               <ContentControl x:Name="HcsQueryEditorContainer" HorizontalContentAlignment="Stretch"><StackPanel x:Name="HcsQueryEditor" Spacing="8" AutomationProperties.AutomationId="HcsQueryEditor" /></ContentControl>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button x:Name="SettingsLabel148" x:Uid="/VirtualMachineSettingsPage/HcsServicePropertiesButton" Content="HCS service properties" Tag="HcsServiceProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsServicePropertiesButton" />
-                  <Button x:Name="SettingsLabel149" x:Uid="/VirtualMachineSettingsPage/HcsSystemPropertiesButton" Content="Selected HCS system properties" Tag="HcsSystemProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsSystemPropertiesButton" />
-                </StackPanel>
+                <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel148" x:Uid="/VirtualMachineSettingsPage/HcsServicePropertiesButton" Content="HCS service properties" Tag="HcsServiceProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsServicePropertiesButton"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel149" x:Uid="/VirtualMachineSettingsPage/HcsSystemPropertiesButton" Content="Selected HCS system properties" Tag="HcsSystemProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsSystemPropertiesButton"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
                 <ComboBox x:Name="VmmsMachinesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsMachinesComboBox" Header="Registered VM" HorizontalAlignment="Stretch" SelectionChanged="VmmsSelectionChanged" AutomationProperties.AutomationId="VmmsMachinesComboBox" />
                 <Button x:Name="SettingsLabel150" x:Uid="/VirtualMachineSettingsPage/VmmsInspectButton" Content="Inspect selected VM and checkpoints" Tag="VmmsInspect" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsInspectButton" />
                 <ComboBox x:Name="VmmsActionComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsActionComboBox" Header="Operation" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsActionComboBox">
@@ -1593,7 +1657,7 @@
                   <ComboBoxItem Tag="Kerberos" Content="Kerberos" AutomationProperties.AutomationId="VmmsReplicaKerberos" />
                   <ComboBoxItem x:Name="SettingsLabel209" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCertificate" Tag="Certificate" Content="Certificate" AutomationProperties.AutomationId="VmmsReplicaCertificate" />
                 </ComboBox>
-                <CheckBox x:Name="VmmsReplicaCompressionCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCompressionCheckBox" Content="Compress replication traffic" IsChecked="True" AutomationProperties.AutomationId="VmmsReplicaCompressionCheckBox" />
+                <CheckBox x:Name="VmmsReplicaCompressionCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsReplicaCompressionCheckBox" Content="Compress replication traffic" IsChecked="True" AutomationProperties.AutomationId="VmmsReplicaCompressionCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <TextBlock x:Name="SettingsLabel210" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceTitle" Text="CPU, devices and integration services" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="SettingsLabel211" x:Uid="/VirtualMachineSettingsPage/VmmsDeviceNote" Text="Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected." TextWrapping="Wrap" Opacity="0.75" />
                 <StackPanel x:Name="VmmsCpuReserveRangePanel" Spacing="4">
@@ -1620,7 +1684,7 @@
                   <TextBox x:Name="VmmsCpuWeightTextBox" Text="100" InputScope="Number" AutomationProperties.AutomationId="VmmsCpuWeightTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
                 </Grid>
               </StackPanel>
-                <CheckBox x:Name="VmmsCpuNestedCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuNestedCheckBox" Content="Expose virtualization extensions" AutomationProperties.AutomationId="VmmsCpuNestedCheckBox" />
+                <CheckBox x:Name="VmmsCpuNestedCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsCpuNestedCheckBox" Content="Expose virtualization extensions" AutomationProperties.AutomationId="VmmsCpuNestedCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <ComboBox x:Name="VmmsDevicesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicesComboBox" Header="Selected device or integration service" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsDevicesComboBox"></ComboBox>
                 <ComboBox x:Name="VmmsGpuSourceComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuSourceComboBox" Header="Physical GPU for new partition" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGpuSourceComboBox" />
                 <TextBlock x:Name="SettingsLabel212" x:Uid="/VirtualMachineSettingsPage/VmmsGpuQuotaNote" TextWrapping="Wrap" Opacity="0.75" Text="GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions." />
@@ -1695,23 +1759,23 @@
                   <TextBox x:Name="VmmsNicVlanTextBox" Text="0" InputScope="Number" AutomationProperties.AutomationId="VmmsNicVlanTextBox"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
                 </Grid>
               </StackPanel>
-                <CheckBox x:Name="VmmsNicDhcpGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicDhcpGuardCheckBox" Content="DHCP guard" AutomationProperties.AutomationId="VmmsNicDhcpGuardCheckBox" />
-                <CheckBox x:Name="VmmsNicRouterGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicRouterGuardCheckBox" Content="Router guard" AutomationProperties.AutomationId="VmmsNicRouterGuardCheckBox" />
-                <CheckBox x:Name="VmmsNicSpoofCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicSpoofCheckBox" Content="Allow MAC address spoofing" AutomationProperties.AutomationId="VmmsNicSpoofCheckBox" />
-                <CheckBox x:Name="VmmsIntegrationEnabledCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsIntegrationEnabledCheckBox" Content="Enable selected integration service" AutomationProperties.AutomationId="VmmsIntegrationEnabledCheckBox" />
-                <CheckBox x:Name="VmmsSecureBootCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootCheckBox" Content="Enable Secure Boot" AutomationProperties.AutomationId="VmmsSecureBootCheckBox" />
+                <CheckBox x:Name="VmmsNicDhcpGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicDhcpGuardCheckBox" Content="DHCP guard" AutomationProperties.AutomationId="VmmsNicDhcpGuardCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="VmmsNicRouterGuardCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicRouterGuardCheckBox" Content="Router guard" AutomationProperties.AutomationId="VmmsNicRouterGuardCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="VmmsNicSpoofCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicSpoofCheckBox" Content="Allow MAC address spoofing" AutomationProperties.AutomationId="VmmsNicSpoofCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="VmmsIntegrationEnabledCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsIntegrationEnabledCheckBox" Content="Enable selected integration service" AutomationProperties.AutomationId="VmmsIntegrationEnabledCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+                <CheckBox x:Name="VmmsSecureBootCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootCheckBox" Content="Enable Secure Boot" AutomationProperties.AutomationId="VmmsSecureBootCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <ComboBox x:Name="VmmsSecureBootTemplateComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootTemplateComboBox" Header="Secure Boot template" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsSecureBootTemplateComboBox"><ComboBoxItem x:Name="VmmsMicrosoftWindowsLabel" x:Uid="/VirtualMachineSettingsPage/VmmsMicrosoftWindows" Tag="MicrosoftWindows" Content="Microsoft Windows" AutomationProperties.AutomationId="VmmsMicrosoftWindows" /><ComboBoxItem x:Name="VmmsMicrosoftUEFICertificateAuthorityLabel" x:Uid="/VirtualMachineSettingsPage/VmmsMicrosoftUEFICertificateAuthority" Tag="MicrosoftUEFICertificateAuthority" Content="Microsoft UEFI CA (Linux and other operating systems)" AutomationProperties.AutomationId="VmmsMicrosoftUEFICertificateAuthority" /><ComboBoxItem x:Name="VmmsOpenSourceShieldedVMLabel" x:Uid="/VirtualMachineSettingsPage/VmmsOpenSourceShieldedVM" Tag="OpenSourceShieldedVM" Content="Open-source shielded VM" AutomationProperties.AutomationId="VmmsOpenSourceShieldedVM" /></ComboBox>
                 <ComboBox x:Name="VmmsAutomaticStartComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBox" Header="Automatic start action" AutomationProperties.AutomationId="VmmsAutomaticStartComboBox" SelectedIndex="1" HorizontalAlignment="Stretch"><ComboBoxItem x:Name="SettingsLabel213" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxNothing" Tag="Nothing" Content="Do nothing" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxNothing" /><ComboBoxItem x:Name="SettingsLabel214" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxStartIfRunning" Tag="StartIfRunning" Content="Start if previously running" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxStartIfRunning" /><ComboBoxItem x:Name="SettingsLabel215" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxStart" Tag="Start" Content="Always start" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxStart" /></ComboBox>
                 <ComboBox x:Name="VmmsAutomaticStopComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBox" Header="Automatic stop action" AutomationProperties.AutomationId="VmmsAutomaticStopComboBox" SelectedIndex="1" HorizontalAlignment="Stretch"><ComboBoxItem x:Name="SettingsLabel216" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxTurnOff" Tag="TurnOff" Content="Turn off" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxTurnOff" /><ComboBoxItem x:Name="SettingsLabel217" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxSave" Tag="Save" Content="Save state" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxSave" /><ComboBoxItem x:Name="SettingsLabel218" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxShutDown" Tag="ShutDown" Content="Shut down guest" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxShutDown" /></ComboBox>
                 <TextBox x:Name="VmmsAutomaticDelayTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticDelayTextBox" Header="Automatic start delay (seconds)" AutomationProperties.AutomationId="VmmsAutomaticDelayTextBox" Text="0" InputScope="Number" />
                 <ComboBox x:Name="VmmsCheckpointTypeComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointTypeComboBox" Header="Checkpoint type" AutomationProperties.AutomationId="VmmsCheckpointTypeComboBox" SelectedIndex="2" HorizontalAlignment="Stretch"><ComboBoxItem x:Name="SettingsLabel219" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointTypeComboBoxDisabled" Tag="Disabled" Content="Disabled" AutomationProperties.AutomationId="VmmsCheckpointTypeComboBoxDisabled" /><ComboBoxItem x:Name="SettingsLabel220" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointTypeComboBoxStandard" Tag="Standard" Content="Standard" AutomationProperties.AutomationId="VmmsCheckpointTypeComboBoxStandard" /><ComboBoxItem x:Name="SettingsLabel221" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointTypeComboBoxProduction" Tag="Production" Content="Production" AutomationProperties.AutomationId="VmmsCheckpointTypeComboBoxProduction" /><ComboBoxItem x:Name="SettingsLabel222" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointTypeComboBoxProductionOnly" Tag="ProductionOnly" Content="Production only" AutomationProperties.AutomationId="VmmsCheckpointTypeComboBoxProductionOnly" /></ComboBox>
-                <CheckBox x:Name="VmmsAutomaticCheckpointsCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticCheckpointsCheckBox" Content="Enable automatic checkpoints" AutomationProperties.AutomationId="VmmsAutomaticCheckpointsCheckBox" />
+                <CheckBox x:Name="VmmsAutomaticCheckpointsCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticCheckpointsCheckBox" Content="Enable automatic checkpoints" AutomationProperties.AutomationId="VmmsAutomaticCheckpointsCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
                 <Button x:Name="SettingsLabel223" x:Uid="/VirtualMachineSettingsPage/VmmsExecuteButton" Content="Execute selected operation" Tag="Execute" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsExecuteButton" />
               </StackPanel>
             </ContentControl>
             <TextBlock x:Name="SummaryVmmsResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryVmmsResultTextBox" />
-            <CheckBox x:Name="DetailsVmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsVmmsResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsVmmsResultTextBox" />
-            <TreeView x:Name="VmmsResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="VmmsResultTextBoxTree" />
+            <CheckBox x:Name="DetailsVmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsVmmsResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsVmmsResultTextBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="VmmsResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="VmmsResultTextBoxTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionHcn" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1725,10 +1789,12 @@
               <ComboBoxItem x:Name="SettingsLabel229" x:Uid="/VirtualMachineSettingsPage/HcnKindRoute" Content="SDN route" Tag="Route" AutomationProperties.AutomationId="HcnKindRoute" />
             </ComboBox>
             <ComboBox x:Name="HcnResourceComboBox" x:Uid="/VirtualMachineSettingsPage/HcnResource" Header="Resource" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcnResourceComboBox" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button x:Name="SettingsLabel230" x:Uid="/VirtualMachineSettingsPage/HcnList" Content="Refresh" Tag="HcnList" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnList" />
-              <Button x:Name="SettingsLabel231" x:Uid="/VirtualMachineSettingsPage/HcnInspect" Content="Inspect" Tag="HcnInspect" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnInspect" />
-            </StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel230" x:Uid="/VirtualMachineSettingsPage/HcnList" Content="Refresh" Tag="HcnList" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnList"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel231" x:Uid="/VirtualMachineSettingsPage/HcnInspect" Content="Inspect" Tag="HcnInspect" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnInspect"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBox x:Name="HcnNameTextBox" x:Uid="/VirtualMachineSettingsPage/HcnName" Header="Network name (network creation)" AutomationProperties.AutomationId="HcnNameTextBox" />
             <TextBox x:Name="HcnNetworkIdTextBox" Visibility="Collapsed" x:Uid="/VirtualMachineSettingsPage/HcnNetworkId" Header="Parent network ID (endpoint creation)" AutomationProperties.AutomationId="HcnNetworkIdTextBox" />
             <StackPanel x:Name="HcnGuidedPanel" Spacing="8">
@@ -1762,23 +1828,25 @@
               <StackPanel x:Name="HcnRoutePanel" Visibility="Collapsed" Spacing="8">
                 <TextBox x:Name="HcnDestinationTextBox" x:Uid="/VirtualMachineSettingsPage/HcnDestination" Header="Destination subnet (CIDR)" PlaceholderText="192.0.2.0/24" AutomationProperties.AutomationId="HcnDestinationTextBox" />
                 <TextBox x:Name="HcnNextHopTextBox" x:Uid="/VirtualMachineSettingsPage/HcnNextHop" Header="Next-hop IPv4 address" PlaceholderText="192.0.2.1" AutomationProperties.AutomationId="HcnNextHopTextBox" />
-                <CheckBox x:Name="HcnEncapsulationCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnEncapsulation" Content="Enable encapsulation" AutomationProperties.AutomationId="HcnEncapsulationCheckBox" />
+                <CheckBox x:Name="HcnEncapsulationCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnEncapsulation" Content="Enable encapsulation" AutomationProperties.AutomationId="HcnEncapsulationCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
               </StackPanel>
             </StackPanel>
-            <CheckBox x:Name="HcnExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnExpert" Content="Edit native network resource settings (expert)" AutomationProperties.AutomationId="HcnExpertCheckBox" />
+            <CheckBox x:Name="HcnExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnExpert" Content="Edit native network resource settings (expert)" AutomationProperties.AutomationId="HcnExpertCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <StackPanel x:Name="HcnExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
               <TextBlock x:Name="SettingsLabel232" x:Uid="/VirtualMachineSettingsPage/HcnSettingsNote" Text="Use property groups and lists to configure advanced resource settings. Existing guided forms remain available for common operations." TextWrapping="Wrap" Opacity="0.75" />
               <TextBlock x:Name="HcnSettingsEditorLabel" x:Uid="/VirtualMachineSettingsPage/HcnProperties" Text="Network resource properties" TextWrapping="Wrap" />
               <ContentControl x:Name="HcnSettingsEditorContainer" HorizontalContentAlignment="Stretch"><StackPanel x:Name="HcnSettingsEditor" Spacing="8" AutomationProperties.AutomationId="HcnSettingsEditor" /></ContentControl>
             </StackPanel>
-            <StackPanel Orientation="Vertical" Spacing="8">
-              <Button x:Name="SettingsLabel233" x:Uid="/VirtualMachineSettingsPage/HcnCreate" Content="Create" Tag="HcnCreate" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnCreate" />
-              <Button x:Name="HcnModifyButton" x:Uid="/VirtualMachineSettingsPage/HcnModify" Content="Modify" Tag="HcnModify" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnModify" />
-              <Button x:Name="SettingsLabel234" x:Uid="/VirtualMachineSettingsPage/HcnDelete" Content="Delete" Tag="HcnDelete" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnDelete" />
-            </StackPanel>
+            <Grid ColumnSpacing="8" RowSpacing="8">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+              <Button x:Name="SettingsLabel233" x:Uid="/VirtualMachineSettingsPage/HcnCreate" Content="Create" Tag="HcnCreate" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnCreate"  Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="HcnModifyButton" x:Uid="/VirtualMachineSettingsPage/HcnModify" Content="Modify" Tag="HcnModify" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnModify"  Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+              <Button x:Name="SettingsLabel234" x:Uid="/VirtualMachineSettingsPage/HcnDelete" Content="Delete" Tag="HcnDelete" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnDelete"  Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="32" ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            </Grid>
             <TextBlock x:Name="SummaryHcnResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryHcnResultTextBox" />
-            <CheckBox x:Name="DetailsHcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsHcnResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsHcnResultTextBox" />
-            <TreeView x:Name="HcnResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HcnResultTextBoxTree" />
+            <CheckBox x:Name="DetailsHcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsHcnResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsHcnResultTextBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <TreeView x:Name="HcnResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HcnResultTextBoxTree"  ItemTemplate="{StaticResource OperationPropertyTemplate}" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionAdvanced" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1786,7 +1854,7 @@
             <StackPanel x:Name="HcsExtensionsSection" Spacing="8">
               <TextBlock x:Name="SettingsLabel235" x:Uid="/VirtualMachineSettingsPage/HcsExtensionsTitle" Text="Advanced HCS creation settings" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBox x:Name="HcsSchemaMinorTextBox" x:Uid="/VirtualMachineSettingsPage/HcsSchemaMinor" Header="HCS schema minor version (major 2)" Text="1" AutomationProperties.AutomationId="HcsSchemaMinorTextBox" />
-              <CheckBox x:Name="HcsExtensionsExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcsExtensionsExpert" Content="Additional system settings (expert)" AutomationProperties.AutomationId="HcsExtensionsExpertCheckBox" />
+              <CheckBox x:Name="HcsExtensionsExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcsExtensionsExpert" Content="Additional system settings (expert)" AutomationProperties.AutomationId="HcsExtensionsExpertCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
               <StackPanel x:Name="HcsExtensionsExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
                 <TextBlock x:Name="SettingsLabel236" x:Uid="/VirtualMachineSettingsPage/HcsExtensionsNote" Text="Add optional system properties using the property editor. The host checks feature support when creating the virtual machine." TextWrapping="Wrap" Opacity="0.75" />
                 <TextBlock x:Name="AdditionalHcsSettingsEditorLabel" x:Uid="/VirtualMachineSettingsPage/SystemProperties" Text="Additional system properties" TextWrapping="Wrap" />
@@ -2108,7 +2176,7 @@
                 AutomationProperties.Name="Disable Basic Session DPI Scaling"
                 ToolTipService.ToolTip="(Optional) Disable the DPI scaling for the Basic Session Mode of virtual machine if set it true." AutomationProperties.AutomationId="DisableDpiScalingCheckBox" />
             </Grid>
-            <CheckBox x:Name="DpiOverrideCheckBox" x:Uid="/VirtualMachineSettingsPage/DpiOverride" Content="Override display scaling" AutomationProperties.AutomationId="DpiOverrideCheckBox" />
+            <CheckBox x:Name="DpiOverrideCheckBox" x:Uid="/VirtualMachineSettingsPage/DpiOverride" Content="Override display scaling" AutomationProperties.AutomationId="DpiOverrideCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <StackPanel x:Name="DpiScaleRangePanel" Spacing="4">
                 <TextBlock x:Name="DpiScaleRangeLabel" Text="Display scaling (100–500%)" TextWrapping="Wrap" />
                 <Grid ColumnSpacing="8">
@@ -2117,8 +2185,8 @@
                   <TextBox x:Name="DpiScaleTextBox" AutomationProperties.AutomationId="DpiScaleTextBox" AutomationProperties.Name="Display scaling" InputScope="Number"  Grid.Column="1" Width="100" VerticalAlignment="Center" />
                 </Grid>
               </StackPanel>
-            <CheckBox x:Name="ContentResizingCheckBox" x:Uid="/VirtualMachineSettingsPage/ContentResizing" Content="Resize the enhanced-session desktop with the window" AutomationProperties.AutomationId="ContentResizingCheckBox" />
-            <CheckBox x:Name="ConnectionBarCheckBox" x:Uid="/VirtualMachineSettingsPage/ConnectionBar" Content="Show connection bar in full screen" AutomationProperties.AutomationId="ConnectionBarCheckBox" />
+            <CheckBox x:Name="ContentResizingCheckBox" x:Uid="/VirtualMachineSettingsPage/ContentResizing" Content="Resize the enhanced-session desktop with the window" AutomationProperties.AutomationId="ContentResizingCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
+            <CheckBox x:Name="ConnectionBarCheckBox" x:Uid="/VirtualMachineSettingsPage/ConnectionBar" Content="Show connection bar in full screen" AutomationProperties.AutomationId="ConnectionBarCheckBox"  ContentTemplate="{StaticResource SettingsActionTextTemplate}" />
             <StackPanel x:Name="PoliciesSection" Spacing="4">
               <TextBlock x:Name="SettingsLabel254"
                 x:Uid="/VirtualMachineSettingsPage/PoliciesTitle"
