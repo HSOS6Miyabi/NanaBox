@@ -19,6 +19,7 @@
 #include "MirroredNetworking.h"
 #include "NetworkReconciliation.h"
 #include "PowerTransition.h"
+#include "Plan9Reconciliation.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include "SettingsHostMock.h"
@@ -168,6 +169,36 @@ int WINAPI wWinMain(
                 bool Rejected = false;
                 try { NanaBox::ValidatePlan9Shares(Shared); } catch (...) { Rejected = true; }
                 if (!Rejected) return 42;
+            }
+            {
+                NanaBox::Plan9ShareConfiguration Old, New, Added;
+                Old.Name = "Old"; Old.Path = "C:\\Old";
+                New = Old; New.Path = "C:\\New";
+                Added.Name = "Added"; Added.Path = "C:\\Added";
+                auto Equal = [](auto const& A, auto const& B)
+                { return NanaBox::MakeHcsPlan9Share(A) == NanaBox::MakeHcsPlan9Share(B); };
+                auto Remove = NanaBox::MakeHcsPlan9Modification(Old, false);
+                auto Add = NanaBox::MakeHcsPlan9Modification(New, true);
+                if (Remove["RequestType"] != "Remove" || Remove["Settings"].contains("Path") ||
+                    Add["ResourcePath"] != "VirtualMachine/Devices/Plan9/Shares" ||
+                    Add["RequestType"] != "Add" || !Add["Settings"].contains("Path")) return 43;
+                for (unsigned Mode = 0; Mode < 4; ++Mode)
+                {
+                    unsigned Prepares = 0, Removes = 0, Adds = 0, Reports = 0;
+                    auto Actual = NanaBox::ReconcilePlan9Shares(
+                        std::vector<NanaBox::Plan9ShareConfiguration>{Old},
+                        std::vector<NanaBox::Plan9ShareConfiguration>{New, Added},
+                        NanaBox::EqualPlan9ShareName, Equal,
+                        [&](auto const&) { ++Prepares; if (Mode == 1) throw std::runtime_error("busy"); },
+                        [&](auto const&) { ++Removes; if (Mode == 2) throw std::runtime_error("remove"); },
+                        [&](auto const& Share)
+                        { ++Adds; if (Mode == 3 && Share.Path == New.Path) throw std::runtime_error("add"); },
+                        [&](auto const&, char const*) { ++Reports; });
+                    if (Actual.size() != 2 || Actual[1].Name != Added.Name ||
+                        Actual[0].Path != (Mode ? Old.Path : New.Path) ||
+                        Prepares != 1 || Removes != (Mode == 1 ? 0u : 1u) ||
+                        Adds != (Mode == 3 ? 3u : (Mode ? 1u : 2u)) || Reports != (Mode ? 1u : 0u)) return 44;
+                }
             }
             Config.ProcessorLimit = 75000;
             Config.ProcessorWeight = 250;

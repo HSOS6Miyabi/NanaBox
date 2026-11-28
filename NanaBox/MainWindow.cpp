@@ -18,6 +18,7 @@
 #include "Utils.h"
 #include "NetworkReconciliation.h"
 #include "PowerTransition.h"
+#include "Plan9Reconciliation.h"
 
 #include <map>
 #include <optional>
@@ -1057,10 +1058,14 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     nlohmann::json Properties = nlohmann::json::parse(
         winrt::to_string(this->m_VirtualMachine->GetProperties()));
     this->m_VirtualMachineGuid = Properties["RuntimeId"];
-    if (this->m_Configuration.GuestType == NanaBox::GuestType::Linux)
-        this->m_Plan9MountManager = std::make_unique<NanaBox::Plan9MountManager>(
-            winrt::guid(this->m_VirtualMachineGuid),
-            NanaBox::MakePlan9GuestManifest(this->m_Configuration, HcsDocument).dump());
+    this->m_Plan9Builtins = nlohmann::json::array();
+    for (auto const& Entry : NanaBox::MakePlan9GuestManifest(this->m_Configuration, HcsDocument))
+    {
+        if (std::none_of(this->m_Configuration.Plan9Shares.begin(), this->m_Configuration.Plan9Shares.end(),
+            [&](auto const& Share) { return Entry.at("Name") == Share.Name; }))
+            this->m_Plan9Builtins.push_back(Entry);
+    }
+    this->PublishPlan9Inventory();
     if (this->m_Configuration.MirroredNetworking)
     {
         this->m_MirroredNetworking = std::make_unique<NanaBox::MirroredNetworking>(
@@ -1089,6 +1094,20 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     Initialized = true;
     if (!RestoredPath.empty()) ::MileDeleteFileIgnoreReadonlyAttribute(RestoredPath.c_str());
     this->UpdatePowerControls();
+}
+
+void NanaBox::MainWindow::PublishPlan9Inventory()
+{
+    if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux) return;
+    auto Manifest = this->m_Plan9Builtins;
+    for (auto const& Share : this->m_Configuration.Plan9Shares)
+        Manifest.push_back({{"Name", Share.Name}, {"Port", Share.Port},
+            {"ReadOnly", Share.ReadOnly}, {"AutoMount", Share.AutoMount}});
+    if (this->m_Plan9MountManager)
+        this->m_Plan9MountManager->Update(Manifest.dump());
+    else
+        this->m_Plan9MountManager = std::make_unique<NanaBox::Plan9MountManager>(
+            winrt::guid(this->m_VirtualMachineGuid), Manifest.dump());
 }
 
 void NanaBox::MainWindow::TryReloadVirtualMachine()
@@ -1310,6 +1329,65 @@ void NanaBox::MainWindow::TryReloadVirtualMachine()
             }
         }
         else Errors += L"Removing attached SCSI devices requires shutting down the VM.\n";
+    }
+
+    {
+        auto const& Current = this->m_Configuration.Plan9Shares;
+        auto const& Desired = Configuration.Plan9Shares;
+        auto SameProvider = [](auto const& Left, auto const& Right)
+        {
+            return NanaBox::MakeHcsPlan9Share(Left) == NanaBox::MakeHcsPlan9Share(Right);
+        };
+        bool Changed = Current.size() != Desired.size() ||
+            !std::equal(Current.begin(), Current.end(), Desired.begin(), Desired.end(),
+                [&](auto const& Left, auto const& Right)
+                { return Left.AutoMount == Right.AutoMount && SameProvider(Left, Right); });
+        if (Changed)
+        {
+            try
+            {
+                if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux || this->m_VirtualMachinePaused)
+                    throw winrt::hresult_invalid_argument(L"Live Plan 9 changes require a running Linux guest.");
+                for (auto const& Share : Desired)
+                {
+                    NanaBox::ValidatePlan9HostDirectory(Share);
+                    for (auto const& Builtin : this->m_Plan9Builtins)
+                    {
+                        NanaBox::Plan9ShareConfiguration Identity;
+                        Identity.Name = Builtin.at("Name").get<std::string>();
+                        if (NanaBox::EqualPlan9ShareName(Share, Identity))
+                            throw winrt::hresult_invalid_argument(L"The share name is reserved for the host driver store.");
+                    }
+                }
+                // No inventory update can remount a share during its removal.
+                this->m_Plan9MountManager.reset();
+                this->m_Configuration.Plan9Shares = NanaBox::ReconcilePlan9Shares(
+                    Current, Desired, NanaBox::EqualPlan9ShareName, SameProvider,
+                    [&](auto const& Share)
+                    {
+                        NanaBox::PrepareGuestPlan9ShareRemoval(winrt::guid(this->m_VirtualMachineGuid),
+                            Share.Name, Share.Port);
+                    },
+                    [&](auto const& Share)
+                    {
+                        NanaBox::ComputeSystemModifyPlan9Share(this->m_VirtualMachine, Share, false);
+                    },
+                    [&](auto const& Share)
+                    {
+                        NanaBox::ComputeSystemModifyPlan9Share(this->m_VirtualMachine, Share, true);
+                    },
+                    [&](auto const& Share, char const* Action)
+                    {
+                        Report(winrt::to_hstring(std::string(Action) + " Plan9 share " + Share.Name).c_str());
+                    });
+            }
+            catch (...)
+            {
+                Report(L"Plan9 shares");
+            }
+            try { this->PublishPlan9Inventory(); }
+            catch (...) { Report(L"Publish Plan9 inventory"); }
+        }
     }
 
     try

@@ -700,13 +700,13 @@ namespace winrt::NanaBox::implementation
         }
 
         {
-            this->Plan9ShareSection().Visibility(this->m_MainWindow
-                ? winrt::Visibility::Collapsed
-                : winrt::Visibility::Visible);
+            bool CanEdit = !this->m_MainWindow || this->m_Configuration.GuestType == NanaBox::GuestType::Linux;
+            this->Plan9ShareSection().Visibility(CanEdit
+                ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
             this->Plan9SharePanel().Children().Clear();
             this->m_Plan9ShareSettings.clear();
-            this->AddPlan9ShareButton().IsEnabled(!this->m_MainWindow);
-            if (!this->m_MainWindow)
+            this->AddPlan9ShareButton().IsEnabled(CanEdit);
+            if (CanEdit)
             {
                 for (auto const& Configuration :
                     this->m_Configuration.Plan9Shares)
@@ -1109,7 +1109,7 @@ namespace winrt::NanaBox::implementation
         }
 
         {
-            if (!this->m_MainWindow)
+            if (!this->m_MainWindow || Result.GuestType == NanaBox::GuestType::Linux)
             {
                 Result.Plan9Shares.clear();
                 for (Plan9ShareSettings const& Row :

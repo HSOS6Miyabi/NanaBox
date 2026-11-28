@@ -35,6 +35,11 @@ namespace NanaBox
 
     void ValidatePlan9Shares(VirtualMachineConfiguration const& Configuration);
     nlohmann::json MakeHcsPlan9Share(Plan9ShareConfiguration const& Share);
+    bool EqualPlan9ShareName(Plan9ShareConfiguration const& Left, Plan9ShareConfiguration const& Right);
+    void ValidatePlan9HostDirectory(Plan9ShareConfiguration const& Share);
+    nlohmann::json MakeHcsPlan9Modification(Plan9ShareConfiguration const& Share, bool Add);
+    void ComputeSystemModifyPlan9Share(winrt::com_ptr<ComputeSystem> const& Instance,
+        Plan9ShareConfiguration const& Share, bool Add);
     nlohmann::json MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
         nlohmann::json const& HcsConfiguration);
 

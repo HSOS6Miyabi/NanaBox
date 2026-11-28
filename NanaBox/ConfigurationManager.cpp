@@ -234,6 +234,34 @@ nlohmann::json NanaBox::MakeHcsPlan9Share(Plan9ShareConfiguration const& Share)
     return Result;
 }
 
+bool NanaBox::EqualPlan9ShareName(Plan9ShareConfiguration const& Left, Plan9ShareConfiguration const& Right)
+{
+    return SamePlan9Name(Left.Name, Right.Name);
+}
+
+void NanaBox::ValidatePlan9HostDirectory(Plan9ShareConfiguration const& Share)
+{
+    auto Path = winrt::to_hstring(::GetAbsoluteUtf8Path(Share.Path));
+    auto Attributes = ::GetFileAttributesW(Path.c_str());
+    if (Attributes == INVALID_FILE_ATTRIBUTES || !(Attributes & FILE_ATTRIBUTE_DIRECTORY))
+        throw winrt::hresult_invalid_argument(winrt::to_hstring("Plan9 share directory does not exist: " + Share.Path));
+}
+
+nlohmann::json NanaBox::MakeHcsPlan9Modification(Plan9ShareConfiguration const& Share, bool Add)
+{
+    auto Settings = Add ? MakeHcsPlan9Share(Share) : nlohmann::json{
+        {"Name", Share.Name}, {"AccessName", Share.Name}, {"Port", Share.Port}};
+    return {{"ResourcePath", "VirtualMachine/Devices/Plan9/Shares"},
+        {"RequestType", Add ? "Add" : "Remove"}, {"Settings", std::move(Settings)}};
+}
+
+void NanaBox::ComputeSystemModifyPlan9Share(winrt::com_ptr<ComputeSystem> const& Instance,
+    Plan9ShareConfiguration const& Share, bool Add)
+{
+    if (Add) ValidatePlan9HostDirectory(Share);
+    Instance->Modify(winrt::to_hstring(MakeHcsPlan9Modification(Share, Add).dump()));
+}
+
 nlohmann::json NanaBox::MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
     nlohmann::json const& HcsConfiguration)
 {

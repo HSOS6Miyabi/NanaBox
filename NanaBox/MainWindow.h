@@ -134,6 +134,7 @@ namespace NanaBox
         winrt::com_ptr<NanaBox::ComputeSystem> m_VirtualMachine;
         std::unique_ptr<NanaBox::MirroredNetworking> m_MirroredNetworking;
         std::unique_ptr<NanaBox::Plan9MountManager> m_Plan9MountManager;
+        nlohmann::json m_Plan9Builtins = nlohmann::json::array();
         std::string m_VirtualMachineGuid;
         bool m_VirtualMachineRunning = false;
         bool m_VirtualMachinePaused = false;
@@ -175,6 +176,7 @@ namespace NanaBox
         void SaveAndCloseVirtualMachine();
 
         void InitializeVirtualMachine();
+        void PublishPlan9Inventory();
 
         void TryReloadVirtualMachine();
 
