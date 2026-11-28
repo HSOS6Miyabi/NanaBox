@@ -435,6 +435,10 @@ namespace
         winrt::Windows::UI::Xaml::Controls::ComboBoxItem Item;
         Item.Content(winrt::box_value(Name));
         Item.Tag(winrt::box_value(Value));
+        auto Prefix = winrt::AutomationProperties::GetAutomationId(Picker);
+        if (!Prefix.empty())
+            winrt::AutomationProperties::SetAutomationId(Item,
+                winrt::hstring(std::wstring(Prefix.c_str()) + L"_" + Value.c_str()));
         winrt::ToolTipService::SetToolTip(Item, winrt::box_value(Value));
         Picker.Items().Append(Item);
     }
@@ -2364,7 +2368,11 @@ namespace winrt::NanaBox::implementation
                 if (Action == L"Create") this->m_HostOperations->CreateNetwork(Value, Firewall, CustomSettings);
                 else if (Action == L"Delete") this->m_HostOperations->DeleteNetwork(winrt::guid(winrt::to_string(Value)));
                 Networks = this->m_HostOperations->EnumerateNetworks();
-                Result = {{"Success", true}, {"Operation", winrt::to_string(Action)}, {"Count", Networks.size()}};
+                Result = {{"Success", true}, {"Operation", winrt::to_string(Action)}, {"Count", Networks.size()},
+                    {"Networks", Json::array()}};
+                for (auto const& Network : Networks)
+                    Result["Networks"].push_back({{"Id", winrt::to_string(::FromGuid(Network.Id))},
+                        {"Name", winrt::to_string(Network.Name)}, {"Type", winrt::to_string(Network.Type)}});
             }
         }
         catch (...) { Result = {{"Success", false}, {"Operation", winrt::to_string(Action)},
@@ -2518,6 +2526,8 @@ namespace winrt::NanaBox::implementation
                     auto Name = Entry.value("Name", Id);
                     Value.Content(winrt::box_value(winrt::to_hstring(Name + (Name == Id ? "" : " (" + Id + ")"))));
                     if (Id == Preferred) Selection = static_cast<int>(Box.Items().Size());
+                    winrt::AutomationProperties::SetAutomationId(Value, winrt::hstring(
+                        std::wstring(winrt::AutomationProperties::GetAutomationId(Box).c_str()) + L"_" + winrt::to_hstring(Id).c_str()));
                     Box.Items().Append(Value);
                 }
                 if (Selection >= 0) Box.SelectedIndex(Selection);
@@ -2773,6 +2783,8 @@ namespace winrt::NanaBox::implementation
                         Item.Tag(winrt::box_value(winrt::to_hstring(Id)));
                         Item.Content(winrt::box_value(winrt::to_hstring(Entry.at("Name").get<std::string>() + " (" + Id + ")")));
                         if (Result.value("Id", std::string()) == Id) Selection = static_cast<int>(Box.Items().Size());
+                        winrt::AutomationProperties::SetAutomationId(Item, winrt::hstring(
+                            std::wstring(winrt::AutomationProperties::GetAutomationId(Box).c_str()) + L"_" + winrt::to_hstring(Id).c_str()));
                         Box.Items().Append(Item);
                     }
                     if (Selection >= 0) Box.SelectedIndex(Selection);
@@ -3086,6 +3098,8 @@ namespace winrt::NanaBox::implementation
                     Value.Tag(winrt::box_value(winrt::to_hstring(Id)));
                     Value.Content(winrt::box_value(winrt::to_hstring(Id + " - " +
                         Entry.value("SystemType", std::string()) + " - " + Entry.value("State", std::string()))));
+                    winrt::AutomationProperties::SetAutomationId(Value, winrt::hstring(
+                        std::wstring(winrt::AutomationProperties::GetAutomationId(Box).c_str()) + L"_" + winrt::to_hstring(Id).c_str()));
                     Box.Items().Append(Value);
                 }
                 if (Box.Items().Size()) Box.SelectedIndex(0);
@@ -3105,6 +3119,8 @@ namespace winrt::NanaBox::implementation
                         auto State = Entry.value("State", std::string());
                         Value.Content(winrt::box_value(winrt::to_hstring(Name + " (" + Id + ")" + (State.empty() ? "" : " - " + State))));
                         if (Id == Preferred) Selection = static_cast<int>(Box.Items().Size());
+                        winrt::AutomationProperties::SetAutomationId(Value, winrt::hstring(
+                            std::wstring(winrt::AutomationProperties::GetAutomationId(Box).c_str()) + L"_" + winrt::to_hstring(Id).c_str()));
                         Box.Items().Append(Value);
                     }
                     if (Selection >= 0) Box.SelectedIndex(Selection);

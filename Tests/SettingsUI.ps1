@@ -81,6 +81,7 @@ function Select-Choice([string]$id,[string]$choice) {
     $expand = Pattern $e ([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
     $expand.Expand()
     $item = Find-Control $choice
+    Scroll $item
     (Pattern $item ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
     if ($expand.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Collapse() }
 }
@@ -105,7 +106,9 @@ function Select-ByName([string]$id,[string]$prefix,[switch]$Optional) {
     do {
         foreach ($w in $root.FindAll($children,$pidCondition)) {
             foreach ($item in $w.FindAll($desc,$type)) {
-                if ($item.Current.Name.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) {
+                if ($item.Current.AutomationId.StartsWith(($id+'_'),[StringComparison]::Ordinal) -and
+                    $item.Current.Name.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) {
+                    Scroll $item
                     (Pattern $item ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
                     if ($p.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $p.Collapse() }
                     return $true
@@ -482,10 +485,12 @@ try {
             Invoke-Control 'InspectNetwork'
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Inspect' -and $v.Name -eq $managed}
             Confirm-Change 'DeleteNetwork'
-            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
+            $report = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
+            Assert-Equal @($report.Networks | Where-Object Name -eq $managed).Count 0 'Deleted network absent from host enumeration'
             Invoke-Control 'RefreshNetworks'
-            $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
-            if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'HCN network was not deleted' }
+            $report = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
+            Assert-Equal @($report.Networks | Where-Object Name -eq $managed).Count 0 'Deleted network absent after refresh'
+            if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'Deleted HCN network still appears in the network selector' }
             $networkCreated = $false
             if (-not $HostIntegration) {
                 Set-Text 'NetworkNameTextBox' $name
