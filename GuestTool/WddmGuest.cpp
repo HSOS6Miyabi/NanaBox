@@ -1206,6 +1206,7 @@ int wmain(int argc, wchar_t** argv)
     try
     {
         if (argc == 2 && std::wstring_view(argv[1]) == L"--self-test") return SelfTest();
+        if (argc == 2 && std::wstring_view(argv[1]) == L"--bind-filter-self-test") return VsmbClient.LocalMappingTest();
         if (argc == 2 && std::wstring_view(argv[1]) == L"--cleanup")
         {
             Manager manager; manager.Cleanup(); return 0;

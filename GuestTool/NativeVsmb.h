@@ -23,15 +23,18 @@ class NativeVsmb
 {
     using CreateNt=NTSTATUS(NTAPI*)(PHANDLE,ACCESS_MASK,POBJECT_ATTRIBUTES,PIO_STATUS_BLOCK,PLARGE_INTEGER,ULONG,ULONG,ULONG,ULONG,PVOID,ULONG);
     using ControlNt=NTSTATUS(NTAPI*)(HANDLE,HANDLE,PVOID,PVOID,PIO_STATUS_BLOCK,ULONG,PVOID,ULONG,PVOID,ULONG);
+    using AttachBinding=HRESULT(WINAPI*)(LPCWSTR,PBOOL);
     using SetupBinding=HRESULT(WINAPI*)(HANDLE,ULONG,LPCWSTR,LPCWSTR,LPCWSTR*,ULONG);
     using QueryBindings=HRESULT(WINAPI*)(ULONG,HANDLE,LPCWSTR,PSID,PULONG,PVOID);
     using RemoveBinding=HRESULT(WINAPI*)(HANDLE,LPCWSTR);
     HMODULE Module=nullptr;
+    AttachBinding Attach=nullptr;
     SetupBinding Setup=nullptr;
     QueryBindings Query=nullptr;
     RemoveBinding Remove=nullptr;
     NativeHandle Keepalive;
     bool TransportReady=false;
+    std::set<std::wstring> AttachedVolumes;
     std::map<std::wstring,std::pair<std::wstring,bool>> Owned;
 
     template<class T> static T Import(HMODULE module,char const* name)
@@ -175,6 +178,7 @@ class NativeVsmb
         if(!Module)Error("Load Bind Filter API");
         try
         {
+            Attach=Import<AttachBinding>(Module,"BfAttachFilter");
             Setup=Import<SetupBinding>(Module,"BfSetupFilter");
             Query=Import<QueryBindings>(Module,"BfGetMappings");
             Remove=Import<RemoveBinding>(Module,"BfRemoveMapping");
@@ -200,6 +204,13 @@ class NativeVsmb
     {
         Load();
         auto volume=path.root_path().wstring();
+        if (!AttachedVolumes.count(volume))
+        {
+            BOOL attached=FALSE;
+            auto hr=Attach(volume.c_str(),&attached);
+            if(FAILED(hr))throw std::runtime_error("Attach Bind Filter to mount volume failed: "+std::to_string(static_cast<unsigned long>(hr)));
+            AttachedVolumes.insert(volume);
+        }
         ULONG bytes=65536;
         std::vector<unsigned char> buffer;
         for(unsigned attempt=0;attempt<4;++attempt)
@@ -224,14 +235,23 @@ class NativeVsmb
     }
     bool Existing(fs::path const& path,std::wstring const& name,bool readOnly)
     {
-        auto nt=NtPath(path),target=NtShare(name);
+        return ExistingTarget(path,NtShare(name),readOnly);
+    }
+    static std::wstring TrimNt(std::wstring text)
+    {
+        while(text.size()>1&&text.back()==L'\\')text.pop_back();
+        return text;
+    }
+    bool ExistingTarget(fs::path const& path,std::wstring const& target,bool readOnly)
+    {
+        auto nt=TrimNt(NtPath(path));
         bool match=false;
         for(auto const& b:Bindings(path))
         {
-            auto root=WideName(b.Root);
+            auto root=TrimNt(WideName(b.Root));
             if(Equal(root,nt))
             {
-                if(match||b.Targets.size()!=1||!Equal(WideName(b.Targets[0]),target)||
+                if(match||b.Targets.size()!=1||!Equal(TrimNt(WideName(b.Targets[0])),TrimNt(target))||
                     (b.Flags&0x20)==0||((b.Flags&1)!=0)!=readOnly)
                     throw std::runtime_error("Mount path is occupied by an unrelated Bind Filter mapping");
                 match=true;
@@ -263,6 +283,67 @@ class NativeVsmb
     }
 public:
     ~NativeVsmb(){if(Module)FreeLibrary(Module);}
+    // Exercise the same Bind Filter API and mapping validation on two
+    // disposable directories without initializing the VMBus transport.
+    int LocalMappingTest()
+    {
+        auto root=fs::temp_directory_path()/("NanaBox-BindFilter-"+std::to_string(GetCurrentProcessId()));
+        if(!fs::create_directory(root))throw std::runtime_error("Cannot create Bind Filter test directory");
+        auto source=root/L"source",mount=root/L"mount";
+        bool bound=false;
+        try
+        {
+            fs::create_directory(source);fs::create_directory(mount);
+            auto sourceFile=source/L"test.txt";
+            {
+                NativeHandle file(CreateFileW(sourceFile.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr));
+                if(!file.Valid())Error("Create Bind Filter test file");
+                char bytes[]="NanaBox";
+                DWORD count=0;
+                if(!WriteFile(file.Get(),bytes,7,&count,nullptr)||count!=7)Error("Write Bind Filter test file");
+            }
+            if(ExistingTarget(mount,NtPath(source),true))throw std::runtime_error("Unexpected existing test binding");
+            auto status=Setup(nullptr,0x61,mount.c_str(),source.c_str(),nullptr,0);
+            if(FAILED(status))throw std::runtime_error("Create test binding failed: "+std::to_string(static_cast<unsigned long>(status)));
+            bound=true;
+            if(!ExistingTarget(mount,NtPath(source),true))throw std::runtime_error("Test binding not reported");
+            {
+                NativeHandle file(CreateFileW((mount/L"test.txt").c_str(),GENERIC_READ,FILE_SHARE_READ,
+                    nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+                if(!file.Valid())Error("Read bound file");
+                char data[8]{};
+                DWORD count=0;
+                if(!ReadFile(file.Get(),data,7,&count,nullptr)||count!=7||std::string_view(data,7)!="NanaBox")
+                    throw std::runtime_error("Bound file content differs");
+                wchar_t path[32768]{};
+                auto size=GetFinalPathNameByHandleW(file.Get(),path,static_cast<DWORD>(std::size(path)),VOLUME_NAME_DOS);
+                if(!size||size>=std::size(path)||!Equal(std::wstring(path),L"\\\\?\\"+(mount/L"test.txt").wstring()))
+                    throw std::runtime_error("Bind Filter did not preserve the local DOS filename");
+            }
+            {
+                NativeHandle file(CreateFileW((mount/L"test.txt").c_str(),GENERIC_WRITE,0,nullptr,
+                    OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+                if(file.Valid())throw std::runtime_error("Read-only Bind Filter accepted a write handle");
+            }
+            if(FAILED(Remove(nullptr,mount.c_str())))throw std::runtime_error("Remove test binding failed");
+            bound=false;
+            if(ExistingTarget(mount,NtPath(source),true)||!fs::is_empty(mount))
+                throw std::runtime_error("Test binding still exists");
+            fs::remove_all(root);
+            std::cout<<"Native Bind Filter integration passed\n";
+            return 0;
+        }
+        catch(...)
+        {
+            if(bound)
+            {
+                if(FAILED(Remove(nullptr,mount.c_str())))throw std::runtime_error("Test binding cleanup failed; retained isolated test directory");
+                bound=false;
+            }
+            std::error_code ec;fs::remove_all(root,ec);
+            throw;
+        }
+    }
     bool Ready(fs::path const& path,std::wstring const& name,bool readOnly)
     {
         auto it=Owned.find(path.wstring());
@@ -279,7 +360,7 @@ public:
         {
             PrepareDirectory(path);
             auto target=L"\\\\?\\GLOBALROOT"+NtShare(name);
-            auto hr=Setup(nullptr,0x20|(readOnly?1u:0u),path.c_str(),target.c_str(),nullptr,0);
+            auto hr=Setup(nullptr,0x60|(readOnly?1u:0u),path.c_str(),target.c_str(),nullptr,0);
             if(FAILED(hr))throw std::runtime_error("Bind Filter mount failed: "+std::to_string(static_cast<unsigned long>(hr)));
             if(!Existing(path,name,readOnly))throw std::runtime_error("Bind Filter mapping did not appear");
         }

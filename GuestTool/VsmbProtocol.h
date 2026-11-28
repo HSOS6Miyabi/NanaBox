@@ -96,9 +96,14 @@ namespace NanaBox::Vsmb
         for(std::size_t i=offset;i<std::size_t(offset)+size;i+=2)
         {
             auto ch=static_cast<char16_t>(unsigned(bytes[i]) | (unsigned(bytes[i+1])<<8));
-            if(!ch)throw std::runtime_error("Embedded NUL in Bind Filter name");
+            if(!ch)
+            {
+                if(i+2!=std::size_t(offset)+size)throw std::runtime_error("Embedded NUL in Bind Filter name");
+                break;
+            }
             value.push_back(ch);
         }
+        if(value.empty())throw std::runtime_error("Empty Bind Filter name");
         return value;
     }
     inline std::vector<Binding> ParseBindings(std::vector<unsigned char> const& bytes)

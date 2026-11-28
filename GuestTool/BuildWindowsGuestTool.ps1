@@ -30,6 +30,10 @@ try {
         if ($RunTests) {
             & $target --self-test
             if ($LASTEXITCODE -ne 0) { throw "GuestTool test failed: $($item[0])" }
+            if ($item[0] -eq 'WddmGuest.cpp') {
+                & $target --bind-filter-self-test
+                if ($LASTEXITCODE -ne 0) { throw 'Native Bind Filter integration test failed.' }
+            }
         }
     }
 } finally { Pop-Location; Remove-Item -LiteralPath $temporary -Recurse -Force }
