@@ -18,7 +18,8 @@ $manager = New-Object System.Xml.XmlNamespaceManager($xaml.NameTable)
 $manager.AddNamespace('x','http://schemas.microsoft.com/winfx/2006/xaml')
 $names = @($xaml.SelectNodes('//*[@x:Name]',$manager) | ForEach-Object { $_.GetAttribute('Name','http://schemas.microsoft.com/winfx/2006/xaml') })
 if (@($names | Group-Object | Where-Object Count -gt 1).Count) { throw 'Duplicate XAML element name' }
-$bindings = [regex]::Matches($header,'\{L"([^"]+)", L"(Text|Header|Content|AutomationProperties\.Name|AutomationProperties\.HelpText|ToolTipService\.ToolTip)", L"([^"]+)"\},')
+$bindingTable = $header.Substring($header.IndexOf('inline constexpr Binding'))
+$bindings = [regex]::Matches($bindingTable,'\{L"([^"]+)", L"(Text|Header|Content|AutomationProperties\.Name|AutomationProperties\.HelpText|ToolTipService\.ToolTip)", L"([^"]+)"\},')
 foreach ($binding in $bindings) {
     if ($binding.Groups[1].Value -cnotin $names) { throw "Missing XAML element: $($binding.Groups[1].Value)" }
     if ($binding.Groups[3].Value -cnotin $fallback) { throw "Missing resource: $($binding.Groups[3].Value)" }
