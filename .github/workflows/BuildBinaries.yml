@@ -46,8 +46,12 @@ jobs:
       shell: pwsh
       run: |
         $exe = Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe'
+        $env:NANABOX_SELF_TEST_LOG = Join-Path $env:RUNNER_TEMP 'NanaBox-SelfTest.json'
         $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
-        if ($process.ExitCode -ne 0) { throw "NanaBox self-test failed: $($process.ExitCode)" }
+        if ($process.ExitCode -ne 0) {
+          if (Test-Path $env:NANABOX_SELF_TEST_LOG) { Get-Content $env:NANABOX_SELF_TEST_LOG }
+          throw "NanaBox self-test failed: $($process.ExitCode)"
+        }
     - name: Virtual disk API integration test
       if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: pwsh

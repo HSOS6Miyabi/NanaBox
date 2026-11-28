@@ -309,7 +309,22 @@ int WINAPI wWinMain(
             }
             return 0;
         }
-        catch (...) { return 4; }
+        catch (...)
+        {
+            try
+            {
+                auto Error = Mile::WinRT::ToHResultError();
+                auto Report = nlohmann::json{{"HRESULT", static_cast<std::int32_t>(Error.code())},
+                    {"Message", winrt::to_string(Error.message())}}.dump(2);
+                wchar_t Path[32768]{};
+                auto Length = ::GetEnvironmentVariableW(L"NANABOX_SELF_TEST_LOG", Path, ARRAYSIZE(Path));
+                if (Length && Length < ARRAYSIZE(Path))
+                    ::WriteAllTextToUtf8TextFile(Path, Report);
+                ::OutputDebugStringW(Error.message().c_str());
+            }
+            catch (...) {}
+            return 4;
+        }
     }
 
     if (0 == ::_wcsicmp(lpCmdLine, L"--disk-self-test"))
