@@ -6,6 +6,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <winternl.h>
 #include <hvsocket.h>
 #include <winfsp/winfsp.h>
 #include <fuse.h>
