@@ -1,5 +1,6 @@
 """Integration test: mount a disposable in-memory 9P2000.L server through WinFsp."""
 import ctypes
+import mmap
 import os
 import pathlib
 import socket
@@ -199,9 +200,34 @@ kernel.SetEvent.argtypes=[ctypes.c_void_p]
 kernel.WaitForSingleObject.argtypes=[ctypes.c_void_p,ctypes.c_uint32]
 kernel.WaitForSingleObject.restype=ctypes.c_uint32
 kernel.CloseHandle.argtypes=[ctypes.c_void_p]
+kernel.CreateFileW.argtypes=[ctypes.c_wchar_p,ctypes.c_uint32,ctypes.c_uint32,
+    ctypes.c_void_p,ctypes.c_uint32,ctypes.c_uint32,ctypes.c_void_p]
+kernel.CreateFileW.restype=ctypes.c_void_p
+kernel.CreateFileMappingW.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_uint32,
+    ctypes.c_uint32,ctypes.c_uint32,ctypes.c_wchar_p]
+kernel.CreateFileMappingW.restype=ctypes.c_void_p
+kernel.MapViewOfFile.argtypes=[ctypes.c_void_p,ctypes.c_uint32,ctypes.c_uint32,ctypes.c_uint32,ctypes.c_size_t]
+kernel.MapViewOfFile.restype=ctypes.c_void_p
+kernel.UnmapViewOfFile.argtypes=[ctypes.c_void_p]
+
+def check_image_section(path):
+    # Map the test client's own PE image through the filesystem; do not execute it.
+    handle=kernel.CreateFileW(str(path),0x80000000,7,None,3,0,None)
+    if handle==ctypes.c_void_p(-1).value:raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        mapping=kernel.CreateFileMappingW(handle,None,0x01000002,0,0,None) # SEC_IMAGE | PAGE_READONLY
+        if not mapping:raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            view=kernel.MapViewOfFile(mapping,4,0,0,0) # FILE_MAP_READ
+            if not view:raise ctypes.WinError(ctypes.get_last_error())
+            try:assert ctypes.string_at(view,2)==b"MZ"
+            finally:kernel.UnmapViewOfFile(view)
+        finally:kernel.CloseHandle(mapping)
+    finally:kernel.CloseHandle(handle)
 
 def run(exe, readonly):
     server=Server()
+    server.root.children["image.exe"]=Node(contents=pathlib.Path(exe).read_bytes())
     event_name="Local\\NanaBox.Plan9.Test."+uuid.uuid4().hex
     event=kernel.CreateEventW(None,0,0,event_name)
     busy=kernel.CreateEventW(None,0,0,event_name+".Busy")
@@ -223,6 +249,10 @@ def run(exe, readonly):
                 assert (mount/"Unicode-\u4e16\u754c.txt").read_bytes()==b"UTF-8"
                 assert "hello.txt" in os.listdir(mount)
                 assert (mount/"comma,semicolon;.txt").read_bytes()==b"valid punctuation"
+                with (mount/"hello.txt").open("rb") as source:
+                    with mmap.mmap(source.fileno(),0,access=mmap.ACCESS_READ) as mapped:
+                        assert mapped[:]==b"Hello 9P"
+                check_image_section(mount/"image.exe")
                 if readonly:
                     try:
                         (mount/"hello.txt").write_bytes(b"changed")
@@ -239,6 +269,14 @@ def run(exe, readonly):
                         stream.seek(80003);stream.write(b"XYZ");stream.flush()
                         stream.truncate(120003)
                     expected=data[:80003]+b"XYZ"+data[80006:120003]
+                    assert file.read_bytes()==expected
+                    with file.open("r+b") as stream:
+                        with mmap.mmap(stream.fileno(),0,access=mmap.ACCESS_WRITE) as mapped:
+                            assert mapped[17003:17122]==expected[17003:17122]
+                            mapped[30001:30004]=b"MAP"
+                            mapped.flush()
+                        os.fsync(stream.fileno())
+                    expected=expected[:30001]+b"MAP"+expected[30004:]
                     assert file.read_bytes()==expected
                     renamed=mount/"renamed.bin";file.rename(renamed)
                     assert renamed.read_bytes()==expected

@@ -7,6 +7,8 @@ import sys
 import tempfile
 import time
 
+sys.stdout.reconfigure(errors="backslashreplace")
+
 from WinFspPlan9Integration import Server
 
 def run(manager, helper):
