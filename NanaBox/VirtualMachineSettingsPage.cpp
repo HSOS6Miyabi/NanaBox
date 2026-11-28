@@ -166,14 +166,7 @@ namespace
         };
         for (auto Name : Current->second)
             if (auto Control = Root->FindName(Name).template try_as<winrt::FrameworkElement>())
-            {
-                if (auto Group = Control.try_as<Grid>())
-                {
-                    for (auto Child : Group.Children())
-                        if (auto Field = Child.try_as<winrt::FrameworkElement>()) Describe(Field);
-                }
-                else Describe(Control);
-            }
+                Describe(Control);
         return Result;
     }
 
@@ -1407,6 +1400,7 @@ namespace winrt::NanaBox::implementation
         this->SummaryGuestToolsResult().Text(::GetSettingsString(L"ResultWaiting"));
         ::BindVisibility(this->DetailsVmmsResultTextBox(), this->VmmsResultTextBoxTree());
         this->SummaryVmmsResultTextBox().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->MirroredNetworkingCheckBox(), this->MirroredOptionsPanel());
         ::BindVisibility(this->NetworkExpertCheckBox(), this->NetworkExpertCheckBoxPanel());
         ::BindVisibility(this->HcnExpertCheckBox(), this->HcnExpertCheckBoxPanel());
         auto UpdateHcnForm = [Weak = this->get_weak()]()

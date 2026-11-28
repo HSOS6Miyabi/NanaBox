@@ -212,12 +212,16 @@ function Save-Config {
     throw 'Configuration was not saved'
 }
 function Capture([string]$name) {
-    Start-Sleep -Milliseconds 300
-    $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-    $bitmap = New-Object System.Drawing.Bitmap($bounds.Width,$bounds.Height)
+    Start-Sleep -Milliseconds 350
+    $window = $root.FindAll($children,$pidCondition) | Where-Object { $_.Current.NativeWindowHandle -ne 0 -and -not $_.Current.IsOffscreen } | Select-Object -First 1
+    $bounds = $window.Current.BoundingRectangle
+    $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $area = [System.Drawing.Rectangle]::Intersect($screen, (New-Object System.Drawing.Rectangle([int]$bounds.Left,[int]$bounds.Top,[int]$bounds.Width,[int]$bounds.Height)))
+    if ($area.Width -lt 1 -or $area.Height -lt 1) { throw 'Cannot capture the settings window' }
+    $bitmap = New-Object System.Drawing.Bitmap($area.Width,$area.Height)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
     try {
-        $graphics.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
+        $graphics.CopyFromScreen($area.Location,[System.Drawing.Point]::Empty,$area.Size)
         $bitmap.Save((Join-Path $OutputDirectory ($name+'.png')))
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
@@ -249,7 +253,7 @@ try {
     Capture 'network-small-window'
     $transform.Resize(900,700)
     Start-Sleep -Milliseconds 400
-    foreach ($section in @('TabGeneral','TabGpu','TabStorage','TabNetwork','TabShares','TabHostManagement')) {
+    foreach ($section in @('TabGeneral','TabGpu','TabStorage','TabNetwork','TabShares','TabSession','TabSerial','TabGuestTools','TabHostManagement','TabVmms','TabHcn','TabAdvanced')) {
         Select-Tab $section
         Capture $section
     }
@@ -429,6 +433,8 @@ try {
     } else {
         if ((Find-Control 'NetworkStatusButton').Current.IsEnabled -or (Find-Control 'NetworkRetryButton').Current.IsEnabled) { throw 'Offline network controls must be disabled' }
     }
+    $hidden = Find-Control 'MirroredAutoReservePortsCheckBox' -Optional
+    if ($null -ne $hidden -and -not $hidden.Current.IsOffscreen) { throw 'Disabled mirrored networking exposes dependent settings' }
     Set-Check 'MirroredNetworkingCheckBox' $true
     Set-Check 'MirroredAutoReservePortsCheckBox' $false
     Set-Check 'MirroredDnsTunnelingCheckBox' $true
