@@ -1,13 +1,21 @@
 # Run in a Windows guest as administrator after installing the Mile.Cirno Dokany driver.
 param(
     [Parameter(Mandatory=$true)][string]$CirnoDirectory,
-    [string]$Executable = (Join-Path $PSScriptRoot 'nanabox-gpu.exe')
+    [string]$Executable
 )
 $ErrorActionPreference = 'Stop'
 if (-not [Environment]::Is64BitProcess) { throw 'Use native 64-bit PowerShell.' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not ([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run as administrator.' }
 $source = (Resolve-Path -LiteralPath $CirnoDirectory).Path
+if (-not $Executable) {
+    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+    $Executable = if ($architecture -eq 'Arm64') {
+        Join-Path $PSScriptRoot 'arm64\nanabox-gpu.exe'
+    } elseif ($architecture -eq 'X64') {
+        Join-Path $PSScriptRoot 'nanabox-gpu.exe'
+    } else { throw "Unsupported Windows guest architecture: $architecture" }
+}
 $binary = (Resolve-Path -LiteralPath $Executable).Path
 if (-not (Test-Path -LiteralPath (Join-Path $source 'Mile.Cirno.exe') -PathType Leaf)) { throw 'Mile.Cirno.exe was not found.' }
 $name = 'NanaBoxGuestGpu'
