@@ -97,6 +97,17 @@ int bind(int fd, const struct sockaddr *address, socklen_t length)
         return real_bind(fd, address, length);
     }
     if (!port) return real_bind(fd, address, length);
+    /* These addresses are local to the guest and never use HCN reservations. */
+    if (request[1] == 4 && ((request[4] == 127 &&
+        (request[5] != 0 || request[6] != 0 || request[7] != 1)) ||
+        request[4] >= 224 || (request[4] == 169 && request[5] == 254)))
+        return real_bind(fd, address, length);
+    if (request[1] == 6) {
+        struct in6_addr ip;
+        memcpy(&ip, request + 4, sizeof(ip));
+        if (IN6_IS_ADDR_LOOPBACK(&ip) || IN6_IS_ADDR_MULTICAST(&ip) || IN6_IS_ADDR_LINKLOCAL(&ip))
+            return real_bind(fd, address, length);
+    }
     memcpy(request + 2, &port, 2);
     int result = request_reservation(request);
     if (result != 0) {

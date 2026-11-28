@@ -1721,6 +1721,7 @@ class BindCoordinator:
         self.pending = {}
         self.channel = None
         self.local_listener = None
+        self.socket_identity = None
         self.host_listener = None
         self.stopping = threading.Event()
         self.threads = []
@@ -1835,11 +1836,27 @@ class BindCoordinator:
                 self.attach(conn)
 
     def start(self, listen_host=True):
-        if self.path.is_symlink() or self.path.exists():
-            raise RuntimeError('Bind coordination socket already exists')
+        if self.path.is_symlink():
+            raise RuntimeError('Unsafe bind coordination socket')
+        if self.path.exists():
+            previous = self.path.lstat()
+            if not stat.S_ISSOCK(previous.st_mode) or previous.st_uid != os.geteuid():
+                raise RuntimeError('Bind coordination path is not an owned socket')
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                probe.settimeout(1)
+                try:
+                    probe.connect(str(self.path))
+                except ConnectionRefusedError:
+                    if self.path.lstat().st_ino != previous.st_ino:
+                        raise RuntimeError('Bind socket changed during recovery')
+                    self.path.unlink()
+                else:
+                    raise RuntimeError('Bind coordination service is already running')
         self.local_listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.local_listener.bind(str(self.path))
+            info = self.path.lstat()
+            self.socket_identity = (info.st_dev, info.st_ino)
             if self.group is not None:
                 os.chown(self.path, -1, self.group)
             os.chmod(self.path, 0o660)
@@ -1870,8 +1887,12 @@ class BindCoordinator:
                 self.channel = None
         for thread in self.threads:
             thread.join(timeout=5)
-        if self.local_listener is not None and self.path.is_socket():
-            self.path.unlink()
+        try:
+            info = self.path.lstat()
+            if stat.S_ISSOCK(info.st_mode) and (info.st_dev, info.st_ino) == self.socket_identity:
+                self.path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def prepare_tunnel_snapshot(settings, tunnel, windows):

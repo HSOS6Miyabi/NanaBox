@@ -104,8 +104,8 @@
               <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestTypeLabel" Text="Guest operating system" />
               <ComboBox x:Name="GuestTypeComboBox" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="GuestTypeComboBox">
                 <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/GuestUnknown" Content="Unknown" AutomationProperties.AutomationId="GuestUnknown" />
-                <ComboBoxItem Content="Windows" />
-                <ComboBoxItem Content="Linux" />
+                <ComboBoxItem Content="Windows" AutomationProperties.AutomationId="GuestWindows" />
+                <ComboBoxItem Content="Linux" AutomationProperties.AutomationId="GuestLinux" />
               </ComboBox>
             </StackPanel>
             <StackPanel x:Name="NameRow" Spacing="4">

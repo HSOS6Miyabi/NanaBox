@@ -68,7 +68,9 @@ if [ "$bind" -eq 1 ]; then
     temporary_library=$(mktemp /opt/nanabox-gns/.bind.XXXXXXXX)
     trap 'rm -f "$temporary_library"' EXIT HUP INT TERM
     cc -std=gnu11 -O2 -Wall -Wextra -Werror -shared -fPIC "$source_dir/bind_coord.c" -o "$temporary_library"
-    install -o root -g root -m 0755 "$temporary_library" /opt/nanabox-gns/libnanabox-bind.so
+    chmod 0755 "$temporary_library"
+    chown root:root "$temporary_library"
+    mv -f "$temporary_library" /opt/nanabox-gns/libnanabox-bind.so
     rm -f "$temporary_library"
     trap - EXIT HUP INT TERM
     install -o root -g root -m 0755 "$source_dir/nanabox-bind.sh" /opt/nanabox-gns/nanabox-bind

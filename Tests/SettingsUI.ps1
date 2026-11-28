@@ -153,6 +153,7 @@ try {
         $null = Wait-Result 'ConfigurationStatusTextBox' {param($v) $v.Success -and $v.Operation -eq 'Reference'}
     }
     Select-Tab 'TabGeneral'
+    Select-Choice 'GuestTypeComboBox' 'GuestLinux'
     Set-Text 'NameTextBox' 'UI automation saved'
     Set-Text 'ProcessorCountTextBox' '4'
     Set-Text 'MemorySizeTextBox' '4096'
@@ -255,6 +256,9 @@ try {
     Set-Check 'MirroredNetworkingCheckBox' $true
     Set-Check 'MirroredAutoReservePortsCheckBox' $false
     Set-Check 'MirroredDnsTunnelingCheckBox' $true
+    Set-Check 'MirroredBindCoordinationCheckBox' $true
+    Set-Check 'MirroredLoopbackCheckBox' $true
+    Set-Check 'MirroredHostAddressLoopbackCheckBox' $true
     Set-Text 'MirroredFirewallCreatorTextBox' '06b34f94-82ae-4ad9-9f35-3a2a7da8508c'
     Set-Text 'MirroredTcpPortsTextBox' '8080'
     Set-Text 'MirroredUdpPortsTextBox' '5353'
@@ -660,7 +664,10 @@ try {
     Assert-Equal $saved.MirroredNetworking $true 'Mirrored mode'
     Assert-Equal $saved.MirroredAutoReservePorts $false 'Automatic mirrored port reservations'
     Assert-Equal $saved.MirroredDnsTunneling $true 'Mirrored DNS tunneling'
-    Assert-Equal $saved.MirroredLoopback $null 'Loopback disabled by default'
+    Assert-Equal $saved.GuestType 'Linux' 'Guest operating system'
+    Assert-Equal $saved.MirroredBindCoordination $true 'Synchronous bind coordination'
+    Assert-Equal $saved.MirroredLoopback $true 'GELNIC loopback'
+    Assert-Equal $saved.MirroredHostAddressLoopback $true 'Host address loopback'
     Assert-Equal $saved.MirroredTcpPorts[0] '8080' 'Mirrored TCP port'
     Assert-Equal $saved.MirroredUdpPorts[0] '5353' 'Mirrored UDP port'
     Assert-Equal $saved.MirroredIgnoredPorts[0] '53' 'Excluded automatic port'
@@ -683,6 +690,9 @@ try {
     Invoke-Control 'GpuRemove'
     Select-Choice 'AssignmentModeComboBox' 'ChoiceMirrorItem'
     Select-Tab 'TabNetwork'
+    Set-Check 'MirroredBindCoordinationCheckBox' $false
+    Set-Check 'MirroredLoopbackCheckBox' $false
+    Set-Check 'MirroredHostAddressLoopbackCheckBox' $false
     Invoke-Control 'NetworkRemove'
     Select-Tab 'TabStorage'
     Invoke-Control 'ScsiRemove'
@@ -691,6 +701,9 @@ try {
     Invoke-Control 'SmbRemove'
     $saved = Save-Config
     Assert-Equal $saved.Gpu.AssignmentMode 'Mirror' 'All GPUs'
+    Assert-Equal $saved.MirroredBindCoordination $null 'Bind coordination disabled'
+    Assert-Equal $saved.MirroredLoopback $null 'Loopback disabled'
+    Assert-Equal $saved.MirroredHostAddressLoopback $null 'Host address loopback disabled'
     Assert-Equal @($saved.NetworkAdapters | Where-Object {$_}).Count 0 'Network removed'
     Assert-Equal @($saved.ScsiDevices | Where-Object {$_}).Count 0 'Disk removed'
     Assert-Equal @($saved.Plan9Shares | Where-Object {$_}).Count 0 'Share removed'

@@ -1106,7 +1106,7 @@ namespace
         std::wstring Exe = std::wstring(System) + L"\\WindowsPowerShell\\v1.0\\powershell.exe";
         std::wstring File = std::wstring(Temp) + L"NanaBox-" + Name + L".log";
         SECURITY_ATTRIBUTES Security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-        HANDLE RawOutput = ::CreateFileW(File.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        HANDLE RawOutput = ::CreateFileW(File.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE,
             &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
         if (RawOutput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
         winrt::handle Output(RawOutput);
