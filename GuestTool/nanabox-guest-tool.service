@@ -1,0 +1,22 @@
+[Unit]
+Description=NanaBox GuestTool integration service
+After=local-fs.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/opt/nanabox-gns/nanabox-guest-tool --serve
+Restart=on-failure
+RestartSec=5
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+StateDirectory=nanabox-gns
+StateDirectoryMode=0700
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_VSOCK
+
+[Install]
+WantedBy=multi-user.target

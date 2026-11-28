@@ -1,5 +1,22 @@
 # Run as administrator in the Windows guest.
 $ErrorActionPreference = 'Stop'
+$native = Get-Service -Name 'NanaBoxGuestTool' -ErrorAction SilentlyContinue
+if ($native) {
+    if ($native.Status -ne 'Stopped') {
+        Stop-Service -Name 'NanaBoxGuestTool'
+        (Get-Service -Name 'NanaBoxGuestTool').WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30))
+    }
+    & sc.exe delete NanaBoxGuestTool
+    if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool service deletion failed.' }
+}
+$nativeDir = Join-Path $env:ProgramFiles 'NanaBox GuestTool'
+if (Test-Path -LiteralPath $nativeDir) {
+    $item = Get-Item -LiteralPath $nativeDir -Force
+    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Unsafe native GuestTool directory.' }
+    $nativeFile = Join-Path $nativeDir 'nanabox-guest-tool.exe'
+    if (Test-Path -LiteralPath $nativeFile) { Remove-Item -LiteralPath $nativeFile -Force }
+    if (-not (Get-ChildItem -LiteralPath $nativeDir -Force)) { Remove-Item -LiteralPath $nativeDir }
+}
 $taskName = 'NanaBox Guest Network Service'
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($null -ne $task) {

@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
 done
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
-for path in /opt/nanabox-gns /var/lib/nanabox-gns /var/lib/nanabox-gns/exchange /etc/systemd/system/nanabox-gns.service.d; do
+for path in /opt/nanabox-gns /var/lib/nanabox-gns /var/lib/nanabox-gns/exchange /etc/systemd/system/nanabox-gns.service.d /etc/systemd/system/nanabox-guest-tool.service.d; do
     if [ -L "$path" ]; then echo "Unsafe symbolic link: $path" >&2; exit 1; fi
 done
 if [ "$bind" -eq 1 ]; then
@@ -38,11 +38,24 @@ if [ -e /usr/local/bin/nanabox-plan9 ] || [ -L /usr/local/bin/nanabox-plan9 ]; t
         *) echo 'nanabox-plan9 already exists.' >&2; exit 1 ;;
     esac
 fi
-if [ "$plan9" -eq 1 ] && [ ! -x "$source_dir/nanabox-plan9" ]; then
+build_dir=$(mktemp -d)
+trap 'rm -rf "$build_dir"' EXIT
+trap 'exit 1' HUP INT TERM
+native_core="$source_dir/nanabox-guest-tool"
+if [ ! -x "$native_core" ]; then
+    command -v g++ >/dev/null || { echo 'Install a C++17 compiler, nlohmann-json and OpenSSL development headers, or use the prebuilt GuestTool package.' >&2; exit 1; }
+    native_core="$build_dir/nanabox-guest-tool"
+    g++ -std=c++17 -O2 -pthread "$source_dir/GuestTool.cpp" -lcrypto -o "$native_core"
+fi
+"$native_core" --self-test
+native_plan9="$source_dir/nanabox-plan9"
+if [ "$plan9" -eq 1 ] && [ ! -x "$native_plan9" ]; then
     command -v g++ >/dev/null || { echo 'Install a C++17 compiler and Boost.JSON headers, or use the prebuilt GuestTool package.' >&2; exit 1; }
-    native_temp=$(mktemp)
-    trap 'rm -f "$native_temp"' EXIT HUP INT TERM
-    g++ -std=c++17 -O2 -pthread "$source_dir/Plan9.cpp" -o "$native_temp"
+    native_plan9="$build_dir/nanabox-plan9"
+    g++ -std=c++17 -O2 -pthread "$source_dir/Plan9.cpp" -o "$native_plan9"
+fi
+if systemctl is-active --quiet nanabox-guest-tool.service; then
+    systemctl stop nanabox-guest-tool.service
 fi
 if systemctl is-active --quiet nanabox-plan9.service; then
     systemctl stop nanabox-plan9.service
@@ -50,20 +63,26 @@ fi
 if systemctl is-active --quiet nanabox-gns.service; then
     systemctl stop nanabox-gns.service
 fi
-install -d -o root -g root -m 0755 /opt/nanabox-gns /etc/systemd/system/nanabox-gns.service.d
+install -d -o root -g root -m 0755 /opt/nanabox-gns /etc/systemd/system/nanabox-gns.service.d /etc/systemd/system/nanabox-guest-tool.service.d
+install -o root -g root -m 0755 "$native_core" /opt/nanabox-gns/nanabox-guest-tool
+install -o root -g root -m 0644 "$source_dir/nanabox-guest-tool.service" /etc/systemd/system/nanabox-guest-tool.service
 install -d -o root -g root -m 0700 /var/lib/nanabox-gns
 install -o root -g root -m 0644 "$source_dir/gns.py" /opt/nanabox-gns/gns.py
 install -o root -g root -m 0644 "$source_dir/nanabox-gns.service" /etc/systemd/system/nanabox-gns.service
 options=
 caps=CAP_NET_ADMIN
+tool_options=
+tool_caps=
 if [ "$exchange" -eq 1 ]; then
     install -d -o root -g root -m 0700 /var/lib/nanabox-gns/exchange
-    options=' --exchange-root /var/lib/nanabox-gns/exchange'
+    tool_options=' --exchange-root /var/lib/nanabox-gns/exchange'
 fi
 if [ "$clock" -eq 1 ]; then
-    options="$options --allow-clock-set"
-    caps="$caps CAP_SYS_TIME"
+    tool_options="$tool_options --allow-clock-set"
+    tool_caps=CAP_SYS_TIME
 fi
+printf '[Service]\nExecStart=\nExecStart=/opt/nanabox-gns/nanabox-guest-tool --serve%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\n' "$tool_options" "$tool_caps" > "$build_dir/tool-options.conf"
+install -o root -g root -m 0644 "$build_dir/tool-options.conf" /etc/systemd/system/nanabox-guest-tool.service.d/50-options.conf
 resolver_dir=/etc/systemd/resolved.conf.d
 resolver_file=$resolver_dir/90-nanabox-dns-tunnel.conf
 marker='# Managed by NanaBox DNS Tunnel'
@@ -83,14 +102,12 @@ runtime_mode=0700
 extra_groups=
 if [ "$bind" -eq 1 ]; then
     getent group nanabox-bind >/dev/null || groupadd --system nanabox-bind
-    temporary_library=$(mktemp /opt/nanabox-gns/.bind.XXXXXXXX)
-    trap 'rm -f "$temporary_library"' EXIT HUP INT TERM
+    temporary_library="$build_dir/libnanabox-bind.so"
     cc -std=gnu11 -O2 -Wall -Wextra -Werror -shared -fPIC "$source_dir/bind_coord.c" -o "$temporary_library"
     chmod 0755 "$temporary_library"
     chown root:root "$temporary_library"
     mv -f "$temporary_library" /opt/nanabox-gns/libnanabox-bind.so
     rm -f "$temporary_library"
-    trap - EXIT HUP INT TERM
     install -o root -g root -m 0755 "$source_dir/nanabox-bind.sh" /opt/nanabox-gns/nanabox-bind
     ln -sfn /opt/nanabox-gns/nanabox-bind /usr/local/bin/nanabox-bind
     options="$options --bind-coordination"
@@ -100,15 +117,13 @@ else
     if [ "$(readlink /usr/local/bin/nanabox-bind || true)" = /opt/nanabox-gns/nanabox-bind ]; then rm -f /usr/local/bin/nanabox-bind; fi
     rm -f /opt/nanabox-gns/libnanabox-bind.so /opt/nanabox-gns/nanabox-bind
 fi
-temporary=$(mktemp /etc/systemd/system/nanabox-gns.service.d/.options.XXXXXXXX)
-trap 'rm -f "$temporary"' EXIT HUP INT TERM
+temporary="$build_dir/network-options.conf"
 printf '[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\n' "$options" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
 chmod 0644 "$temporary"
 mv -f "$temporary" /etc/systemd/system/nanabox-gns.service.d/50-options.conf
 if [ "$plan9" -eq 1 ]; then
-    install -o root -g root -m 0755 "${native_temp:-$source_dir/nanabox-plan9}" /opt/nanabox-gns/nanabox-plan9
+    install -o root -g root -m 0755 "$native_plan9" /opt/nanabox-gns/nanabox-plan9
     rm -f /opt/nanabox-gns/plan9.py
-    if [ -n "${native_temp:-}" ]; then rm -f "$native_temp"; fi
     install -o root -g root -m 0644 "$source_dir/nanabox-plan9.service" /etc/systemd/system/nanabox-plan9.service
     ln -sfn /opt/nanabox-gns/nanabox-plan9 /usr/local/bin/nanabox-plan9
 else
@@ -120,6 +135,8 @@ else
 fi
 systemctl daemon-reload
 systemctl enable --now nanabox-gns.service
+systemctl enable --now nanabox-guest-tool.service
+systemctl is-active --quiet nanabox-guest-tool.service
 if [ "$plan9" -eq 1 ]; then
     systemctl enable --now nanabox-plan9.service
     systemctl is-active --quiet nanabox-plan9.service

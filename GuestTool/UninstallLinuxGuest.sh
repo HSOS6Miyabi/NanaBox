@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 if [ "$(id -u)" -ne 0 ]; then echo 'Run as root.' >&2; exit 1; fi
+if systemctl cat nanabox-guest-tool.service >/dev/null 2>&1; then
+    systemctl disable --now nanabox-guest-tool.service
+fi
+rm -f /etc/systemd/system/nanabox-guest-tool.service /etc/systemd/system/nanabox-guest-tool.service.d/50-options.conf /opt/nanabox-gns/nanabox-guest-tool
+rmdir /etc/systemd/system/nanabox-guest-tool.service.d 2>/dev/null || true
 if systemctl cat nanabox-plan9.service >/dev/null 2>&1; then
     systemctl disable --now nanabox-plan9.service
 fi

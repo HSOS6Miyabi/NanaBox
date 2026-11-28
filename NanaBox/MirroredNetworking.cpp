@@ -39,6 +39,7 @@ namespace
     constexpr GUID GnsServiceId{27453, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID DnsServiceId{27454, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID BindServiceId{27455, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
+    constexpr GUID GuestToolServiceId{27457, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID Plan9ServiceId{27456, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr std::uint32_t MaxMessage = 256 * 1024;
 
@@ -344,16 +345,18 @@ namespace
         return Result;
     }
 
-    void RegisterGuestSocket(bool Dns = false, bool Bind = false, bool Plan9 = false)
+    void RegisterGuestSocket(bool Dns = false, bool Bind = false, bool Plan9 = false, bool NativeTool = false)
     {
-        auto Path = Plan9
+        auto Path = NativeTool
+            ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b41-facb-11e6-bd58-64006a7986d3}"
+            : Plan9
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b40-facb-11e6-bd58-64006a7986d3}"
             : Bind
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3f-facb-11e6-bd58-64006a7986d3}"
             : Dns
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3e-facb-11e6-bd58-64006a7986d3}"
             : L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
-        auto Name = Plan9 ? L"NanaBox Plan 9 Shares" : Bind ? L"NanaBox Bind Coordination" : Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
+        auto Name = NativeTool ? L"NanaBox GuestTool" : Plan9 ? L"NanaBox Plan 9 Shares" : Bind ? L"NanaBox Bind Coordination" : Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
         HKEY Key = nullptr;
         DWORD Disposition = 0;
         winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, Path, 0, nullptr, 0,
@@ -1801,6 +1804,31 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
             {"RequestType", Verb}, {"Settings", Settings}}, Stop, 30, Plan9ServiceId);
         return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
     }
+    // Diagnostics remain on the network service. Select the transport once
+    // per transaction so file tokens cannot be mixed between implementations.
+    GUID Service = GnsServiceId;
+    if (Action != "Diagnostics")
+    {
+        RegisterGuestSocket(false, false, false, true);
+        try
+        {
+            auto Probe = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Heartbeat"},
+                {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, 4, GuestToolServiceId);
+            if (!Probe.value("NativeGuestTool", false))
+                throw winrt::hresult_error(E_UNEXPECTED, L"Unexpected GuestTool service identity.");
+            Service = GuestToolServiceId;
+        }
+        catch (winrt::hresult_error const& Error)
+        {
+            if (Stop.load() || Error.code() == E_ABORT) throw;
+            // Installed versions predating the native service use the GNS socket.
+            if (Error.code() != HRESULT_FROM_WIN32(WSAECONNREFUSED) &&
+                Error.code() != HRESULT_FROM_WIN32(WSAEHOSTUNREACH) &&
+                Error.code() != HRESULT_FROM_WIN32(WSAETIMEDOUT) &&
+                Error.code() != HRESULT_FROM_WIN32(ERROR_TIMEOUT) &&
+                Error.code() != HRESULT_FROM_WIN32(WSAENETUNREACH)) throw;
+        }
+    }
     auto Reply = ExecuteGuestTools(Action, LocalPath, GuestName, Overwrite,
         [&](std::string const& Kind, std::string const& Verb, Json const& Settings)
         {
@@ -1810,7 +1838,7 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
             bool Final = Verb == "Commit" || Verb == "FinishDownload";
             return GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", Kind},
                 {"RequestType", Verb}, {"Settings", Settings}}, (Abort || Final) ? LocalStop : Stop,
-                Abort ? 3 : (Kind == "Diagnostics" ? 40 : 15));
+                Abort ? 3 : (Kind == "Diagnostics" ? 40 : 15), Service);
         });
     return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
 }

@@ -141,3 +141,7 @@ The service mounts the host's read-only FileRepository share at %SystemRoot%\Sys
 Use Device Manager to restart the GPU-PV devices after the mount is available; disable those devices before dismounting the filesystem or uninstalling the GPU service. Use UninstallWindowsGpuTool.ps1 to remove GuestTool-owned links and environment entries after dismounting. The service does not force-unmount a filesystem while the GPU may be using it.
 
 The Windows filesystem client requires the matching Dokany kernel driver, and GPU-PV requires a compatible guest display stack. The build tests run without a physical GPU; physical GPU and driver-update integration testing requires a Hyper-V GPU-PV environment. The ordinary networking component is installed separately.
+
+## Native integration service
+
+The native C++ GuestTool service handles heartbeat, system information, clock queries and optional synchronization, and protected file exchange on Hyper-V socket port 27457. Installers start it alongside the network service. File exchange and clock synchronization permissions are assigned only to the native service. The host selects the native transport before starting a file transaction; diagnostics continue to use the networking component. The Linux source build requires C++17, nlohmann-json and OpenSSL development headers. The Windows installer uses the prebuilt `nanabox-guest-tool.exe` from the matching GuestTool artifact. The guest service rejects requests exceeding 256 KiB, limits concurrent transfers to 16, and expires incomplete transfers after 15 minutes.

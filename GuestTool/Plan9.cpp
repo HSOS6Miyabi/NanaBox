@@ -83,7 +83,7 @@ uint32_t port(const value &v)
         n = v.as_uint64();
     else
         fail("Invalid port");
-    if (!n || n >= UINT32_MAX || (n >= 27453 && n <= 27456))
+    if (!n || n >= UINT32_MAX || (n >= 27453 && n <= 27457))
         fail("Invalid or reserved port");
     return static_cast<uint32_t>(n);
 }
