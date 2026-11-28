@@ -186,6 +186,7 @@ namespace NanaBox
         std::vector<NetworkAdapterConfiguration> NetworkAdapters;
         bool MirroredNetworking = false;
         bool MirroredAutoReservePorts = true;
+        bool MirroredBindCoordination = false;
         bool MirroredDnsTunneling = false;
         bool MirroredLoopback = false;
         bool MirroredHostAddressLoopback = false;

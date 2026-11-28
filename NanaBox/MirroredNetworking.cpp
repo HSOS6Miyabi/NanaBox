@@ -38,6 +38,7 @@ namespace
     using namespace NanaBox;
     constexpr GUID GnsServiceId{27453, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID DnsServiceId{27454, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
+    constexpr GUID BindServiceId{27455, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr std::uint32_t MaxMessage = 256 * 1024;
 
     std::string GuidString(GUID const& Value)
@@ -342,12 +343,14 @@ namespace
         return Result;
     }
 
-    void RegisterGuestSocket(bool Dns = false)
+    void RegisterGuestSocket(bool Dns = false, bool Bind = false)
     {
-        auto Path = Dns
+        auto Path = Bind
+            ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3f-facb-11e6-bd58-64006a7986d3}"
+            : Dns
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3e-facb-11e6-bd58-64006a7986d3}"
             : L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
-        auto Name = Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
+        auto Name = Bind ? L"NanaBox Bind Coordination" : Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
         HKEY Key = nullptr;
         DWORD Disposition = 0;
         winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, Path, 0, nullptr, 0,
@@ -608,6 +611,11 @@ struct NanaBox::MirroredNetworking::Impl
     std::set<PortKey> ExplicitPorts;
     std::set<unsigned> IgnoredPorts;
     std::map<PortKey, HANDLE> AutomaticPorts;
+    std::map<PortKey, Deadline> BindLeases;
+    std::mutex PortMutex;
+    std::thread BindWorker;
+    std::atomic<bool> BindConnected{false};
+    std::atomic<std::uint64_t> BindRequests{0}, BindConflicts{0};
     ReservePort AllocatePort = nullptr;
     ReleasePort Release = nullptr;
     CreateService CreateGns = nullptr;
@@ -710,6 +718,7 @@ struct NanaBox::MirroredNetworking::Impl
         }
         Wake.notify_all();
         if (Worker.joinable()) Worker.join();
+        if (BindWorker.joinable()) BindWorker.join();
     }
 
     void StartWorker()
@@ -718,6 +727,7 @@ struct NanaBox::MirroredNetworking::Impl
         Stop = false;
         Status(L"Synchronizing");
         Worker = std::thread([this]() { Run(); });
+        if (Configuration.MirroredBindCoordination) BindWorker = std::thread([this]() { RunBindCoordinator(); });
     }
 
     ~Impl()
@@ -754,6 +764,8 @@ struct NanaBox::MirroredNetworking::Impl
         auto Result = CurrentDiagnostics;
         Result["Mode"] = "Mirrored";
         Result["DnsTunneling"] = Configuration.MirroredDnsTunneling;
+        Result["BindCoordination"] = {{"Enabled", Configuration.MirroredBindCoordination}, {"Connected", BindConnected.load()},
+            {"Requests", BindRequests.load()}, {"Conflicts", BindConflicts.load()}};
         if (Dns)
             Result["DnsTunnel"] = {{"ConnectedChannels", Dns->Connected.load()},
                 {"ResolvedQueries", Dns->Queries.load()}, {"FailedQueries", Dns->Failures.load()}};
@@ -819,6 +831,7 @@ struct NanaBox::MirroredNetworking::Impl
                 if (IgnoredPorts.count(ParsePort(Value)))
                     throw winrt::hresult_invalid_argument(L"An ignored mirrored port cannot be explicitly reserved");
         RegisterGuestSocket();
+        if (Configuration.MirroredBindCoordination) RegisterGuestSocket(false, true);
         if (Configuration.MirroredDnsTunneling)
         {
             Dns = std::make_unique<DnsTunnel>(RuntimeId);
@@ -837,6 +850,7 @@ struct NanaBox::MirroredNetworking::Impl
             for (auto Handle : Reservations) Release(Handle);
         }
         AutomaticPorts.clear();
+        BindLeases.clear();
         Reservations.clear();
         ExplicitPorts.clear();
         Range = {};
@@ -902,6 +916,7 @@ struct NanaBox::MirroredNetworking::Impl
     void ReconnectService()
     {
         Status(L"Reconnecting to HCN");
+        std::lock_guard PortLock(PortMutex);
         UnsubscribeHcn();
         try
         {
@@ -1098,12 +1113,96 @@ struct NanaBox::MirroredNetworking::Impl
         return Ports;
     }
 
+    // The host connects to the specific VM. A lease is renewed while the
+    // guest kernel reports a bound socket, including bound-inactive TCP.
+    // 0: accepted, 1: conflict, 2: unavailable or malformed request.
+    unsigned char ReserveBind(std::array<unsigned char, 20> const& Request)
+    {
+        if (std::all_of(Request.begin(), Request.end(), [](auto Byte) { return Byte == 0; })) return 0;
+        unsigned Protocol = Request[0], Family = Request[1];
+        unsigned Port = (static_cast<unsigned>(Request[2]) << 8) | Request[3];
+        if ((Protocol != IPPROTO_TCP && Protocol != IPPROTO_UDP) || (Family != 4 && Family != 6) || !Port) return 2;
+        if (Family == 4)
+        {
+            if (!std::all_of(Request.begin() + 8, Request.end(), [](auto Byte) { return Byte == 0; })) return 2;
+            if (Request[4] == 127 &&
+                (!Configuration.MirroredLoopback || Request[5] != 0 || Request[6] != 0 || Request[7] != 1)) return 0;
+            if (Request[4] >= 224 || (Request[4] == 169 && Request[5] == 254)) return 0;
+        }
+        else
+        {
+            IN6_ADDR Address{};
+            memcpy(&Address, Request.data() + 4, sizeof(Address));
+            if (IN6_IS_ADDR_LOOPBACK(&Address) || IN6_IS_ADDR_LINKLOCAL(&Address) || IN6_IS_ADDR_MULTICAST(&Address)) return 0;
+        }
+        std::lock_guard Lock(PortMutex);
+        if (!Service || ServiceDisconnected || Stop) return 2;
+        if (IgnoredPorts.count(Port) || (Port >= Range.startingPort && Port <= Range.endingPort)) return 0;
+        PortKey Key{Protocol == IPPROTO_TCP ? HCN_PORT_PROTOCOL_TCP : HCN_PORT_PROTOCOL_UDP, static_cast<USHORT>(Port)};
+        if (ExplicitPorts.count(Key)) return 0;
+        if (!BindLeases.count(Key) && BindLeases.size() >= 4096) return 2;
+        ++BindRequests;
+        if (!AutomaticPorts.count(Key))
+        {
+            HANDLE Reservation = nullptr;
+            auto Hr = AllocatePort(Service, Key.first, HCN_PORT_ACCESS_EXCLUSIVE, Key.second, &Reservation);
+            if (FAILED(Hr))
+            {
+                if (Reservation) Release(Reservation);
+                ++BindConflicts;
+                return 1;
+            }
+            AutomaticPorts.emplace(Key, Reservation);
+        }
+        BindLeases[Key] = std::chrono::steady_clock::now() + std::chrono::seconds(45);
+        return 0;
+    }
+
+    void RunBindCoordinator() noexcept
+    {
+        try { winrt::init_apartment(winrt::apartment_type::multi_threaded); }
+        catch (...) { return; }
+        auto Uninitialize = Mile::ScopeExitTaskHandler([]() { winrt::uninit_apartment(); });
+        while (!Stop)
+        {
+            try
+            {
+                Socket Connection;
+                ConnectGuest(Connection, RuntimeId, BindServiceId, Stop);
+                BindConnected = true;
+                while (!Stop)
+                {
+                    std::array<unsigned char, 20> Request{};
+                    Transfer(Connection.Value, reinterpret_cast<char*>(Request.data()), Request.size(), false,
+                        std::chrono::steady_clock::now() + std::chrono::seconds(30), Stop);
+                    unsigned char Response = ReserveBind(Request);
+                    Transfer(Connection.Value, reinterpret_cast<char*>(&Response), 1, true,
+                        std::chrono::steady_clock::now() + std::chrono::seconds(3), Stop);
+                }
+            }
+            catch (...) {}
+            BindConnected = false;
+            if (!Stop)
+            {
+                std::unique_lock Lock(Mutex);
+                Wake.wait_for(Lock, std::chrono::seconds(1), [this]() { return Stop.load(); });
+            }
+        }
+    }
+
     std::wstring ReconcileAutomaticPorts(std::set<PortKey> const& Desired)
     {
+        std::lock_guard Lock(PortMutex);
+        auto Now = std::chrono::steady_clock::now();
+        for (auto It = BindLeases.begin(); It != BindLeases.end();)
+        {
+            if (It->second <= Now) It = BindLeases.erase(It);
+            else ++It;
+        }
         std::wstring Conflicts;
         for (auto It = AutomaticPorts.begin(); It != AutomaticPorts.end();)
         {
-            if (!Desired.count(It->first))
+            if (!Desired.count(It->first) && !BindLeases.count(It->first))
             {
                 winrt::check_hresult(Release(It->second));
                 It = AutomaticPorts.erase(It);
@@ -1252,7 +1351,11 @@ struct NanaBox::MirroredNetworking::Impl
                     Synchronized = true;
                     Report["PortRange"] = {{"Start", Range.startingPort}, {"End", Range.endingPort}};
                     Report["ExplicitPortCount"] = ExplicitPorts.size();
-                    Report["AutomaticPortCount"] = AutomaticPorts.size();
+                    {
+                        std::lock_guard PortLock(PortMutex);
+                        Report["AutomaticPortCount"] = AutomaticPorts.size();
+                        Report["BindLeaseCount"] = BindLeases.size();
+                    }
                     Report["IgnoredPorts"] = IgnoredPorts;
                     Report["PortConflicts"] = winrt::to_string(Conflicts);
                     Report["HcnReconnectCount"] = ReconnectCount;

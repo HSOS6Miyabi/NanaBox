@@ -2043,4 +2043,6 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 本地环回互通（GELNIC）</value></data>
   <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>允许通过镜像宿主机 IPv4 地址进行环回通信</value></data>
   <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>需要 HCN 专用环回网卡，并在安装 Linux 客户机服务时启用环回路由。忽略的端口仍在本地处理。IPv6 环回保持不变。</value></data>
+  <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>协调 Linux 应用程序与宿主机的端口绑定</value></data>
+  <data name="MirroredBindNote.Text" xml:space="preserve"><value>在客户机中安装端口绑定协调功能，并通过 nanabox-bind 启动应用程序。需要 Linux 6.7 或更高版本。</value></data>
 </root>

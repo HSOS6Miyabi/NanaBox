@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $services = @{
     '{00006b3d-facb-11e6-bd58-64006a7986d3}' = 'NanaBox Guest Network Service'
     '{00006b3e-facb-11e6-bd58-64006a7986d3}' = 'NanaBox DNS Tunnel'
+    '{00006b3f-facb-11e6-bd58-64006a7986d3}' = 'NanaBox Bind Coordination'
 }
 foreach ($guid in $services.Keys) {
     $name = $services[$guid]

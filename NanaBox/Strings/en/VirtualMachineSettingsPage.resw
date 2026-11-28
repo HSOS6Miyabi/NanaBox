@@ -2043,4 +2043,6 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 localhost interoperability (GELNIC)</value></data>
   <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>Allow loopback through mirrored host IPv4 addresses</value></data>
   <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged.</value></data>
+  <data name="MirroredBindCoordination.Content" xml:space="preserve"><value>Coordinate Linux application port binding with the host</value></data>
+  <data name="MirroredBindNote.Text" xml:space="preserve"><value>Install bind coordination in the guest and launch applications with nanabox-bind. Requires Linux 6.7 or newer.</value></data>
 </root>

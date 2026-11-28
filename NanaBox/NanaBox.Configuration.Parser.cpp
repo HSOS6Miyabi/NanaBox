@@ -968,6 +968,7 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     }
     if (!Value.MirroredAutoReservePorts)
         Result["MirroredAutoReservePorts"] = false;
+    if (Value.MirroredBindCoordination) Result["MirroredBindCoordination"] = true;
     if (Value.MirroredDnsTunneling) Result["MirroredDnsTunneling"] = true;
     if (Value.MirroredLoopback) Result["MirroredLoopback"] = true;
     if (Value.MirroredHostAddressLoopback) Result["MirroredHostAddressLoopback"] = true;
@@ -1194,6 +1195,7 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
         Mile::Json::GetSubKey(Value, "MirroredNetworking"));
     Result.MirroredAutoReservePorts = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "MirroredAutoReservePorts"), Result.MirroredAutoReservePorts);
+    Result.MirroredBindCoordination = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredBindCoordination"));
     Result.MirroredDnsTunneling = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredDnsTunneling"));
     Result.MirroredLoopback = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredLoopback"));
     Result.MirroredHostAddressLoopback = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredHostAddressLoopback"));

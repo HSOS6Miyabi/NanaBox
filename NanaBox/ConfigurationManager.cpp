@@ -1337,6 +1337,8 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
         throw std::exception("Invalid Memory Size");
     }
 
+    if (Result.MirroredBindCoordination && (!Result.MirroredNetworking || Result.GuestType != NanaBox::GuestType::Linux))
+        throw std::exception("Bind coordination requires mirrored networking and a Linux guest");
     if (Result.MirroredDnsTunneling && !Result.MirroredNetworking)
         throw std::exception("DNS tunneling requires mirrored networking");
     if (Result.MirroredLoopback && (!Result.MirroredNetworking || Result.GuestType != NanaBox::GuestType::Linux))

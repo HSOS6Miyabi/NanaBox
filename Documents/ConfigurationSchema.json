@@ -166,6 +166,7 @@
           "MirroredAutoReservePorts": { "type": "boolean", "default": true },
           "HcsSchemaMinor": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 1 },
           "AdditionalHcsSettings": { "type": "object", "description": "Additional HCS VirtualMachine creation properties; managed settings cannot be overridden." },
+          "MirroredBindCoordination": { "type": "boolean", "default": false, "description": "Coordinate selected Linux applications with host port reservations before binding." },
           "MirroredLoopback": { "type": "boolean", "default": false, "description": "Linux IPv4 TCP/UDP loopback through the HCN guest-exclusive loopback NIC." },
           "MirroredHostAddressLoopback": { "type": "boolean", "default": false, "description": "Route mirrored host IPv4 addresses through HCN for local TCP/UDP communication." },
           "MirroredDnsTunneling": { "type": "boolean", "default": false, "description": "Resolve DNS through the Windows host using Hyper-V sockets. Requires mirrored networking and an enabled guest DNS service." },

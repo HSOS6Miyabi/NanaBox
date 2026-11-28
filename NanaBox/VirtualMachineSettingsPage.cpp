@@ -531,6 +531,7 @@ namespace winrt::NanaBox::implementation
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
             this->MirroredAutoReservePortsCheckBox().IsChecked(this->m_Configuration.MirroredAutoReservePorts);
+            this->MirroredBindCoordinationCheckBox().IsChecked(this->m_Configuration.MirroredBindCoordination);
             this->MirroredDnsTunnelingCheckBox().IsChecked(this->m_Configuration.MirroredDnsTunneling);
             this->MirroredLoopbackCheckBox().IsChecked(this->m_Configuration.MirroredLoopback);
             this->MirroredHostAddressLoopbackCheckBox().IsChecked(this->m_Configuration.MirroredHostAddressLoopback);
@@ -843,6 +844,7 @@ namespace winrt::NanaBox::implementation
             {
                 Result.MirroredNetworking = this->MirroredNetworkingCheckBox().IsChecked().Value();
                 Result.MirroredAutoReservePorts = this->MirroredAutoReservePortsCheckBox().IsChecked().Value();
+                Result.MirroredBindCoordination = this->MirroredBindCoordinationCheckBox().IsChecked().Value();
                 Result.MirroredDnsTunneling = this->MirroredDnsTunnelingCheckBox().IsChecked().Value();
                 Result.MirroredLoopback = this->MirroredLoopbackCheckBox().IsChecked().Value();
                 Result.MirroredHostAddressLoopback = this->MirroredHostAddressLoopbackCheckBox().IsChecked().Value();
