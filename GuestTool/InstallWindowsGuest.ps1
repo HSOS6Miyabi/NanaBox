@@ -1,6 +1,5 @@
-# Run in the Windows guest as administrator with Python 3.12+ installed for all users.
+# Run in the Windows guest as administrator.
 param(
-    [string]$PythonPath,
     [switch]$EnableFileExchange,
     [switch]$AllowClockSet,
     [switch]$EnableDnsTunnel,
@@ -39,15 +38,6 @@ function Initialize-ProtectedDirectory([string]$Path) {
 }
 
 $taskName = 'NanaBox Guest Network Service'
-$dir = Join-Path $env:ProgramFiles $taskName
-if (Test-Path -LiteralPath $dir) {
-    $item = Get-Item -LiteralPath $dir -Force
-    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-        throw "Unsafe installation directory: $dir"
-    }
-} else { New-Item -ItemType Directory -Path $dir | Out-Null }
-$arguments = '-I "{0}" serve' -f (Join-Path $dir 'gns.py')
-if ($EnableDnsTunnel) { $arguments += ' --dns-tunnel' }
 $nativeDir = Join-Path $env:ProgramFiles 'NanaBox GuestTool'
 Initialize-ProtectedDirectory $nativeDir
 $nativeTarget = Join-Path $nativeDir 'nanabox-guest-tool.exe'

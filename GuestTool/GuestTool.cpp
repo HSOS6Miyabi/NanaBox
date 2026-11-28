@@ -19,6 +19,11 @@
 #include <sys/utsname.h>
 #include <sys/random.h>
 #include <linux/vm_sockets.h>
+#include <linux/netlink.h>
+#include <linux/inet_diag.h>
+#include <linux/sock_diag.h>
+#include <sys/un.h>
+#include <grp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -875,8 +880,11 @@ namespace
     }
 
 #include "DnsTunnel.h"
+#ifndef _WIN32
+#include "BindCoordinator.h"
+#endif
 
-    void Serve(Agent& agent,bool network=false,bool dns=false)
+    void Serve(Agent& agent,bool network=false,bool dns=false,bool bindCoordination=false)
     {
 #ifdef _WIN32
         WSADATA data{};
@@ -886,6 +894,19 @@ namespace
         auto server=OpenParentListener(network?27453u:Port,8);
         std::unique_ptr<DnsTunnel> tunnel;
         if(dns){tunnel=std::make_unique<DnsTunnel>();agent.EnableDns();}
+#ifndef _WIN32
+        std::unique_ptr<BindCoordinator> coordinator;
+        if(bindCoordination)
+        {
+            CheckBindSupport();
+            auto* group=getgrnam("nanabox-bind");
+            if(!group)Fail("Missing nanabox-bind group");
+            coordinator=std::make_unique<BindCoordinator>("/run/nanabox-gns/bind.sock");
+            coordinator->Start(true,group->gr_gid);
+        }
+#else
+        if(bindCoordination)Fail("Bind coordination requires Linux");
+#endif
         while(!Stop)
         {
             agent.Reap();
@@ -1000,6 +1021,7 @@ namespace
     bool AllowClock = false;
     bool NetworkMode = false;
     bool DnsMode = false;
+    bool BindMode = false;
     fs::path LoopbackState;
 #ifdef _WIN32
     SERVICE_STATUS_HANDLE StatusHandle = nullptr;
@@ -1028,7 +1050,7 @@ namespace
         {
             Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
             Status(SERVICE_RUNNING);
-            Serve(agent, NetworkMode, DnsMode);
+            Serve(agent, NetworkMode, DnsMode, BindMode);
             Status(SERVICE_STOPPED);
         }
         catch (...) { Status(SERVICE_STOPPED, ERROR_GEN_FAILURE); }
@@ -1052,6 +1074,8 @@ int main(int argc, char** argv)
             auto arg = fs::path(argv[i]).u8string();
             if (arg == "--self-test") { SelfTest(); return 0; }
 #ifndef _WIN32
+            if (arg == "--check-bind-support") { CheckBindSupport(); return 0; }
+            if (arg == "--bind-self-test") { BindSelfTest(); return 0; }
             if (arg == "--network-self-test") { NativeNetworkIntegrationTest(); return 0; }
             if (arg == "--loopback-self-test") { NativeLoopbackIntegrationTest(); return 0; }
             if (arg == "--clear-loopback" && i + 1 < argc) { LoopbackRouting(fs::path(argv[++i])).Clear(); return 0; }
@@ -1061,10 +1085,11 @@ int main(int argc, char** argv)
             else if (arg == "--service") service = true;
             else if (arg == "--network") NetworkMode = true;
             else if (arg == "--dns-tunnel") DnsMode = true;
+            else if (arg == "--bind-coordination") BindMode = true;
             else if (arg == "--loopback-state" && i + 1 < argc) LoopbackState = fs::path(argv[++i]);
             else if (arg != "--serve") Fail("Unknown GuestTool option");
         }
-        if ((DnsMode || !LoopbackState.empty()) && !NetworkMode) Fail("Network integration options require network mode");
+        if ((DnsMode || BindMode || !LoopbackState.empty()) && !NetworkMode) Fail("Network integration options require network mode");
 #ifdef _WIN32
         if (service)
         {
@@ -1077,7 +1102,7 @@ int main(int argc, char** argv)
         signal(SIGTERM, OnSignal); signal(SIGINT, OnSignal);
 #endif
         Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
-        Serve(agent, NetworkMode, DnsMode);
+        Serve(agent, NetworkMode, DnsMode, BindMode);
         return 0;
     }
     catch (std::exception const& e) { std::cerr << e.what() << '\n'; return 1; }

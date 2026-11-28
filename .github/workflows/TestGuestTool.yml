@@ -57,16 +57,17 @@ jobs:
           GuestTool/nanabox-guest-tool --self-test
           sudo unshare --net GuestTool/nanabox-guest-tool --network-self-test
           sudo unshare --net GuestTool/nanabox-guest-tool --loopback-self-test
+          GuestTool/nanabox-guest-tool --bind-self-test
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
           name: NanaBox-GuestTool-${{ matrix.os }}
           path: |
-            GuestTool/gns.py
             GuestTool/GuestTool.cpp
             GuestTool/GuestNetwork.h
             GuestTool/DnsTunnel.h
             GuestTool/LoopbackRouting.h
+            GuestTool/BindCoordinator.h
             GuestTool/WindowsNetworkScripts.h
             GuestTool/nanabox-guest-tool
             GuestTool/nanabox-guest-tool.exe

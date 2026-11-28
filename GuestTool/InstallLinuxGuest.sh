@@ -21,17 +21,11 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-legacy_network=0
-if [ "$bind" -eq 1 ]; then
-    legacy_network=1
-    python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
-fi
 for path in /opt/nanabox-gns /var/lib/nanabox-gns /var/lib/nanabox-gns/exchange /etc/systemd/system/nanabox-gns.service.d /etc/systemd/system/nanabox-guest-tool.service.d; do
     if [ -L "$path" ]; then echo "Unsafe symbolic link: $path" >&2; exit 1; fi
 done
 if [ "$bind" -eq 1 ]; then
     command -v cc >/dev/null || { echo 'Install a C compiler for bind coordination.' >&2; exit 1; }
-    python3 -I "$source_dir/gns.py" check-bind-support
     if [ -e /usr/local/bin/nanabox-bind ] || [ -L /usr/local/bin/nanabox-bind ]; then
         [ "$(readlink /usr/local/bin/nanabox-bind || true)" = /opt/nanabox-gns/nanabox-bind ] || { echo 'nanabox-bind already exists.' >&2; exit 1; }
     fi
@@ -52,6 +46,7 @@ if [ ! -x "$native_core" ]; then
     g++ -std=c++17 -O2 -pthread "$source_dir/GuestTool.cpp" -lcrypto -o "$native_core"
 fi
 "$native_core" --self-test
+if [ "$bind" -eq 1 ]; then "$native_core" --check-bind-support; fi
 native_plan9="$source_dir/nanabox-plan9"
 if [ "$plan9" -eq 1 ] && [ ! -x "$native_plan9" ]; then
     command -v g++ >/dev/null || { echo 'Install a C++17 compiler and Boost.JSON headers, or use the prebuilt GuestTool package.' >&2; exit 1; }
@@ -71,9 +66,7 @@ install -d -o root -g root -m 0755 /opt/nanabox-gns /etc/systemd/system/nanabox-
 install -o root -g root -m 0755 "$native_core" /opt/nanabox-gns/nanabox-guest-tool
 install -o root -g root -m 0644 "$source_dir/nanabox-guest-tool.service" /etc/systemd/system/nanabox-guest-tool.service
 install -d -o root -g root -m 0700 /var/lib/nanabox-gns
-if [ "$legacy_network" -eq 1 ]; then
-    install -o root -g root -m 0644 "$source_dir/gns.py" /opt/nanabox-gns/gns.py
-fi
+rm -f /opt/nanabox-gns/gns.py
 install -o root -g root -m 0644 "$source_dir/nanabox-gns.service" /etc/systemd/system/nanabox-gns.service
 options=
 caps=CAP_NET_ADMIN
@@ -124,15 +117,10 @@ else
     rm -f /opt/nanabox-gns/libnanabox-bind.so /opt/nanabox-gns/nanabox-bind
 fi
 temporary="$build_dir/network-options.conf"
-if [ "$legacy_network" -eq 1 ]; then
-    network_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve$options"
-    cleanup_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py clear-loopback /run/nanabox-gns/loopback.json"
-else
-    network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network$options"
-    cleanup_command=
-    if [ "$loopback" -eq 1 ]; then
-        cleanup_command="/opt/nanabox-gns/nanabox-guest-tool --clear-loopback /run/nanabox-gns/loopback.json"
-    fi
+network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network$options"
+cleanup_command=
+if [ "$loopback" -eq 1 ]; then
+    cleanup_command="/opt/nanabox-gns/nanabox-guest-tool --clear-loopback /run/nanabox-gns/loopback.json"
 fi
 printf '[Service]\nExecStart=\nExecStart=%s\nExecStopPost=\n%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\nEnvironment=LC_ALL=C\nEnvironment=PATH=/usr/sbin:/usr/bin:/sbin:/bin\n' "$network_command" "$(if [ -n "$cleanup_command" ]; then printf 'ExecStopPost=%s' "$cleanup_command"; fi)" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
 chmod 0644 "$temporary"
