@@ -286,7 +286,8 @@ void NanaBox::MainWindow::OnCommand(
                 Text.assign(Buffer, Length);
             }
             std::vector<NanaBox::KeyboardTextBatch> Batches;
-            try { Batches = NanaBox::EncodeKeyboardText(Text, this->m_Configuration.Keyboard.ClipboardKeyboardLayout); }
+            try { Batches = NanaBox::EncodeKeyboardText(Text, this->m_Configuration.Keyboard.ClipboardKeyboardLayout,
+                this->m_Configuration.GuestType == NanaBox::GuestType::Linux && this->m_Configuration.Keyboard.ClipboardGtkUnicode); }
             catch (std::invalid_argument const& Error)
             { throw winrt::hresult_invalid_argument(winrt::to_hstring(Error.what())); }
             if (Batches.empty()) break;

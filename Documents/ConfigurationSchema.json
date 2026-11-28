@@ -281,6 +281,11 @@
             "type": "object",
             "description": "Keyboard setting object of virtual machine. For more information about the default keyboard shortcut behavior, please read https://learn.microsoft.com/en-us/windows/win32/termserv/terminal-services-shortcut-keys.",
             "properties": {
+              "ClipboardGtkUnicode": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable hexadecimal Unicode input in compatible GTK Linux applications for clipboard characters not directly representable by the selected keyboard layout."
+              },
               "ClipboardKeyboardLayout": {
                 "type": "string",
                 "pattern": "^(Host|[0-9A-Fa-f]{8})$",

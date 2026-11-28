@@ -1452,7 +1452,9 @@
   <data name="TabShares.Header" xml:space="preserve"><value>共享目录</value></data>
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>选择宿主机目录</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>剪贴板键盘布局</value></data>
-  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请与客户机的键盘布局保持一致：美式 00000409、英式 00000809、日语 00000411、德语 00000407、法语 0000040C，或输入 Host 使用宿主机布局。扫描码模式不支持需要输入法组合的字符。</value></data>
+  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>请与客户机的键盘布局保持一致：美式 00000409、英式 00000809、日语 00000411、德语 00000407、法语 0000040C，或输入 Host 使用宿主机布局。</value></data>
+  <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode 输入（Linux）</value></data>
+  <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>仅在当前 Linux 应用程序支持 Ctrl+Shift+U Unicode 输入时启用。无法直接输入的字符将通过十六进制码位输入。</value></data>
   <data name="VmmsAutomaticActions.Content" xml:space="preserve">
     <value>设置自动启动和关闭策略</value>
   </data>

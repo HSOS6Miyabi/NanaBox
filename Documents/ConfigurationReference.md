@@ -489,7 +489,11 @@ runtime.
 
 #### ClipboardKeyboardLayout
 
-The clipboard typing button uses physical keyboard scan codes. Select the layout active in the guest: `00000409` (US, default), `00000809` (UK), `00000411` (Japanese), `00000407` (German), `0000040C` (French), or any installed Windows keyboard layout identifier (KLID). `Host` uses the current host layout. The complete text is validated before sending any keys. Printable characters representable by the layout, tabs and line breaks are supported; input methods and characters requiring composition are outside this mode.
+The clipboard typing button uses physical keyboard scan codes. Select the layout active in the guest: `00000409` (US, default), `00000809` (UK), `00000411` (Japanese), `00000407` (German), `0000040C` (French), or any installed Windows keyboard layout identifier (KLID). `Host` uses the current host layout. The complete text is validated before sending any keys. Printable characters representable by the layout, tabs and line breaks are supported.
+
+#### ClipboardGtkUnicode
+
+Optional, default `false`. Enable for Linux guests when the focused application supports GTK numeric Unicode input. Characters not directly representable by the selected keyboard layout are entered using Ctrl+Shift+U, their hexadecimal Unicode code point and Enter. Supplementary-plane characters are decoded from UTF-16 surrogate pairs. This setting requires a compatible input method, such as GtkIMContextSimple; leave it disabled for firmware consoles, terminals without the input method, and other unsupported applications. See [GTK Unicode input](https://docs.gtk.org/gtk4/class.IMContextSimple.html).
 
 #### RedirectKeyCombinations
 

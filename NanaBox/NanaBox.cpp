@@ -146,6 +146,20 @@ int WINAPI wWinMain(
                 try { NanaBox::EncodeKeyboardTextWithLayout(L"\u00e9\u4e2d", Map); }
                 catch (std::invalid_argument const&) { Rejected = true; }
                 if (!Rejected) return 51;
+                auto Unicode = NanaBox::EncodeKeyboardText(L"\u4e2d\U0001f600", "00000409", true);
+                if (Unicode.size() != 2 || Unicode[0].size() != 16 || Unicode[1].size() != 18) return 51;
+                constexpr std::uint8_t First[] = {0x1d,0x2a,0x16,0x16,0x2a,0x1d,
+                    0x05,0x05,0x12,0x12,0x03,0x03,0x20,0x20,0x1c,0x1c};
+                for (std::size_t I = 0; I < std::size(First); ++I)
+                    if (Unicode[0][I].ScanCode != First[I]) return 51;
+                if (!Unicode[0][4].KeyUp || !Unicode[0][5].KeyUp || !Unicode[1].back().KeyUp ||
+                    Unicode[1][6].ScanCode != 0x02 || Unicode[1][8].ScanCode != 0x21 ||
+                    Unicode[1][10].ScanCode != 0x07 || Unicode[1][12].ScanCode != 0x0b ||
+                    Unicode[1][14].ScanCode != 0x0b) return 51;
+                Rejected = false;
+                try { NanaBox::EncodeKeyboardText(std::wstring(1, static_cast<wchar_t>(0xd800)), "00000409", true); }
+                catch (std::invalid_argument const&) { Rejected = true; }
+                if (!Rejected) return 51;
             }
             {
                 auto M = NanaBox::Wddm::MakeMapping(L"gpu.inf_amd64_123", {L"sub\\x.dll", L"y.dll"}, true, true);

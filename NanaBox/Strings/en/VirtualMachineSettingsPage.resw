@@ -1452,7 +1452,9 @@
   <data name="TabShares.Header" xml:space="preserve"><value>Shared folders</value></data>
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>Choose host folder</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
-  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host. Characters requiring an input method cannot be typed using scan codes.</value></data>
+  <data name="ClipboardKeyboardLayoutHelp.Text" xml:space="preserve"><value>Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host.</value></data>
+  <data name="ClipboardGtkUnicodeCheckBox.Content" xml:space="preserve"><value>GTK Unicode input (Linux)</value></data>
+  <data name="ClipboardGtkUnicodeHelp.Text" xml:space="preserve"><value>Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points.</value></data>
   <data name="VmmsAutomaticActions.Content" xml:space="preserve">
     <value>Configure automatic start and stop</value>
   </data>

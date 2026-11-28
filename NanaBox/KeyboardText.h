@@ -37,34 +37,89 @@ namespace NanaBox
     };
 
     template<class Lookup>
-    inline std::vector<KeyboardTextBatch> EncodeKeyboardTextWithLayout(std::wstring_view Text, Lookup Map)
+    inline std::vector<KeyboardTextBatch> EncodeKeyboardTextWithLayout(
+        std::wstring_view Text, Lookup Map, bool GtkUnicode = false)
     {
         if (Text.size() > 4096)
             throw std::invalid_argument("Keyboard input is limited to 4096 UTF-16 code units.");
         std::vector<KeyboardTextBatch> Result;
+        auto Reserve = [&](std::size_t Count) -> KeyboardTextBatch&
+        {
+            if (Result.empty() || Result.back().size() + Count > 20) Result.emplace_back();
+            return Result.back();
+        };
+        auto Append = [&](KeyboardTextStroke Stroke)
+        {
+            if (!Stroke.Code) throw std::invalid_argument("Invalid keyboard scan code.");
+            auto& Batch = Reserve(2 + (Stroke.Shift ? 2 : 0) + (Stroke.AltGr ? 2 : 0));
+            if (Stroke.Shift) Batch.push_back({0x2a, false});
+            if (Stroke.AltGr) Batch.push_back({0x38, false, true});
+            Batch.push_back({Stroke.Code, false, Stroke.Extended});
+            Batch.push_back({Stroke.Code, true, Stroke.Extended});
+            if (Stroke.AltGr) Batch.push_back({0x38, true, true});
+            if (Stroke.Shift) Batch.push_back({0x2a, true});
+        };
+        auto AppendUnicode = [&](std::uint32_t CodePoint)
+        {
+            auto U = Map(L'u');
+            if (!U || !U->Code || U->Shift || U->AltGr)
+                throw std::invalid_argument("The selected layout cannot start GTK Unicode input.");
+            auto& Batch = Reserve(6);
+            Batch.push_back({0x1d, false});
+            Batch.push_back({0x2a, false});
+            Batch.push_back({U->Code, false, U->Extended});
+            Batch.push_back({U->Code, true, U->Extended});
+            Batch.push_back({0x2a, true});
+            Batch.push_back({0x1d, true});
+            wchar_t Digits[6]{};
+            std::size_t Count = 0;
+            do
+            {
+                Digits[Count++] = L"0123456789abcdef"[CodePoint & 15u];
+                CodePoint >>= 4;
+            } while (CodePoint);
+            while (Count)
+            {
+                auto Digit = Map(Digits[--Count]);
+                if (!Digit || !Digit->Code || Digit->AltGr)
+                    throw std::invalid_argument("The selected layout cannot type GTK Unicode hexadecimal digits.");
+                Append(*Digit);
+            }
+            Append({0x1c});
+        };
         for (std::size_t I = 0; I < Text.size(); ++I)
         {
-            std::optional<KeyboardTextStroke> Stroke;
-            auto Ch = Text[I];
+            std::uint32_t Ch = static_cast<std::uint16_t>(Text[I]);
             if (Ch == L'\r' || Ch == L'\n')
             {
-                Stroke = KeyboardTextStroke{0x1c};
+                Append({0x1c});
                 if (Ch == L'\r' && I + 1 < Text.size() && Text[I + 1] == L'\n') ++I;
+                continue;
             }
-            else if (Ch == L'\t') Stroke = KeyboardTextStroke{0x0f};
-            else if (Ch >= 32 && Ch != 127 && !(Ch >= 0xd800 && Ch <= 0xdfff))
-                Stroke = Map(Ch);
-            if (!Stroke || !Stroke->Code)
+            if (Ch == L'\t')
+            {
+                Append({0x0f});
+                continue;
+            }
+            if (Ch >= 0xd800 && Ch <= 0xdbff)
+            {
+                if (I + 1 >= Text.size() || Text[I + 1] < 0xdc00 || Text[I + 1] > 0xdfff)
+                    throw std::invalid_argument("Clipboard text contains an invalid UTF-16 surrogate pair.");
+                Ch = 0x10000 + ((Ch - 0xd800) << 10) + (static_cast<std::uint16_t>(Text[++I]) - 0xdc00);
+            }
+            else if (Ch >= 0xdc00 && Ch <= 0xdfff)
+                throw std::invalid_argument("Clipboard text contains an invalid UTF-16 surrogate pair.");
+            if (Ch < 32 || (Ch >= 127 && Ch < 160) || (Ch >= 0xfdd0 && Ch <= 0xfdef) ||
+                (Ch & 0xffffu) >= 0xfffe)
+                throw std::invalid_argument("Clipboard text contains an unsupported control character or noncharacter.");
+            std::optional<KeyboardTextStroke> Stroke;
+            if (Ch <= 0xffff) Stroke = Map(static_cast<wchar_t>(Ch));
+            if (Stroke && Stroke->Code)
+                Append(*Stroke);
+            else if (GtkUnicode)
+                AppendUnicode(Ch);
+            else
                 throw std::invalid_argument("A clipboard character cannot be typed with the selected keyboard layout.");
-            std::size_t Count = 2 + (Stroke->Shift ? 2 : 0) + (Stroke->AltGr ? 2 : 0);
-            if (Result.empty() || Result.back().size() + Count > 20) Result.emplace_back();
-            auto& Batch = Result.back();
-            if (Stroke->Shift) Batch.push_back({0x2a, false});
-            if (Stroke->AltGr) Batch.push_back({0x38, false, true});
-            Batch.push_back({Stroke->Code, false, Stroke->Extended});
-            Batch.push_back({Stroke->Code, true, Stroke->Extended});
-            if (Stroke->AltGr) Batch.push_back({0x38, true, true});
-            if (Stroke->Shift) Batch.push_back({0x2a, true});
         }
         return Result;
     }
@@ -94,12 +149,8 @@ namespace NanaBox
             (Modifiers & 1) != 0, (Modifiers & 6) == 6};
     }
 
-    // RDP SendKeys accepts physical scan codes and at most 20 events per call.
-    // Use the US keyboard layout; each batch ends with all injected keys released.
-    inline std::vector<KeyboardTextBatch> EncodeKeyboardText(std::wstring_view Text)
+    inline std::optional<KeyboardTextStroke> MapUsCharacter(wchar_t Ch)
     {
-        if (Text.size() > 4096)
-            throw std::invalid_argument("Keyboard input is limited to 4096 characters.");
         constexpr std::array<std::uint8_t, 26> Letters = {
             0x1e, 0x30, 0x2e, 0x20, 0x12, 0x21, 0x22, 0x23, 0x17,
             0x24, 0x25, 0x26, 0x32, 0x31, 0x18, 0x19, 0x10, 0x13,
@@ -109,41 +160,26 @@ namespace NanaBox
         constexpr std::array<std::uint8_t, 22> Codes = {
             0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
             0x0c, 0x0d, 0x1a, 0x1b, 0x2b, 0x27, 0x28, 0x33, 0x34, 0x35, 0x29, 0x39};
-        std::vector<KeyboardTextBatch> Result;
-        for (std::size_t I = 0; I < Text.size(); ++I)
-        {
-            auto Ch = Text[I];
-            std::uint8_t Code = 0;
-            bool Shift = false;
-            if (Ch >= L'a' && Ch <= L'z') Code = Letters[Ch - L'a'];
-            else if (Ch >= L'A' && Ch <= L'Z') { Code = Letters[Ch - L'A']; Shift = true; }
-            else if (Ch == L'\r' || Ch == L'\n')
-            {
-                Code = 0x1c;
-                if (Ch == L'\r' && I + 1 < Text.size() && Text[I + 1] == L'\n') ++I;
-            }
-            else if (Ch == L'\t') Code = 0x0f;
-            else if (auto Position = Plain.find(Ch); Position != std::wstring_view::npos)
-                Code = Codes[Position];
-            else if (auto ShiftedPosition = Shifted.find(Ch); ShiftedPosition != std::wstring_view::npos)
-            { Code = Codes[ShiftedPosition]; Shift = true; }
-            else throw std::invalid_argument("Keyboard input supports printable ASCII, tabs and line breaks (US keyboard layout).");
-            if (Result.empty() || Result.back().size() + (Shift ? 4 : 2) > 20)
-                Result.emplace_back();
-            auto& Batch = Result.back();
-            if (Shift) Batch.push_back({0x2a, false});
-            Batch.push_back({Code, false});
-            Batch.push_back({Code, true});
-            if (Shift) Batch.push_back({0x2a, true});
-        }
-        return Result;
+        if (Ch >= L'a' && Ch <= L'z') return KeyboardTextStroke{Letters[Ch - L'a']};
+        if (Ch >= L'A' && Ch <= L'Z') return KeyboardTextStroke{Letters[Ch - L'A'], false, true};
+        if (auto Position = Plain.find(Ch); Position != std::wstring_view::npos)
+            return KeyboardTextStroke{Codes[Position]};
+        if (auto Position = Shifted.find(Ch); Position != std::wstring_view::npos)
+            return KeyboardTextStroke{Codes[Position], false, true};
+        return {};
     }
 
-    inline std::vector<KeyboardTextBatch> EncodeKeyboardText(std::wstring_view Text, std::string_view Layout)
+    // RDP SendKeys accepts physical scan codes and at most 20 events per call.
+    inline std::vector<KeyboardTextBatch> EncodeKeyboardText(std::wstring_view Text)
+    {
+        return EncodeKeyboardTextWithLayout(Text, MapUsCharacter);
+    }
+
+    inline std::vector<KeyboardTextBatch> EncodeKeyboardText(std::wstring_view Text, std::string_view Layout, bool GtkUnicode = false)
     {
         if (!ValidClipboardKeyboardLayout(Layout)) throw std::invalid_argument("Invalid clipboard keyboard layout identifier.");
         // The fixed US mapping also works in a firmware console.
-        if (Layout == "00000409") return EncodeKeyboardText(Text);
+        if (Layout == "00000409") return EncodeKeyboardTextWithLayout(Text, MapUsCharacter, GtkUnicode);
         HKL Handle = nullptr;
         if (Layout == "Host") Handle = ::GetKeyboardLayout(0);
         else
@@ -153,7 +189,7 @@ namespace NanaBox
             if (!Handle) throw std::invalid_argument("The selected keyboard layout is not installed on the host.");
         }
         if (!Handle) throw std::invalid_argument("The keyboard layout is unavailable.");
-        return EncodeKeyboardTextWithLayout(Text, [&](wchar_t Ch) { return MapLayoutCharacter(Ch, Handle); });
+        return EncodeKeyboardTextWithLayout(Text, [&](wchar_t Ch) { return MapLayoutCharacter(Ch, Handle); }, GtkUnicode);
     }
 
 }

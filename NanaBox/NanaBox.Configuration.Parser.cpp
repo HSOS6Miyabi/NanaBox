@@ -412,6 +412,8 @@ nlohmann::json NanaBox::FromKeyboardConfiguration(
 
     if (Value.ClipboardKeyboardLayout != "00000409")
         Result["ClipboardKeyboardLayout"] = Value.ClipboardKeyboardLayout;
+    if (Value.ClipboardGtkUnicode)
+        Result["ClipboardGtkUnicode"] = true;
 
     if (VK_CANCEL != Value.FullScreenHotkey)
     {
@@ -472,6 +474,8 @@ NanaBox::KeyboardConfiguration NanaBox::ToKeyboardConfiguration(
 
     Result.ClipboardKeyboardLayout = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "ClipboardKeyboardLayout"), Result.ClipboardKeyboardLayout);
+    Result.ClipboardGtkUnicode = Mile::Json::ToBoolean(
+        Mile::Json::GetSubKey(Value, "ClipboardGtkUnicode"), Result.ClipboardGtkUnicode);
 
     Result.FullScreenHotkey =
         static_cast<std::int32_t>(Mile::Json::ToInt64(

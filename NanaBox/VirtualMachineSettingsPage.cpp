@@ -577,6 +577,7 @@ namespace winrt::NanaBox::implementation
             this->RedirectKeyCombinationsCheckBox().IsChecked(
                 Configuration.RedirectKeyCombinations);
             this->ClipboardKeyboardLayoutTextBox().Text(winrt::to_hstring(Configuration.ClipboardKeyboardLayout));
+            this->ClipboardGtkUnicodeCheckBox().IsChecked(Configuration.ClipboardGtkUnicode);
             this->FullScreenHotkeyTextBox().Text(
                 winrt::to_hstring(Configuration.FullScreenHotkey));
             this->CtrlEscHotkeyTextBox().Text(
@@ -963,6 +964,8 @@ namespace winrt::NanaBox::implementation
                 winrt::unbox_value<bool>(
                     this->RedirectKeyCombinationsCheckBox().IsChecked());
             Result.Keyboard.ClipboardKeyboardLayout = winrt::to_string(this->ClipboardKeyboardLayoutTextBox().Text());
+            Result.Keyboard.ClipboardGtkUnicode = Result.GuestType == NanaBox::GuestType::Linux &&
+                winrt::unbox_value<bool>(this->ClipboardGtkUnicodeCheckBox().IsChecked());
             Result.Keyboard.FullScreenHotkey =
                 ::ReadSettingInteger<std::int32_t>(
                     this->FullScreenHotkeyTextBox());
@@ -1584,6 +1587,8 @@ namespace winrt::NanaBox::implementation
             !this->GuestLinuxShareNote() || !this->GuestWindowsShareNote()) return;
         auto Type = static_cast<NanaBox::GuestType>(this->GuestTypeComboBox().SelectedIndex());
         bool WindowsGuest = Type == NanaBox::GuestType::Windows;
+        if (this->ClipboardGtkUnicodeCheckBox())
+            this->ClipboardGtkUnicodeCheckBox().IsEnabled(Type == NanaBox::GuestType::Linux);
         this->GuestManualMountPanel().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestLinuxShareNote().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestWindowsShareNote().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);

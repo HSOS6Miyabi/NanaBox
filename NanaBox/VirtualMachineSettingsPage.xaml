@@ -719,7 +719,12 @@
               Header="Clipboard keyboard layout" PlaceholderText="00000409 or Host"
               AutomationProperties.AutomationId="ClipboardKeyboardLayoutTextBox" />
             <TextBlock x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutHelp"
-              Text="Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host. Characters requiring an input method cannot be typed using scan codes."
+              Text="Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host."
+              TextWrapping="Wrap" Opacity="0.8" />
+            <CheckBox x:Name="ClipboardGtkUnicodeCheckBox" x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeCheckBox"
+              Content="GTK Unicode input (Linux)" AutomationProperties.AutomationId="ClipboardGtkUnicodeCheckBox" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/ClipboardGtkUnicodeHelp"
+              Text="Enable only when the focused Linux application supports Ctrl+Shift+U Unicode input. Unmapped characters are entered using hexadecimal code points."
               TextWrapping="Wrap" Opacity="0.8" />
             <Grid>
               <Grid.ColumnDefinitions>
