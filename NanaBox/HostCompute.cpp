@@ -14,6 +14,7 @@
 #pragma comment(lib, "computenetwork.lib")
 
 #include <Mile.Json.h>
+#include <Mile.Helpers.CppBase.h>
 #include <SetupAPI.h>
 #include <wincrypt.h>
 #include <cwchar>
