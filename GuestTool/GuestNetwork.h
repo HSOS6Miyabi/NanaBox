@@ -318,7 +318,7 @@
         return result;
     }
 
-    Json ListeningPorts(Json const& addresses,fs::path const& root="/proc/net")
+    Json ListeningPorts(Json const& addresses,fs::path const& root="/proc/net",bool includeLoopback=false)
     {
         std::set<std::string> accepted;
         for(auto const& value:addresses) accepted.insert(Ip::Parse(value.at("Address").get<std::string>()).Mapped().Text());
@@ -349,7 +349,8 @@
                         for(unsigned i=0;i<ip.Bits()/8;i+=4)std::reverse(ip.Bytes.begin()+i,ip.Bytes.begin()+i+4);
                     auto port=std::stoul(fields[1].substr(colon+1),nullptr,16);
                     ip=ip.Mapped();
-                    if(port && port<=65535 && !ip.Loopback() && (ip.Zero() || accepted.count(ip.Text())))
+                    if(port && port<=65535 && ((!ip.Loopback() && (ip.Zero() || accepted.count(ip.Text()))) ||
+                        (includeLoopback && ip.Text()=="127.0.0.1")))
                         ports.emplace(protocol,static_cast<unsigned>(port));
                 }catch(...){}
             }
@@ -358,6 +359,8 @@
         for(auto const& port:ports) result.push_back({{"Protocol",port.first},{"Port",port.second}});
         return result;
     }
+
+#include "LoopbackRouting.h"
 
     class LinuxNetwork
     {
@@ -845,9 +848,18 @@
         WindowsNetwork Backend;
 #else
         LinuxNetwork Backend;
+        std::unique_ptr<LoopbackRouting> Loopback;
 #endif
         bool DnsEnabled=false;
     public:
+        explicit Network(fs::path const& state = {})
+        {
+#ifndef _WIN32
+            if(!state.empty())Loopback=std::make_unique<LoopbackRouting>(state);
+#else
+            if(!state.empty())Fail("GELNIC routing requires Linux");
+#endif
+        }
         void EnableDns(){DnsEnabled=true;}
         Json Dispatch(std::string const& resource,std::string const& action,Json const& request)
         {
@@ -855,6 +867,52 @@
             if(resource=="Diagnostics"&&action=="Query")
             {Fields(settings,{});return Backend.Diagnostics();}
             if(resource=="Connectivity"&&action=="Query")return NetworkConnectivity(settings);
+            if(resource=="LoopbackReconcile"&&action=="Update")
+            {
+#ifdef _WIN32
+                Fail("GELNIC routing requires Linux");
+#else
+                if(!Loopback)Fail("GELNIC routing is not enabled");
+                if(!settings.at("Enabled").get<bool>())
+                {
+                    Fields(settings,{"Enabled"});Loopback->Clear();return {{"Loopback",false}};
+                }
+                auto targetMac=Mac(settings.at("AdapterMac").get<std::string>());
+                auto gelnic=Backend.Adapter(targetMac);
+                auto const& rawInterfaces=settings.at("Interfaces");
+                if(!rawInterfaces.is_array()||rawInterfaces.size()>128)Fail("Invalid loopback interface inventory");
+                std::map<std::string,std::vector<std::string>> interfaces;
+                std::set<std::string> uniqueAddresses;
+                for(auto const& entry:rawInterfaces)
+                {
+                    auto dev=Backend.Adapter(Mac(entry.at("AdapterMac").get<std::string>()));
+                    auto const& addresses=entry.at("Addresses");
+                    if(!addresses.is_array()||addresses.size()>256||dev==gelnic||interfaces.count(dev))
+                        Fail("Invalid loopback interface");
+                    auto& values=interfaces[dev];
+                    for(auto const& address:addresses)
+                    {
+                        auto ip=Ip::Parse(address.get<std::string>());
+                        if(ip.Family!=4||ip.Zero()||ip.Loopback()||ip.Multicast()||(ip.Bytes[0]==169&&ip.Bytes[1]==254)||
+                            !uniqueAddresses.insert(ip.Text()).second)Fail("Invalid mirrored loopback address");
+                        values.push_back(ip.Text());
+                    }
+                }
+                auto ports=settings.value("LocalPorts",Json::array());
+                if(!ports.is_array()||ports.size()>256)Fail("Invalid local-only port list");
+                std::set<unsigned> local;
+                for(auto const& value:ports)local.insert(static_cast<unsigned>(Integer(value,1,65535)));
+                auto result=Loopback->Reconcile(gelnic,interfaces,local);
+                if(Boolean(settings,"DiscoverPorts"))
+                {
+                    Json listening=Json::array();
+                    for(auto const& entry:ListeningPorts(Json::array(),"/proc/net",true))
+                        if(!local.count(entry.at("Port").get<unsigned>()))listening.push_back(entry);
+                    result["ListeningPorts"]=listening;
+                }
+                return result;
+#endif
+            }
             auto target=Mac(request.at("AdapterMac").get<std::string>());
             auto normalized=NormalizeResource(resource,action,settings);
             if(resource=="Reconcile")

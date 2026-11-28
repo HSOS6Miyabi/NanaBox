@@ -56,6 +56,7 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread GuestTool/GuestTool.cpp -lcrypto -o GuestTool/nanabox-guest-tool
           GuestTool/nanabox-guest-tool --self-test
           sudo unshare --net GuestTool/nanabox-guest-tool --network-self-test
+          sudo unshare --net GuestTool/nanabox-guest-tool --loopback-self-test
       - name: Package guest service
         uses: actions/upload-artifact@v7
         with:
@@ -65,6 +66,7 @@ jobs:
             GuestTool/GuestTool.cpp
             GuestTool/GuestNetwork.h
             GuestTool/DnsTunnel.h
+            GuestTool/LoopbackRouting.h
             GuestTool/WindowsNetworkScripts.h
             GuestTool/nanabox-guest-tool
             GuestTool/nanabox-guest-tool.exe

@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
 done
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 legacy_network=0
-if [ "$loopback" -eq 1 ] || [ "$bind" -eq 1 ]; then
+if [ "$bind" -eq 1 ]; then
     legacy_network=1
     python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
 fi
@@ -130,6 +130,9 @@ if [ "$legacy_network" -eq 1 ]; then
 else
     network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network$options"
     cleanup_command=
+    if [ "$loopback" -eq 1 ]; then
+        cleanup_command="/opt/nanabox-gns/nanabox-guest-tool --clear-loopback /run/nanabox-gns/loopback.json"
+    fi
 fi
 printf '[Service]\nExecStart=\nExecStart=%s\nExecStopPost=\n%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\nEnvironment=LC_ALL=C\nEnvironment=PATH=/usr/sbin:/usr/bin:/sbin:/bin\n' "$network_command" "$(if [ -n "$cleanup_command" ]; then printf 'ExecStopPost=%s' "$cleanup_command"; fi)" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
 chmod 0644 "$temporary"

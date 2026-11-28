@@ -679,10 +679,10 @@ namespace
         bool Clock;
         std::unique_ptr<Network> Net;
     public:
-        Agent(fs::path const& root, bool clock, bool network = false) : Clock(clock)
+        Agent(fs::path const& root, bool clock, bool network = false,fs::path const& loopback={}) : Clock(clock)
         {
             if (!root.empty()) Files = std::make_unique<Exchange>(root);
-            if (network) Net = std::make_unique<Network>();
+            if (network) Net = std::make_unique<Network>(loopback);
         }
         void Reap() { if (Files) Files->Reap(); }
         void EnableDns() { if (Net) Net->EnableDns(); }
@@ -1000,6 +1000,7 @@ namespace
     bool AllowClock = false;
     bool NetworkMode = false;
     bool DnsMode = false;
+    fs::path LoopbackState;
 #ifdef _WIN32
     SERVICE_STATUS_HANDLE StatusHandle = nullptr;
     constexpr wchar_t ServiceName[] = L"NanaBoxGuestTool";
@@ -1025,7 +1026,7 @@ namespace
         if (!StatusHandle) return;
         try
         {
-            Agent agent(ExchangeRoot, AllowClock, NetworkMode);
+            Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
             Status(SERVICE_RUNNING);
             Serve(agent, NetworkMode, DnsMode);
             Status(SERVICE_STOPPED);
@@ -1052,15 +1053,18 @@ int main(int argc, char** argv)
             if (arg == "--self-test") { SelfTest(); return 0; }
 #ifndef _WIN32
             if (arg == "--network-self-test") { NativeNetworkIntegrationTest(); return 0; }
+            if (arg == "--loopback-self-test") { NativeLoopbackIntegrationTest(); return 0; }
+            if (arg == "--clear-loopback" && i + 1 < argc) { LoopbackRouting(fs::path(argv[++i])).Clear(); return 0; }
 #endif
             if (arg == "--exchange-root" && i + 1 < argc) ExchangeRoot = fs::path(argv[++i]);
             else if (arg == "--allow-clock-set") AllowClock = true;
             else if (arg == "--service") service = true;
             else if (arg == "--network") NetworkMode = true;
             else if (arg == "--dns-tunnel") DnsMode = true;
+            else if (arg == "--loopback-state" && i + 1 < argc) LoopbackState = fs::path(argv[++i]);
             else if (arg != "--serve") Fail("Unknown GuestTool option");
         }
-        if (DnsMode && !NetworkMode) Fail("DNS tunneling requires network mode");
+        if ((DnsMode || !LoopbackState.empty()) && !NetworkMode) Fail("Network integration options require network mode");
 #ifdef _WIN32
         if (service)
         {
@@ -1072,7 +1076,7 @@ int main(int argc, char** argv)
         if (service) Fail("Use --serve with systemd");
         signal(SIGTERM, OnSignal); signal(SIGINT, OnSignal);
 #endif
-        Agent agent(ExchangeRoot, AllowClock, NetworkMode);
+        Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
         Serve(agent, NetworkMode, DnsMode);
         return 0;
     }
