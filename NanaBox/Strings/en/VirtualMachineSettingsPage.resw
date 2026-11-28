@@ -2001,4 +2001,43 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="NetworkAdvancedNote.Text" xml:space="preserve">
     <value>Leave empty for an ICS NAT network. Specify a Type and any supported HCN creation properties, such as Subnets, Policies, Dns and SchemaVersion. NanaBox assigns the name and ID.</value>
   </data>
+  <data name="VmmsCpuPolicy.Content" xml:space="preserve"><value>Set CPU allocation and nested virtualization</value></data>
+  <data name="VmmsDiskAttach.Content" xml:space="preserve"><value>Attach virtual hard disk</value></data>
+  <data name="VmmsDiskDetach.Content" xml:space="preserve"><value>Detach selected hard disk</value></data>
+  <data name="VmmsDiskQoS.Content" xml:space="preserve"><value>Set selected disk IOPS limits</value></data>
+  <data name="VmmsDvdAdd.Content" xml:space="preserve"><value>Add DVD drive</value></data>
+  <data name="VmmsDvdMount.Content" xml:space="preserve"><value>Mount ISO or eject selected DVD</value></data>
+  <data name="VmmsDvdRemove.Content" xml:space="preserve"><value>Remove selected DVD drive</value></data>
+  <data name="VmmsNicAdd.Content" xml:space="preserve"><value>Add network adapter</value></data>
+  <data name="VmmsNicRemove.Content" xml:space="preserve"><value>Remove selected network adapter</value></data>
+  <data name="VmmsNicConnect.Content" xml:space="preserve"><value>Connect selected adapter to switch</value></data>
+  <data name="VmmsNicDisconnect.Content" xml:space="preserve"><value>Disconnect selected adapter</value></data>
+  <data name="VmmsNicMac.Content" xml:space="preserve"><value>Set selected adapter MAC address</value></data>
+  <data name="VmmsNicVlan.Content" xml:space="preserve"><value>Set selected adapter access VLAN</value></data>
+  <data name="VmmsNicGuard.Content" xml:space="preserve"><value>Set selected adapter network protection</value></data>
+  <data name="VmmsIntegration.Content" xml:space="preserve"><value>Set selected integration service</value></data>
+  <data name="VmmsSecureBoot.Content" xml:space="preserve"><value>Set Secure Boot (Generation 2)</value></data>
+  <data name="VmmsCpuReserveTextBox.Header" xml:space="preserve"><value>CPU reserve (%)</value></data>
+  <data name="VmmsCpuMaximumTextBox.Header" xml:space="preserve"><value>CPU maximum (%)</value></data>
+  <data name="VmmsCpuWeightTextBox.Header" xml:space="preserve"><value>CPU relative weight</value></data>
+  <data name="VmmsDeviceNameTextBox.Header" xml:space="preserve"><value>New network adapter name</value></data>
+  <data name="VmmsDevicePathTextBox.Header" xml:space="preserve"><value>VHD/VHDX or ISO path (empty to eject DVD)</value></data>
+  <data name="VmmsControllerNumberTextBox.Header" xml:space="preserve"><value>Controller number</value></data>
+  <data name="VmmsControllerLocationTextBox.Header" xml:space="preserve"><value>Controller location</value></data>
+  <data name="VmmsDiskMinIopsTextBox.Header" xml:space="preserve"><value>Minimum IOPS</value></data>
+  <data name="VmmsDiskMaxIopsTextBox.Header" xml:space="preserve"><value>Maximum IOPS (0 = unlimited)</value></data>
+  <data name="VmmsNicMacTextBox.Header" xml:space="preserve"><value>Static MAC address (empty = dynamic)</value></data>
+  <data name="VmmsNicVlanTextBox.Header" xml:space="preserve"><value>Access VLAN ID (0 = untagged)</value></data>
+  <data name="VmmsCpuNestedCheckBox.Content" xml:space="preserve"><value>Expose virtualization extensions</value></data>
+  <data name="VmmsNicDhcpGuardCheckBox.Content" xml:space="preserve"><value>DHCP guard</value></data>
+  <data name="VmmsNicRouterGuardCheckBox.Content" xml:space="preserve"><value>Router guard</value></data>
+  <data name="VmmsNicSpoofCheckBox.Content" xml:space="preserve"><value>Allow MAC address spoofing</value></data>
+  <data name="VmmsIntegrationEnabledCheckBox.Content" xml:space="preserve"><value>Enable selected integration service</value></data>
+  <data name="VmmsSecureBootCheckBox.Content" xml:space="preserve"><value>Enable Secure Boot</value></data>
+  <data name="VmmsDevicesComboBox.Header" xml:space="preserve"><value>Selected device or integration service</value></data>
+  <data name="VmmsDeviceSwitchComboBox.Header" xml:space="preserve"><value>Destination virtual switch</value></data>
+  <data name="VmmsControllerTypeComboBox.Header" xml:space="preserve"><value>Hard disk controller type</value></data>
+  <data name="VmmsSecureBootTemplateComboBox.Header" xml:space="preserve"><value>Secure Boot template</value></data>
+  <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU, devices and integration services</value></data>
+  <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected.</value></data>
 </root>

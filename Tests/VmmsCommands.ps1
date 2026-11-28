@@ -27,7 +27,8 @@ function Record-Call($Name,$Arguments) {
     $record = @{Name=$Name;Parameters=@{}}
     foreach ($key in $Arguments.Keys) {
         $value = $Arguments[$key]
-        if ($key -eq 'VM' -or $key -eq 'VMSnapshot') { $value = [string]$value.Id }
+        if ($key -in @('VM','VMSnapshot','VMHardDiskDrive','VMDvdDrive','VMNetworkAdapter','VMSwitch')) { $value = [string]$value.Id }
+        elseif ($key -eq 'VMIntegrationService') { $value = [string]$value.Name }
         elseif ($value -is [System.Management.Automation.SwitchParameter]) { $value = $value.IsPresent }
         $record.Parameters[$key] = $value
     }
@@ -41,9 +42,26 @@ function Get-VM { param([guid]$Id)
 function Get-VMProcessor { param($VM) @{Count=2;Maximum=100;Reserve=0;RelativeWeight=100;ExposeVirtualizationExtensions=$false} }
 function Get-VMMemory { param($VM) @{Startup=1GB;Minimum=512MB;Maximum=2GB;DynamicMemoryEnabled=$true;Buffer=20;Priority=50} }
 function Get-VMSnapshot { param($VM) $script:checkpoint }
-function Get-VMHardDiskDrive { param($VM) }
-function Get-VMNetworkAdapter { param($VM) }
-function Get-VMIntegrationService { param($VM) }
+function Get-VMHardDiskDrive { param($VM) [pscustomobject]@{Id='disk1';ControllerType='SCSI';ControllerNumber=0;ControllerLocation=0;Path='C:\test.vhdx';MinimumIOPS=0;MaximumIOPS=0} }
+function Get-VMDvdDrive { param($VM) [pscustomobject]@{Id='dvd1';ControllerType='SCSI';ControllerNumber=0;ControllerLocation=1;Path='C:\test.iso'} }
+function Get-VMNetworkAdapter { param($VM) [pscustomobject]@{Id='nic1';Name='NIC';SwitchName='Test switch';MacAddress='00155D123456'} }
+function Get-VMIntegrationService { param($VM) [pscustomobject]@{Name='Heartbeat';Enabled=$true;PrimaryStatusDescription='OK'} }
+function Get-VMSwitch { param([guid]$Id) $switch=[pscustomobject]@{Id=[guid]'8ef4654f-3c3e-46a3-a05d-002c3e702d72';Name='Test switch';SwitchType='Private'}; if (!$PSBoundParameters.ContainsKey('Id') -or $Id -eq $switch.Id) {$switch} }
+function Add-VMHardDiskDrive { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$ControllerType,[int]$ControllerNumber,[int]$ControllerLocation,[string]$Path) Record-Call 'Add-VMHardDiskDrive' $PSBoundParameters }
+function Remove-VMHardDiskDrive { [CmdletBinding(SupportsShouldProcess)] param($VMHardDiskDrive) Record-Call 'Remove-VMHardDiskDrive' $PSBoundParameters }
+function Set-VMHardDiskDrive { [CmdletBinding(SupportsShouldProcess)] param($VMHardDiskDrive,[uint64]$MinimumIOPS,[uint64]$MaximumIOPS) Record-Call 'Set-VMHardDiskDrive' $PSBoundParameters }
+function Add-VMDvdDrive { [CmdletBinding(SupportsShouldProcess)] param($VM,[int]$ControllerNumber,[int]$ControllerLocation,[string]$Path) Record-Call 'Add-VMDvdDrive' $PSBoundParameters }
+function Set-VMDvdDrive { [CmdletBinding(SupportsShouldProcess)] param($VMDvdDrive,[AllowNull()][string]$Path) Record-Call 'Set-VMDvdDrive' $PSBoundParameters }
+function Remove-VMDvdDrive { [CmdletBinding(SupportsShouldProcess)] param($VMDvdDrive) Record-Call 'Remove-VMDvdDrive' $PSBoundParameters }
+function Add-VMNetworkAdapter { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$Name,[switch]$DynamicMacAddress) Record-Call 'Add-VMNetworkAdapter' $PSBoundParameters }
+function Remove-VMNetworkAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMNetworkAdapter) Record-Call 'Remove-VMNetworkAdapter' $PSBoundParameters }
+function Connect-VMNetworkAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMNetworkAdapter,$VMSwitch) Record-Call 'Connect-VMNetworkAdapter' $PSBoundParameters }
+function Disconnect-VMNetworkAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMNetworkAdapter) Record-Call 'Disconnect-VMNetworkAdapter' $PSBoundParameters }
+function Set-VMNetworkAdapter { [CmdletBinding(SupportsShouldProcess)] param($VMNetworkAdapter,[switch]$DynamicMacAddress,[string]$StaticMacAddress,[string]$DhcpGuard,[string]$RouterGuard,[string]$MacAddressSpoofing) Record-Call 'Set-VMNetworkAdapter' $PSBoundParameters }
+function Set-VMNetworkAdapterVlan { [CmdletBinding(SupportsShouldProcess)] param($VMNetworkAdapter,[switch]$Untagged,[switch]$Access,[int]$VlanId) Record-Call 'Set-VMNetworkAdapterVlan' $PSBoundParameters }
+function Enable-VMIntegrationService { [CmdletBinding(SupportsShouldProcess)] param($VMIntegrationService) Record-Call 'Enable-VMIntegrationService' $PSBoundParameters }
+function Disable-VMIntegrationService { [CmdletBinding(SupportsShouldProcess)] param($VMIntegrationService) Record-Call 'Disable-VMIntegrationService' $PSBoundParameters }
+function Set-VMFirmware { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$EnableSecureBoot,[string]$SecureBootTemplate) Record-Call 'Set-VMFirmware' $PSBoundParameters }
 function Get-VMReplication { [CmdletBinding()] param($VM) }
 function New-VM { param([string]$Name,[int]$Generation,[long]$MemoryStartupBytes,[switch]$NoVHD,[string]$Path)
     Record-Call 'New-VM' $PSBoundParameters
@@ -72,7 +90,7 @@ function Restore-VMSnapshot { [CmdletBinding(SupportsShouldProcess)] param($VMSn
 function Remove-VMSnapshot { [CmdletBinding(SupportsShouldProcess)] param($VMSnapshot) Record-Call 'Remove-VMSnapshot' $PSBoundParameters }
 function Export-VM { param($VM,[string]$Path) Record-Call 'Export-VM' $PSBoundParameters }
 function Move-VMStorage { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$DestinationStoragePath) Record-Call 'Move-VMStorage' $PSBoundParameters }
-function Set-VMProcessor { [CmdletBinding(SupportsShouldProcess)] param($VM,[int]$Count) Record-Call 'Set-VMProcessor' $PSBoundParameters }
+function Set-VMProcessor { [CmdletBinding(SupportsShouldProcess)] param($VM,[int]$Count,[int]$Reserve,[int]$Maximum,[int]$RelativeWeight,[bool]$ExposeVirtualizationExtensions) Record-Call 'Set-VMProcessor' $PSBoundParameters }
 function Set-VMMemory { [CmdletBinding(SupportsShouldProcess)] param($VM,[bool]$DynamicMemoryEnabled,[long]$StartupBytes,[long]$MinimumBytes,[long]$MaximumBytes,[int]$Buffer,[int]$Priority) Record-Call 'Set-VMMemory' $PSBoundParameters }
 function Move-VM { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$DestinationHost,[switch]$IncludeStorage,[string]$DestinationStoragePath) Record-Call 'Move-VM' $PSBoundParameters; $script:inventory=@() }
 function Enable-VMReplication { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$ReplicaServerName,[int]$ReplicaServerPort,[string]$AuthenticationType,[int]$ReplicationFrequencySec,[int]$RecoveryHistory,[bool]$CompressionEnabled,[string]$CertificateThumbprint) Record-Call 'Enable-VMReplication' $PSBoundParameters }
@@ -163,6 +181,32 @@ try {
     Test-Command 'VmmsMigrate' @{Host='host.example.test';Path='relative\path'} '' @{} $true
     $replica.Thumbprint='invalid'
     Test-Command 'VmmsReplicationEnable' $replica '' @{} $true
+    $disk = Join-Path $temp 'test.vhdx'; [IO.File]::WriteAllText($disk,'test')
+    $iso = Join-Path $temp 'test.iso'; [IO.File]::WriteAllText($iso,'test')
+    Test-Command 'VmmsCpuPolicy' @{Reserve=10;Maximum=75;Weight=200;Nested=$true} 'Set-VMProcessor' @{VM=$vm;Reserve=10;Maximum=75;RelativeWeight=200;ExposeVirtualizationExtensions=$true}
+    Test-Command 'VmmsDiskAttach' @{ControllerType='SCSI';ControllerNumber=0;ControllerLocation=2;Path=$disk} 'Add-VMHardDiskDrive' @{VM=$vm;ControllerType='SCSI';ControllerNumber=0;ControllerLocation=2;Path=$disk}
+    Test-Command 'VmmsDiskDetach' @{DeviceId='Disk:disk1'} 'Remove-VMHardDiskDrive' @{VMHardDiskDrive='disk1'}
+    Test-Command 'VmmsDiskQoS' @{DeviceId='Disk:disk1';MinimumIOPS=100;MaximumIOPS=1000} 'Set-VMHardDiskDrive' @{VMHardDiskDrive='disk1';MinimumIOPS=100;MaximumIOPS=1000}
+    Test-Command 'VmmsDvdAdd' @{ControllerNumber=0;ControllerLocation=2;Path=$iso} 'Add-VMDvdDrive' @{VM=$vm;ControllerNumber=0;ControllerLocation=2;Path=$iso}
+    Test-Command 'VmmsDvdMount' @{DeviceId='Dvd:dvd1';Path=$iso} 'Set-VMDvdDrive' @{VMDvdDrive='dvd1';Path=$iso}
+    Test-Command 'VmmsDvdMount' @{DeviceId='Dvd:dvd1';Path=''} 'Set-VMDvdDrive' @{VMDvdDrive='dvd1';Path=''}
+    Test-Command 'VmmsDvdRemove' @{DeviceId='Dvd:dvd1'} 'Remove-VMDvdDrive' @{VMDvdDrive='dvd1'}
+    Test-Command 'VmmsNicAdd' @{Name='New NIC'} 'Add-VMNetworkAdapter' @{VM=$vm;Name='New NIC';DynamicMacAddress=$true}
+    Test-Command 'VmmsNicRemove' @{DeviceId='Nic:nic1'} 'Remove-VMNetworkAdapter' @{VMNetworkAdapter='nic1'}
+    Test-Command 'VmmsNicConnect' @{DeviceId='Nic:nic1';SwitchId='8ef4654f-3c3e-46a3-a05d-002c3e702d72'} 'Connect-VMNetworkAdapter' @{VMNetworkAdapter='nic1';VMSwitch='8ef4654f-3c3e-46a3-a05d-002c3e702d72'}
+    Test-Command 'VmmsNicDisconnect' @{DeviceId='Nic:nic1'} 'Disconnect-VMNetworkAdapter' @{VMNetworkAdapter='nic1'}
+    Test-Command 'VmmsNicMac' @{DeviceId='Nic:nic1';Mac='00-15-5D-12-34-56'} 'Set-VMNetworkAdapter' @{VMNetworkAdapter='nic1';StaticMacAddress='00155D123456'}
+    Test-Command 'VmmsNicMac' @{DeviceId='Nic:nic1';Mac=''} 'Set-VMNetworkAdapter' @{VMNetworkAdapter='nic1';DynamicMacAddress=$true}
+    Test-Command 'VmmsNicVlan' @{DeviceId='Nic:nic1';Vlan=42} 'Set-VMNetworkAdapterVlan' @{VMNetworkAdapter='nic1';Access=$true;VlanId=42}
+    Test-Command 'VmmsNicVlan' @{DeviceId='Nic:nic1';Vlan=0} 'Set-VMNetworkAdapterVlan' @{VMNetworkAdapter='nic1';Untagged=$true}
+    Test-Command 'VmmsNicGuard' @{DeviceId='Nic:nic1';DhcpGuard=$true;RouterGuard=$true;Spoofing=$false} 'Set-VMNetworkAdapter' @{VMNetworkAdapter='nic1';DhcpGuard='On';RouterGuard='On';MacAddressSpoofing='Off'}
+    Test-Command 'VmmsIntegration' @{DeviceId='Service:Heartbeat';Enabled=$true} 'Enable-VMIntegrationService' @{VMIntegrationService='Heartbeat'}
+    Test-Command 'VmmsIntegration' @{DeviceId='Service:Heartbeat';Enabled=$false} 'Disable-VMIntegrationService' @{VMIntegrationService='Heartbeat'}
+    Test-Command 'VmmsSecureBoot' @{Enabled=$true;Template='MicrosoftUEFICertificateAuthority'} 'Set-VMFirmware' @{VM=$vm;EnableSecureBoot='On';SecureBootTemplate='MicrosoftUEFICertificateAuthority'}
+    Test-Command 'VmmsDiskAttach' @{ControllerType='SCSI';ControllerNumber=0;ControllerLocation=0;Path=$disk} '' @{} $true
+    Test-Command 'VmmsDiskDetach' @{DeviceId='Nic:nic1'} '' @{} $true
+    Test-Command 'VmmsNicMac' @{DeviceId='Nic:nic1';Mac='010000000000'} '' @{} $true
+    Test-Command 'VmmsNicVlan' @{DeviceId='Nic:nic1';Vlan=4095} '' @{} $true
     Test-Command 'VmmsStart' @{MockFailure=$true} 'Start-VM' @{VM=$vm} $true $true
     Write-Host "$script:count VMMS production command cases passed."
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }

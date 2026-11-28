@@ -159,7 +159,8 @@ namespace NanaBox
                     Selected = NewId();
                     Data->Machines.push_back(Json{{"Id", Selected}, {"Name", MachineName}, {"State", "Off"},
                         {"Generation", A.value("Generation", 2)}, {"ProcessorCount", 1}, {"MemoryMiB", A.value("MemoryMiB", 2048)},
-                        {"Path", A.value("Path", std::string())}});
+                        {"Path", A.value("Path", std::string())},
+                        {"Devices", Json::array({Json{{"Id", "Service:Heartbeat"}, {"Name", "Heartbeat"}, {"Kind", "Service"}, {"Enabled", true}}})}});
                     Data->Checkpoints[Selected] = Json::array();
                 }
                 else if (Action != "VmmsList")
@@ -212,6 +213,64 @@ namespace NanaBox
                         else if (Action == "VmmsReplicationResume" && State == "Suspended") Replica["State"] = "Replicating";
                         else throw winrt::hresult_invalid_argument(L"Invalid replication state.");
                     }
+                    else if (Action == "VmmsCpuPolicy") Machine["CpuPolicy"] = A;
+                    else if (Action == "VmmsSecureBoot") Machine["SecureBoot"] = A;
+                    else if (Action == "VmmsDiskAttach" || Action == "VmmsDvdAdd" || Action == "VmmsNicAdd")
+                    {
+                        auto& Devices = Machine.at("Devices");
+                        std::string Kind = Action == "VmmsDiskAttach" ? "Disk" : Action == "VmmsDvdAdd" ? "Dvd" : "Nic";
+                        auto Id = Kind + ":" + NewId();
+                        if (Kind == "Nic")
+                        {
+                            Devices.push_back(Json{{"Id", Id}, {"Name", Text("Name")}, {"Kind", Kind}, {"SwitchName", ""}});
+                        }
+                        else
+                        {
+                            auto Number = A.at("ControllerNumber").get<unsigned>();
+                            auto Location = A.at("ControllerLocation").get<unsigned>();
+                            auto Type = Kind == "Dvd" ? "SCSI" : Text("ControllerType");
+                            for (auto const& Device : Devices)
+                                if (Device.value("ControllerType", std::string()) == Type &&
+                                    Device.value("ControllerNumber", 999u) == Number &&
+                                    Device.value("ControllerLocation", 999u) == Location)
+                                    throw winrt::hresult_invalid_argument(L"Controller slot is occupied.");
+                            Devices.push_back(Json{{"Id", Id}, {"Name", Kind == "Disk" ? Text("Path") : "DVD"},
+                                {"Kind", Kind}, {"Path", Text("Path")}, {"ControllerType", Type},
+                                {"ControllerNumber", Number}, {"ControllerLocation", Location}});
+                        }
+                    }
+                    else if (Action == "VmmsDiskDetach" || Action == "VmmsDiskQoS" || Action == "VmmsDvdMount" ||
+                        Action == "VmmsDvdRemove" || Action == "VmmsNicRemove" || Action == "VmmsNicConnect" ||
+                        Action == "VmmsNicDisconnect" || Action == "VmmsNicMac" || Action == "VmmsNicVlan" ||
+                        Action == "VmmsNicGuard" || Action == "VmmsIntegration")
+                    {
+                        auto& Devices = Machine.at("Devices");
+                        auto Device = Find(Devices, Text("DeviceId"));
+                        auto Kind = Device->at("Kind").get<std::string>();
+                        if ((Action.starts_with("VmmsDisk") && Kind != "Disk") ||
+                            (Action.starts_with("VmmsDvd") && Kind != "Dvd") ||
+                            (Action.starts_with("VmmsNic") && Kind != "Nic") ||
+                            (Action == "VmmsIntegration" && Kind != "Service")) throw winrt::hresult_invalid_argument();
+                        if (Action == "VmmsDiskDetach" || Action == "VmmsDvdRemove" || Action == "VmmsNicRemove")
+                            Devices.erase(Device);
+                        else if (Action == "VmmsDiskQoS")
+                        {
+                            (*Device)["MinimumIOPS"] = A.at("MinimumIOPS");
+                            (*Device)["MaximumIOPS"] = A.at("MaximumIOPS");
+                        }
+                        else if (Action == "VmmsDvdMount") (*Device)["Path"] = Text("Path");
+                        else if (Action == "VmmsNicConnect")
+                        {
+                            if (Text("SwitchId") != "8ef4654f-3c3e-46a3-a05d-002c3e702d72") throw winrt::hresult_invalid_argument();
+                            (*Device)["SwitchName"] = "Test switch";
+                        }
+                        else if (Action == "VmmsNicDisconnect") (*Device)["SwitchName"] = "";
+                        else if (Action == "VmmsNicMac") (*Device)["MacAddress"] = Text("Mac");
+                        else if (Action == "VmmsNicVlan") (*Device)["Vlan"] = A.at("Vlan");
+                        else if (Action == "VmmsNicGuard")
+                            for (auto Key : {"DhcpGuard", "RouterGuard", "Spoofing"}) (*Device)[Key] = A.at(Key);
+                        else if (Action == "VmmsIntegration") (*Device)["Enabled"] = A.at("Enabled");
+                    }
                     else if (Action == "VmmsCheckpointCreate")
                         Snapshots.push_back(Json{{"Id", NewId()}, {"Name", Text("Name")}, {"MemoryMiB", Machine["MemoryMiB"]}});
                     else if (Action == "VmmsCheckpointRestore") Machine["MemoryMiB"] = Find(Snapshots, Text("CheckpointId"))->at("MemoryMiB");
@@ -230,7 +289,8 @@ namespace NanaBox
                 Result["Items"] = Data->Machines;
                 Result["SelectedId"] = Selected.empty() ? Json() : Json(Selected);
                 Result["Details"] = Selected.empty() ? Json() : Json{{"VM", *Find(Data->Machines, Selected)},
-                    {"Checkpoints", Data->Checkpoints.at(Selected)}};
+                    {"Checkpoints", Data->Checkpoints.at(Selected)}, {"Devices", Find(Data->Machines, Selected)->at("Devices")},
+                    {"Switches", Json::array({Json{{"Id", "8ef4654f-3c3e-46a3-a05d-002c3e702d72"}, {"Name", "Test switch"}}})}};
             }
             else if (Action == "SwitchList") Result = Data->Switches;
             else if (Action == "AdapterList")

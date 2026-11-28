@@ -2018,6 +2018,8 @@ namespace winrt::NanaBox::implementation
         winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
     {
         if (auto Box = this->VmmsCheckpointsComboBox()) Box.Items().Clear();
+        if (auto Box = this->VmmsDevicesComboBox()) Box.Items().Clear();
+        if (auto Box = this->VmmsDeviceSwitchComboBox()) Box.Items().Clear();
     }
 
     void VirtualMachineSettingsPage::VmmsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
@@ -2119,6 +2121,66 @@ namespace winrt::NanaBox::implementation
                         }
                         Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
                     }
+                    else if (Action == L"VmmsCpuPolicy")
+                    {
+                        Data["Reserve"] = Number(this->VmmsCpuReserveTextBox(), 0, 100);
+                        Data["Maximum"] = Number(this->VmmsCpuMaximumTextBox(), 0, 100);
+                        Data["Weight"] = Number(this->VmmsCpuWeightTextBox(), 1, 10000);
+                        Data["Nested"] = this->VmmsCpuNestedCheckBox().IsChecked().Value();
+                        if (Data["Reserve"] > Data["Maximum"]) throw winrt::hresult_invalid_argument(L"CPU reserve exceeds maximum.");
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsDiskAttach" || Action == L"VmmsDvdAdd" || Action == L"VmmsNicAdd" || Action == L"VmmsSecureBoot")
+                    {
+                        if (Action == L"VmmsNicAdd")
+                            Data["Name"] = winrt::to_string(this->VmmsDeviceNameTextBox().Text());
+                        else if (Action == L"VmmsSecureBoot")
+                        {
+                            Data["Enabled"] = this->VmmsSecureBootCheckBox().IsChecked().Value();
+                            Data["Template"] = Selected(this->VmmsSecureBootTemplateComboBox());
+                        }
+                        else
+                        {
+                            Data["Path"] = winrt::to_string(this->VmmsDevicePathTextBox().Text());
+                            Data["ControllerType"] = Selected(this->VmmsControllerTypeComboBox());
+                            Data["ControllerNumber"] = Number(this->VmmsControllerNumberTextBox(), 0, 3);
+                            Data["ControllerLocation"] = Number(this->VmmsControllerLocationTextBox(), 0, 63);
+                            if (Action == L"VmmsDiskAttach" && Data["Path"].get<std::string>().empty())
+                                throw winrt::hresult_invalid_argument(L"Choose a virtual disk file.");
+                        }
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
+                    else if (Action == L"VmmsDiskDetach" || Action == L"VmmsDiskQoS" ||
+                        Action == L"VmmsDvdMount" || Action == L"VmmsDvdRemove" ||
+                        Action == L"VmmsNicRemove" || Action == L"VmmsNicConnect" ||
+                        Action == L"VmmsNicDisconnect" || Action == L"VmmsNicMac" ||
+                        Action == L"VmmsNicVlan" || Action == L"VmmsNicGuard" || Action == L"VmmsIntegration")
+                    {
+                        Data["DeviceId"] = Selected(this->VmmsDevicesComboBox());
+                        if (Action == L"VmmsDiskQoS")
+                        {
+                            Data["MinimumIOPS"] = Number(this->VmmsDiskMinIopsTextBox(), 0, UINT64_MAX);
+                            Data["MaximumIOPS"] = Number(this->VmmsDiskMaxIopsTextBox(), 0, UINT64_MAX);
+                        }
+                        else if (Action == L"VmmsDvdMount")
+                            Data["Path"] = winrt::to_string(this->VmmsDevicePathTextBox().Text());
+                        else if (Action == L"VmmsNicConnect")
+                            Data["SwitchId"] = Selected(this->VmmsDeviceSwitchComboBox());
+                        else if (Action == L"VmmsNicMac")
+                            Data["Mac"] = winrt::to_string(this->VmmsNicMacTextBox().Text());
+                        else if (Action == L"VmmsNicVlan")
+                            Data["Vlan"] = Number(this->VmmsNicVlanTextBox(), 0, 4094);
+                        else if (Action == L"VmmsNicGuard")
+                        {
+                            Data["DhcpGuard"] = this->VmmsNicDhcpGuardCheckBox().IsChecked().Value();
+                            Data["RouterGuard"] = this->VmmsNicRouterGuardCheckBox().IsChecked().Value();
+                            Data["Spoofing"] = this->VmmsNicSpoofCheckBox().IsChecked().Value();
+                        }
+                        else if (Action == L"VmmsIntegration")
+                            Data["Enabled"] = this->VmmsIntegrationEnabledCheckBox().IsChecked().Value();
+                        Confirmation += L"\n" + std::wstring(winrt::unbox_value<winrt::hstring>(this->VmmsDevicesComboBox().SelectedItem().as<Item>().Content()).c_str());
+                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                    }
                     else if (Action == L"VmmsSetMemory" || Action == L"VmmsStaticMemory")
                     {
                         Data["MemoryMiB"] = Number(this->VmmsMemoryTextBox(), 32, 16777216);
@@ -2194,7 +2256,13 @@ namespace winrt::NanaBox::implementation
                         this->VmmsMachinesComboBox().SelectedItem().as<Item>().Tag()));
                 Fill(this->VmmsMachinesComboBox(), Result.at("Items"), Preferred);
                 if (Result.contains("Details") && Result.at("Details").is_object())
-                    Fill(this->VmmsCheckpointsComboBox(), Result.at("Details").at("Checkpoints"), "");
+                {
+                    auto const& Details = Result.at("Details");
+                    Fill(this->VmmsCheckpointsComboBox(), Details.at("Checkpoints"), "");
+                    auto Devices = Details.value("Devices", Json::array());
+                    Fill(this->VmmsDevicesComboBox(), Devices, "");
+                    Fill(this->VmmsDeviceSwitchComboBox(), Details.value("Switches", Json::array()), "");
+                }
             }
             if (!Result.contains("Success")) Result["Success"] = true;
             Result["Operation"] = winrt::to_string(Action);

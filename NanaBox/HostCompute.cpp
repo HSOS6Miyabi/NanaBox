@@ -841,11 +841,46 @@ function VmInfo($vm) {
         CheckpointType=[string]$vm.CheckpointType; ReplicationState=[string]$vm.ReplicationState
     }
 }
+function RequireMedia($path, $extensions) {
+    $item = Get-Item -LiteralPath $path
+    if ($item.PSIsContainer -or $item.PSProvider.Name -ne 'FileSystem' -or $item.Extension -notin $extensions) { throw 'Choose an existing media file of the required type.' }
+    return $item.FullName
+}
+function RequireSlot($vm, $type, $number, $location) {
+    if ($type -notin @('IDE','SCSI') -or ($vm.Generation -eq 2 -and $type -eq 'IDE') -or
+        $number -lt 0 -or $number -gt 3 -or $location -lt 0 -or $location -gt 63 -or
+        ($type -eq 'IDE' -and ($number -gt 1 -or $location -gt 1))) { throw 'Invalid controller or slot.' }
+    $occupied = @(Get-VMHardDiskDrive -VM $vm) + @(Get-VMDvdDrive -VM $vm)
+    if (@($occupied | Where-Object { [string]$_.ControllerType -eq $type -and $_.ControllerNumber -eq $number -and $_.ControllerLocation -eq $location }).Count) { throw 'The selected controller slot is occupied.' }
+}
+function Select-Device($items, $id, $kind) {
+    if ([string]::IsNullOrEmpty($id) -or !$id.StartsWith($kind + ':', [StringComparison]::Ordinal)) { throw 'Select the appropriate device first.' }
+    $rawId = $id.Substring($kind.Length + 1)
+    $matches = @($items | Where-Object { if ($kind -eq 'Service') { $_.Name -ceq $rawId } else { [string]$_.Id -ceq $rawId } })
+    if ($matches.Count -ne 1) { throw 'The selected device is no longer available.' }
+    return $matches[0]
+}
+function Describe-Devices($vm) {
+    foreach ($disk in @(Get-VMHardDiskDrive -VM $vm)) {
+        [pscustomobject]@{Id=('Disk:'+[string]$disk.Id);Name=($disk.ControllerType.ToString()+':'+$disk.ControllerNumber+':'+$disk.ControllerLocation+' '+$disk.Path);Kind='Disk';Path=$disk.Path;ControllerType=[string]$disk.ControllerType;ControllerNumber=$disk.ControllerNumber;ControllerLocation=$disk.ControllerLocation;MinimumIOPS=$disk.MinimumIOPS;MaximumIOPS=$disk.MaximumIOPS}
+    }
+    foreach ($dvd in @(Get-VMDvdDrive -VM $vm)) {
+        [pscustomobject]@{Id=('Dvd:'+[string]$dvd.Id);Name=('DVD '+$dvd.ControllerNumber+':'+$dvd.ControllerLocation+' '+$dvd.Path);Kind='Dvd';Path=$dvd.Path;ControllerType=[string]$dvd.ControllerType;ControllerNumber=$dvd.ControllerNumber;ControllerLocation=$dvd.ControllerLocation}
+    }
+    foreach ($nic in @(Get-VMNetworkAdapter -VM $vm)) {
+        [pscustomobject]@{Id=('Nic:'+[string]$nic.Id);Name=$nic.Name;Kind='Nic';SwitchName=$nic.SwitchName;MacAddress=$nic.MacAddress;DynamicMacAddressEnabled=$nic.DynamicMacAddressEnabled;DhcpGuard=[string]$nic.DhcpGuard;RouterGuard=[string]$nic.RouterGuard;MacAddressSpoofing=[string]$nic.MacAddressSpoofing}
+    }
+    foreach ($service in @(Get-VMIntegrationService -VM $vm)) {
+        [pscustomobject]@{Id=('Service:'+$service.Name);Name=$service.Name;Kind='Service';Enabled=$service.Enabled;Status=$service.PrimaryStatusDescription}
+    }
+}
 function VmDetails($vm) {
     $cpu = Get-VMProcessor -VM $vm
     $memory = Get-VMMemory -VM $vm
     @{
         VM=(VmInfo $vm)
+        Devices=@(Describe-Devices $vm)
+        Switches=@(Get-VMSwitch | ForEach-Object { [pscustomobject]@{Id=[string]$_.Id;Name=$_.Name;State=[string]$_.SwitchType} })
         Processor=@{Count=$cpu.Count; Maximum=$cpu.Maximum; Reserve=$cpu.Reserve; RelativeWeight=$cpu.RelativeWeight; ExposeVirtualizationExtensions=$cpu.ExposeVirtualizationExtensions}
         Memory=@{Startup=$memory.Startup; Minimum=$memory.Minimum; Maximum=$memory.Maximum; DynamicMemoryEnabled=$memory.DynamicMemoryEnabled; Buffer=$memory.Buffer; Priority=$memory.Priority}
         Checkpoints=@(Get-VMSnapshot -VM $vm | ForEach-Object { [pscustomobject]@{Id=[string]$_.Id; Name=$_.Name; CreationTime=[string]$_.CreationTime; ParentId=[string]$_.ParentSnapshotId; Type=[string]$_.SnapshotType} })
@@ -949,6 +984,83 @@ try {
             'VmmsReplicationSuspend' { Suspend-VMReplication -VM $vm -Confirm:$false | Out-Null }
             'VmmsReplicationResume' { Resume-VMReplication -VM $vm -Confirm:$false | Out-Null }
             'VmmsReplicationRemove' { Remove-VMReplication -VM $vm -Confirm:$false | Out-Null }
+            'VmmsCpuPolicy' {
+                $reserve = [int]$a.Reserve; $maximum = [int]$a.Maximum; $weight = [int]$a.Weight
+                if ($reserve -lt 0 -or $maximum -gt 100 -or $maximum -lt $reserve -or $weight -lt 1 -or $weight -gt 10000) { throw 'Invalid processor allocation.' }
+                Set-VMProcessor -VM $vm -Reserve $reserve -Maximum $maximum -RelativeWeight $weight -ExposeVirtualizationExtensions ([bool]$a.Nested) -Confirm:$false | Out-Null
+            }
+            'VmmsDiskAttach' {
+                RequireSlot $vm $a.ControllerType ([int]$a.ControllerNumber) ([int]$a.ControllerLocation)
+                Add-VMHardDiskDrive -VM $vm -ControllerType $a.ControllerType -ControllerNumber ([int]$a.ControllerNumber) -ControllerLocation ([int]$a.ControllerLocation) -Path (RequireMedia $a.Path @('.vhd','.vhdx','.avhd','.avhdx')) -Confirm:$false | Out-Null
+            }
+            'VmmsDiskDetach' {
+                Remove-VMHardDiskDrive -VMHardDiskDrive (Select-Device @(Get-VMHardDiskDrive -VM $vm) $a.DeviceId Disk) -Confirm:$false | Out-Null
+            }
+            'VmmsDiskQoS' {
+                $minimum = [uint64]$a.MinimumIOPS; $maximum = [uint64]$a.MaximumIOPS
+                if ($maximum -ne 0 -and $minimum -gt $maximum) { throw 'Minimum IOPS exceeds maximum IOPS.' }
+                Set-VMHardDiskDrive -VMHardDiskDrive (Select-Device @(Get-VMHardDiskDrive -VM $vm) $a.DeviceId Disk) -MinimumIOPS $minimum -MaximumIOPS $maximum -Confirm:$false | Out-Null
+            }
+            'VmmsDvdAdd' {
+                $type = if ($vm.Generation -eq 1) {'IDE'} else {'SCSI'}
+                RequireSlot $vm $type ([int]$a.ControllerNumber) ([int]$a.ControllerLocation)
+                $p = @{VM=$vm;ControllerNumber=[int]$a.ControllerNumber;ControllerLocation=[int]$a.ControllerLocation;Confirm=$false}
+                if ($a.Path) { $p.Path = RequireMedia $a.Path @('.iso') }
+                Add-VMDvdDrive @p | Out-Null
+            }
+            'VmmsDvdMount' {
+                $path = if ($a.Path) { RequireMedia $a.Path @('.iso') } else { $null }
+                Set-VMDvdDrive -VMDvdDrive (Select-Device @(Get-VMDvdDrive -VM $vm) $a.DeviceId Dvd) -Path $path -Confirm:$false | Out-Null
+            }
+            'VmmsDvdRemove' {
+                Remove-VMDvdDrive -VMDvdDrive (Select-Device @(Get-VMDvdDrive -VM $vm) $a.DeviceId Dvd) -Confirm:$false | Out-Null
+            }
+            'VmmsNicAdd' {
+                $name = RequireName $a.Name
+                if (@(Get-VMNetworkAdapter -VM $vm | Where-Object Name -eq $name).Count) { throw 'A network adapter with that name already exists.' }
+                Add-VMNetworkAdapter -VM $vm -Name $name -DynamicMacAddress -Confirm:$false | Out-Null
+            }
+            'VmmsNicRemove' { Remove-VMNetworkAdapter -VMNetworkAdapter (Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic) -Confirm:$false | Out-Null }
+            'VmmsNicConnect' {
+                $switch = @(Get-VMSwitch -Id ([guid]$a.SwitchId))
+                if ($switch.Count -ne 1) { throw 'The selected switch is no longer available.' }
+                Connect-VMNetworkAdapter -VMNetworkAdapter (Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic) -VMSwitch $switch[0] -Confirm:$false | Out-Null
+            }
+            'VmmsNicDisconnect' { Disconnect-VMNetworkAdapter -VMNetworkAdapter (Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic) -Confirm:$false | Out-Null }
+            'VmmsNicMac' {
+                $nic = Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic
+                $mac = ([string]$a.Mac) -replace '[:-]',''
+                if (!$mac) { Set-VMNetworkAdapter -VMNetworkAdapter $nic -DynamicMacAddress -Confirm:$false | Out-Null }
+                else {
+                    if ($mac -notmatch '^[0-9a-fA-F]{12}$' -or $mac -eq '000000000000' -or ([Convert]::ToInt32($mac.Substring(0,2),16) -band 1)) { throw 'Specify a nonzero unicast MAC address.' }
+                    Set-VMNetworkAdapter -VMNetworkAdapter $nic -StaticMacAddress $mac -Confirm:$false | Out-Null
+                }
+            }
+            'VmmsNicVlan' {
+                $nic = Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic
+                $vlan = [int]$a.Vlan
+                if ($vlan -lt 0 -or $vlan -gt 4094) { throw 'Invalid VLAN ID.' }
+                if ($vlan -eq 0) { Set-VMNetworkAdapterVlan -VMNetworkAdapter $nic -Untagged -Confirm:$false | Out-Null }
+                else { Set-VMNetworkAdapterVlan -VMNetworkAdapter $nic -Access -VlanId $vlan -Confirm:$false | Out-Null }
+            }
+            'VmmsNicGuard' {
+                $nic = Select-Device @(Get-VMNetworkAdapter -VM $vm) $a.DeviceId Nic
+                $dhcp = if ($a.DhcpGuard) {'On'} else {'Off'}
+                $router = if ($a.RouterGuard) {'On'} else {'Off'}
+                $spoof = if ($a.Spoofing) {'On'} else {'Off'}
+                Set-VMNetworkAdapter -VMNetworkAdapter $nic -DhcpGuard $dhcp -RouterGuard $router -MacAddressSpoofing $spoof -Confirm:$false | Out-Null
+            }
+            'VmmsIntegration' {
+                $service = Select-Device @(Get-VMIntegrationService -VM $vm) $a.DeviceId Service
+                if ($a.Enabled) { Enable-VMIntegrationService -VMIntegrationService $service -Confirm:$false | Out-Null }
+                else { Disable-VMIntegrationService -VMIntegrationService $service -Confirm:$false | Out-Null }
+            }
+            'VmmsSecureBoot' {
+                if ($vm.Generation -ne 2) { throw 'Secure Boot requires a Generation 2 VM.' }
+                if ($a.Template -notin @('MicrosoftWindows','MicrosoftUEFICertificateAuthority','OpenSourceShieldedVM')) { throw 'Invalid Secure Boot template.' }
+                $enabled = if ($a.Enabled) {'On'} else {'Off'}
+                Set-VMFirmware -VM $vm -EnableSecureBoot $enabled -SecureBootTemplate $a.Template -Confirm:$false | Out-Null
+            }
             default { throw 'Unsupported Hyper-V management operation.' }
         }
     }

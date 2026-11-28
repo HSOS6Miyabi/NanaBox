@@ -2001,4 +2001,43 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="NetworkAdvancedNote.Text" xml:space="preserve">
     <value>留空时创建 ICS NAT 网络。可指定 Type 及宿主机支持的 HCN 创建属性，例如 Subnets、Policies、Dns 和 SchemaVersion。网络名称和 ID 由 NanaBox 分配。</value>
   </data>
+  <data name="VmmsCpuPolicy.Content" xml:space="preserve"><value>设置 CPU 资源分配与嵌套虚拟化</value></data>
+  <data name="VmmsDiskAttach.Content" xml:space="preserve"><value>连接虚拟硬盘</value></data>
+  <data name="VmmsDiskDetach.Content" xml:space="preserve"><value>断开所选硬盘</value></data>
+  <data name="VmmsDiskQoS.Content" xml:space="preserve"><value>设置所选硬盘的 IOPS 限制</value></data>
+  <data name="VmmsDvdAdd.Content" xml:space="preserve"><value>添加 DVD 驱动器</value></data>
+  <data name="VmmsDvdMount.Content" xml:space="preserve"><value>加载 ISO 或弹出所选 DVD</value></data>
+  <data name="VmmsDvdRemove.Content" xml:space="preserve"><value>移除所选 DVD 驱动器</value></data>
+  <data name="VmmsNicAdd.Content" xml:space="preserve"><value>添加网络适配器</value></data>
+  <data name="VmmsNicRemove.Content" xml:space="preserve"><value>移除所选网络适配器</value></data>
+  <data name="VmmsNicConnect.Content" xml:space="preserve"><value>将所选适配器连接至交换机</value></data>
+  <data name="VmmsNicDisconnect.Content" xml:space="preserve"><value>断开所选适配器</value></data>
+  <data name="VmmsNicMac.Content" xml:space="preserve"><value>设置所选适配器的 MAC 地址</value></data>
+  <data name="VmmsNicVlan.Content" xml:space="preserve"><value>设置所选适配器的访问 VLAN</value></data>
+  <data name="VmmsNicGuard.Content" xml:space="preserve"><value>设置所选适配器的网络防护</value></data>
+  <data name="VmmsIntegration.Content" xml:space="preserve"><value>设置所选集成服务</value></data>
+  <data name="VmmsSecureBoot.Content" xml:space="preserve"><value>设置安全启动（第 2 代）</value></data>
+  <data name="VmmsCpuReserveTextBox.Header" xml:space="preserve"><value>CPU 保留比例 (%)</value></data>
+  <data name="VmmsCpuMaximumTextBox.Header" xml:space="preserve"><value>CPU 上限 (%)</value></data>
+  <data name="VmmsCpuWeightTextBox.Header" xml:space="preserve"><value>CPU 相对权重</value></data>
+  <data name="VmmsDeviceNameTextBox.Header" xml:space="preserve"><value>新网络适配器名称</value></data>
+  <data name="VmmsDevicePathTextBox.Header" xml:space="preserve"><value>VHD/VHDX 或 ISO 路径（留空以弹出 DVD）</value></data>
+  <data name="VmmsControllerNumberTextBox.Header" xml:space="preserve"><value>控制器编号</value></data>
+  <data name="VmmsControllerLocationTextBox.Header" xml:space="preserve"><value>控制器位置</value></data>
+  <data name="VmmsDiskMinIopsTextBox.Header" xml:space="preserve"><value>最小 IOPS</value></data>
+  <data name="VmmsDiskMaxIopsTextBox.Header" xml:space="preserve"><value>最大 IOPS（0 表示无限制）</value></data>
+  <data name="VmmsNicMacTextBox.Header" xml:space="preserve"><value>静态 MAC 地址（留空为动态）</value></data>
+  <data name="VmmsNicVlanTextBox.Header" xml:space="preserve"><value>访问 VLAN ID（0 表示无标签）</value></data>
+  <data name="VmmsCpuNestedCheckBox.Content" xml:space="preserve"><value>启用嵌套虚拟化</value></data>
+  <data name="VmmsNicDhcpGuardCheckBox.Content" xml:space="preserve"><value>DHCP 防护</value></data>
+  <data name="VmmsNicRouterGuardCheckBox.Content" xml:space="preserve"><value>路由器防护</value></data>
+  <data name="VmmsNicSpoofCheckBox.Content" xml:space="preserve"><value>允许 MAC 地址欺骗</value></data>
+  <data name="VmmsIntegrationEnabledCheckBox.Content" xml:space="preserve"><value>启用所选集成服务</value></data>
+  <data name="VmmsSecureBootCheckBox.Content" xml:space="preserve"><value>启用安全启动</value></data>
+  <data name="VmmsDevicesComboBox.Header" xml:space="preserve"><value>所选设备或集成服务</value></data>
+  <data name="VmmsDeviceSwitchComboBox.Header" xml:space="preserve"><value>目标虚拟交换机</value></data>
+  <data name="VmmsControllerTypeComboBox.Header" xml:space="preserve"><value>硬盘控制器类型</value></data>
+  <data name="VmmsSecureBootTemplateComboBox.Header" xml:space="preserve"><value>安全启动模板</value></data>
+  <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU、设备与集成服务</value></data>
+  <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>查看所选虚拟机以加载其设备。断开硬盘不会删除磁盘文件。添加硬盘或 DVD 时请选择空闲控制器位置。新添加的网络适配器初始处于断开状态。</value></data>
 </root>
