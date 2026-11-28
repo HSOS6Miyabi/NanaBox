@@ -14,6 +14,7 @@
 #pragma comment(lib, "iphlpapi.lib")
 #else
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <sys/random.h>
@@ -37,6 +38,10 @@
 #include <cstring>
 #include <ctime>
 #include <filesystem>
+#include <fstream>
+#include <functional>
+#include <sstream>
+#include <tuple>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -663,24 +668,33 @@ namespace
                 {"NativeGuestTool", true}}}};
     }
 
+#include "GuestNetwork.h"
+
     class Agent
     {
         std::unique_ptr<Exchange> Files;
         bool Clock;
+        std::unique_ptr<Network> Net;
     public:
-        Agent(fs::path const& root, bool clock) : Clock(clock)
-        { if (!root.empty()) Files = std::make_unique<Exchange>(root); }
+        Agent(fs::path const& root, bool clock, bool network = false) : Clock(clock)
+        {
+            if (!root.empty()) Files = std::make_unique<Exchange>(root);
+            if (network) Net = std::make_unique<Network>();
+        }
         void Reap() { if (Files) Files->Reap(); }
         Json Dispatch(Json const& request)
         {
             try
             {
-                Fields(request, {"Version", "ResourceType", "RequestType", "Settings"});
+                if (!request.is_object()) Fail("Invalid GuestTool request");
                 if (Integer(request.at("Version"), 1, 1) != 1) Fail("Unsupported protocol");
                 auto resource = request.at("ResourceType").get<std::string>();
                 auto action = request.at("RequestType").get<std::string>();
                 auto const& settings = request.at("Settings");
                 Json result;
+                if (resource == "Heartbeat" || resource == "GuestInformation" ||
+                    resource == "TimeSync" || resource == "FileExchange")
+                    Fields(request, {"Version","ResourceType","RequestType","Settings"});
                 if (resource == "Heartbeat" && action == "Query")
                 {
                     Fields(settings, {});
@@ -710,6 +724,7 @@ namespace
                     if (!Files) Fail("File exchange is disabled");
                     result = Files->Request(action, settings);
                 }
+                else if (Net) result = Net->Dispatch(resource,action,request);
                 else Fail("Unsupported GuestTool resource or operation");
                 return {{"Version", 1}, {"Success", true}, {"Data", result}};
             }
@@ -825,7 +840,7 @@ namespace
         Send(s, response, Mono::now() + std::chrono::seconds(5));
     }
 
-    void Serve(Agent& agent)
+    void Serve(Agent& agent, bool network = false)
     {
 #ifdef _WIN32
         WSADATA data{};
@@ -833,13 +848,13 @@ namespace
         struct Wsa { ~Wsa() { WSACleanup(); } } cleanup;
         Socket server(socket(AF_HYPERV, SOCK_STREAM, HV_PROTOCOL_RAW));
         constexpr GUID parent{0xa42e7cda, 0xd03f, 0x480c, {0x9c,0xc2,0xa4,0xde,0x20,0xab,0xb8,0x78}};
-        constexpr GUID service{Port, 0xfacb, 0x11e6, {0xbd,0x58,0x64,0,0x6a,0x79,0x86,0xd3}};
+        GUID service{network ? 27453u : Port, 0xfacb, 0x11e6, {0xbd,0x58,0x64,0,0x6a,0x79,0x86,0xd3}};
         SOCKADDR_HV address{};
         address.Family = AF_HYPERV; address.VmId = parent; address.ServiceId = service;
 #else
         Socket server(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
         sockaddr_vm address{};
-        address.svm_family = AF_VSOCK; address.svm_cid = VMADDR_CID_ANY; address.svm_port = Port;
+        address.svm_family = AF_VSOCK; address.svm_cid = VMADDR_CID_ANY; address.svm_port = network ? 27453u : Port;
 #endif
         if (server.Value == InvalidSocket ||
             bind(server.Value, reinterpret_cast<sockaddr*>(&address), sizeof(address)) ||
@@ -878,6 +893,7 @@ namespace
 
     void SelfTest()
     {
+        NetworkValidationTest();
         auto root = fs::temp_directory_path() / ("NanaBox-GuestTool-" + Token());
         Require(fs::create_directory(root), "Cannot create test directory");
 #ifndef _WIN32
@@ -964,9 +980,11 @@ namespace
 
     fs::path ExchangeRoot;
     bool AllowClock = false;
+    bool NetworkMode = false;
 #ifdef _WIN32
     SERVICE_STATUS_HANDLE StatusHandle = nullptr;
     constexpr wchar_t ServiceName[] = L"NanaBoxGuestTool";
+    constexpr wchar_t NetworkServiceName[] = L"NanaBoxGuestNetwork";
     void Status(DWORD state, DWORD error = 0)
     {
         SERVICE_STATUS status{};
@@ -984,13 +1002,13 @@ namespace
     }
     void WINAPI ServiceMain(DWORD, LPWSTR*)
     {
-        StatusHandle = RegisterServiceCtrlHandlerW(ServiceName, Control);
+        StatusHandle = RegisterServiceCtrlHandlerW(NetworkMode ? NetworkServiceName : ServiceName, Control);
         if (!StatusHandle) return;
         try
         {
-            Agent agent(ExchangeRoot, AllowClock);
+            Agent agent(ExchangeRoot, AllowClock, NetworkMode);
             Status(SERVICE_RUNNING);
-            Serve(agent);
+            Serve(agent, NetworkMode);
             Status(SERVICE_STOPPED);
         }
         catch (...) { Status(SERVICE_STOPPED, ERROR_GEN_FAILURE); }
@@ -1016,12 +1034,13 @@ int main(int argc, char** argv)
             if (arg == "--exchange-root" && i + 1 < argc) ExchangeRoot = fs::path(argv[++i]);
             else if (arg == "--allow-clock-set") AllowClock = true;
             else if (arg == "--service") service = true;
+            else if (arg == "--network") NetworkMode = true;
             else if (arg != "--serve") Fail("Unknown GuestTool option");
         }
 #ifdef _WIN32
         if (service)
         {
-            SERVICE_TABLE_ENTRYW table[] = {{const_cast<wchar_t*>(ServiceName), ServiceMain}, {nullptr, nullptr}};
+            SERVICE_TABLE_ENTRYW table[] = {{const_cast<wchar_t*>(NetworkMode ? NetworkServiceName : ServiceName), ServiceMain}, {nullptr, nullptr}};
             if (!StartServiceCtrlDispatcherW(table)) Fail("Cannot connect to service control manager");
             return 0;
         }
@@ -1029,8 +1048,8 @@ int main(int argc, char** argv)
         if (service) Fail("Use --serve with systemd");
         signal(SIGTERM, OnSignal); signal(SIGINT, OnSignal);
 #endif
-        Agent agent(ExchangeRoot, AllowClock);
-        Serve(agent);
+        Agent agent(ExchangeRoot, AllowClock, NetworkMode);
+        Serve(agent, NetworkMode);
         return 0;
     }
     catch (std::exception const& e) { std::cerr << e.what() << '\n'; return 1; }
