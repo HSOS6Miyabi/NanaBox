@@ -288,7 +288,7 @@ void NanaBox::MainWindow::OnCommand(
         {
             this->StartCapture(Recording);
         }
-        Button.IsEnabled(this->m_Recording || !this->m_RecordingThread);
+        Control->RecordVideoButton().IsEnabled(this->m_Recording || !this->m_RecordingThread);
         break;
     }
     case NanaBox::MainWindowCommands::CreateVirtualHardDisk:
