@@ -971,6 +971,8 @@ nlohmann::json NanaBox::FromVirtualSmbShareConfiguration(
     {
         Result["ReadOnly"] = true;
     }
+    if (!Value.AutoMount) Result["AutoMount"] = false;
+    if (Value.NoDirectmap) Result["NoDirectmap"] = true;
 
     if (!Value.Path.empty())
     {
@@ -993,6 +995,10 @@ NanaBox::VirtualSmbShareConfiguration NanaBox::ToVirtualSmbShareConfiguration(
     Result.ReadOnly = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "ReadOnly"),
         Result.ReadOnly);
+    Result.AutoMount = Mile::Json::ToBoolean(
+        Mile::Json::GetSubKey(Value, "AutoMount"), Result.AutoMount);
+    Result.NoDirectmap = Mile::Json::ToBoolean(
+        Mile::Json::GetSubKey(Value, "NoDirectmap"), Result.NoDirectmap);
 
     Result.Path = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "Path"),

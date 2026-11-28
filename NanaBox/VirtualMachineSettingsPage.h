@@ -182,6 +182,8 @@ namespace winrt::NanaBox::implementation
         {
             winrt::StackPanel Container = nullptr;
             winrt::CheckBox ReadOnly = nullptr;
+            winrt::CheckBox AutoMount = nullptr;
+            winrt::CheckBox NoDirectmap = nullptr;
             winrt::TextBox Path = nullptr;
             winrt::TextBox Name = nullptr;
         };

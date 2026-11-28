@@ -1179,8 +1179,15 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     if (HcsDevices.contains("VirtualSmb"))
     {
         for (auto const& Share : HcsDevices.at("VirtualSmb").at("Shares"))
-            this->m_VirtualSmbManifest.push_back({{"Name", Share.at("Name")},
-                {"ReadOnly", Share.value("Options", nlohmann::json::object()).value("ReadOnly", false)}});
+        {
+            auto Name = Share.at("Name").get<std::string>();
+            auto Options = Share.value("Options", nlohmann::json::object());
+            bool AutoMount = true;
+            for (auto const& Configured : this->m_Configuration.VirtualSmbShares)
+                if (Configured.Name == Name) AutoMount = Configured.AutoMount;
+            this->m_VirtualSmbManifest.push_back({{"Name", Name}, {"AutoMount", AutoMount},
+                {"ReadOnly", Options.value("ReadOnly", false)}, {"NoDirectmap", Options.value("NoDirectmap", false)}});
+        }
     }
     this->PublishPlan9Inventory();
     if (this->m_Configuration.MirroredNetworking)

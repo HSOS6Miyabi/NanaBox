@@ -1557,4 +1557,8 @@
   <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>最小计算</value></data>
   <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>最优计算</value></data>
   <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>最大计算</value></data>
+  <data name="VirtualSmbAutoMountLabel" xml:space="preserve"><value>在 Windows 客户机中自动挂载</value></data>
+  <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>GuestTool 收到宿主机共享清单后自动挂载此共享。关闭后可按需挂载。</value></data>
+  <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>禁用文件直接映射</value></data>
+  <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>禁用将宿主机文件页直接映射到客户机的功能，适用于不支持直接映射的宿主机文件系统。</value></data>
 </root>

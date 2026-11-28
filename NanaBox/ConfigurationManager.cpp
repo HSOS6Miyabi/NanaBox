@@ -709,6 +709,7 @@ std::string NanaBox::MakeHcsConfiguration(
                     Current["Options"]["PseudoOplocks"] = true;
                 }
                 Current["Options"]["SupportCloudFiles"] = true;
+                if (VirtualSmbShare.NoDirectmap) Current["Options"]["NoDirectmap"] = true;
                 VirtualSmbShares.push_back(Current);
             }
             if (!VirtualSmbShares.empty())

@@ -175,6 +175,8 @@ namespace NanaBox
     struct VirtualSmbShareConfiguration
     {
         bool ReadOnly = false;
+        bool AutoMount = true;
+        bool NoDirectmap = false;
         std::string Path;
         std::string Name;
     };

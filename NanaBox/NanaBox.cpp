@@ -235,6 +235,8 @@ int WINAPI wWinMain(
                 Smb.Name = "ReadOnlySmb";
                 Smb.Path = Share.Path;
                 Smb.ReadOnly = true;
+                Smb.AutoMount = false;
+                Smb.NoDirectmap = true;
                 Shared.VirtualSmbShares.push_back(Smb);
                 auto RoundTrip = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Shared));
                 auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(RoundTrip));
@@ -242,7 +244,11 @@ int WINAPI wWinMain(
                 auto const& VirtualSmb = Hcs["VirtualMachine"]["Devices"]["VirtualSmb"];
                 if (VirtualSmb["DirectFileMappingInMB"] != 2048 ||
                     VirtualSmb["Shares"][0]["Name"] != "ReadOnlySmb" ||
-                    VirtualSmb["Shares"][0]["Options"]["ReadOnly"] != true) return 53;
+                    VirtualSmb["Shares"][0]["Options"]["ReadOnly"] != true ||
+                    VirtualSmb["Shares"][0]["Options"]["NoDirectmap"] != true ||
+                    VirtualSmb["Shares"][0].contains("AutoMount") ||
+                    RoundTrip.VirtualSmbShares[0].AutoMount ||
+                    !RoundTrip.VirtualSmbShares[0].NoDirectmap) return 53;
                 auto DuplicateSmb = Shared;
                 Smb.Name = "readonlysmb";
                 DuplicateSmb.VirtualSmbShares.push_back(Smb);

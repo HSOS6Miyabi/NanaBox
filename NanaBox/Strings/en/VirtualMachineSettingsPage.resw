@@ -1557,4 +1557,8 @@
   <data name="VmmsGpuMinComputeTextBox.Header" xml:space="preserve"><value>Minimum compute</value></data>
   <data name="VmmsGpuOptimalComputeTextBox.Header" xml:space="preserve"><value>Optimal compute</value></data>
   <data name="VmmsGpuMaxComputeTextBox.Header" xml:space="preserve"><value>Maximum compute</value></data>
+  <data name="VirtualSmbAutoMountLabel" xml:space="preserve"><value>Mount automatically in Windows</value></data>
+  <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>Mount this share after GuestTool receives the host inventory. Disable to mount it on demand.</value></data>
+  <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>Disable direct file mapping</value></data>
+  <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>Use VSMB without direct mapping of host file pages into the guest. This can help compatibility with host filesystems that lack direct mapping support.</value></data>
 </root>

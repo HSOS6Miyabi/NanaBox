@@ -1170,6 +1170,8 @@ namespace winrt::NanaBox::implementation
                     NanaBox::VirtualSmbShareConfiguration Configuration;
                     Configuration.ReadOnly =
                         Row.ReadOnly.IsChecked().Value();
+                    Configuration.AutoMount = Row.AutoMount.IsChecked().Value();
+                    Configuration.NoDirectmap = Row.NoDirectmap.IsChecked().Value();
                     Configuration.Path =
                         winrt::to_string(Row.Path.Text());
                     Configuration.Name =
@@ -3182,6 +3184,10 @@ namespace winrt::NanaBox::implementation
             L"VirtualSmbShareReadOnlyHelp",
             Configuration.ReadOnly,
             false);
+        Row.AutoMount = ::AddSettingCheckBox(Row.Container, L"VirtualSmbAutoMountLabel",
+            L"VirtualSmbAutoMountHelp", Configuration.AutoMount, false);
+        Row.NoDirectmap = ::AddSettingCheckBox(Row.Container, L"VirtualSmbNoDirectmapLabel",
+            L"VirtualSmbNoDirectmapHelp", Configuration.NoDirectmap, false);
         Row.Path = ::AddSettingTextBox(
             Row.Container,
             L"VirtualSmbSharePathLabel",

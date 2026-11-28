@@ -484,6 +484,8 @@
                   "type": "boolean",
                   "description": "Set it true if you want to make the current Virtual SMB share read-only. Available starting with NanaBox 1.6 Update 1."
                 },
+                "AutoMount": { "type": "boolean", "default": true },
+                "NoDirectmap": { "type": "boolean", "default": false, "description": "Disable direct mapping of host file pages into the guest." },
                 "Path": {
                   "type": "string",
                   "description": "The host path of the current Virtual SMB share. The relative path is supported. Available starting with NanaBox 1.6 Update 1.",

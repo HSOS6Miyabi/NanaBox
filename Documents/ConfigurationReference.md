@@ -137,6 +137,8 @@
     - Name (String)
   - VirtualSmbShares (Object Array)
     - ReadOnly (Boolean)
+    - AutoMount (Boolean)
+    - NoDirectmap (Boolean)
     - Path (String)
     - Name (String)
 
@@ -975,6 +977,14 @@ Note: Available starting with NanaBox 1.6 Update 1.
 (Optional) Set it true if you want to make the current Virtual SMB share read-only.
 
 Note: Available starting with NanaBox 1.6 Update 1.
+
+#### AutoMount
+
+Optional, defaults to true. Automatically mount this share in a Windows guest running the native GuestTool share service. When false, the share remains available for manual mounting.
+
+#### NoDirectmap
+
+Optional, defaults to false. Set to true to disable HCS direct file mapping for this share. This option is independent of read-only access and GuestTool directory mounting.
 
 #### Path
 

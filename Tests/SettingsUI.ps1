@@ -830,6 +830,8 @@ try {
     Set-Text 'VirtualSmbSharePathLabel' 'C:\Temp'
     Set-Text 'VirtualSmbShareNameLabel' 'test-smb'
     Set-Check 'VirtualSmbShareReadOnlyLabel' $true
+    Set-Check 'VirtualSmbAutoMountLabel' $false
+    Set-Check 'VirtualSmbNoDirectmapLabel' $true
     $saved = Save-Config
     Assert-Equal $saved.Name 'UI automation saved' 'Name'
     Assert-Equal $saved.HcsSchemaMinor 5 'HCS schema minor version'
@@ -865,6 +867,8 @@ try {
     }
     Assert-Equal $saved.Plan9Shares[0].AllowedFiles[0] 'example.txt' 'Plan9 allowed file'
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
+    Assert-Equal $saved.VirtualSmbShares[0].AutoMount $false 'VSMB manual mounting'
+    Assert-Equal $saved.VirtualSmbShares[0].NoDirectmap $true 'VSMB direct mapping disabled'
     Assert-Equal $saved.Keyboard.ClipboardKeyboardLayout '00000407' 'Clipboard keyboard layout'
     Assert-Equal $saved.Keyboard.ClipboardGtkUnicode $true 'GTK Unicode input'
     Assert-Equal ([bool]$saved.Keyboard.ClipboardWindowsUnicode) $false 'Windows Unicode disabled for Linux'
