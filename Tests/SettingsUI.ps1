@@ -418,6 +418,68 @@ try {
         }
     }
 
+    if (-not $HostIntegration) {
+        Select-Tab 'TabVmms'
+        Invoke-Control 'HcsInventoryButton'
+        $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsInventory' -and $v.Items[0].Id -eq 'mock-hcs'}
+        Invoke-Control 'VmmsListButton'
+        $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'VmmsList'}
+        function Invoke-Vmms([string]$action) {
+            Select-Choice 'VmmsActionComboBox' $action
+            Confirm-Change 'VmmsExecuteButton'
+            $result = Wait-Result 'VmmsResultTextBox' {param($v) $v.Operation -eq $action}
+            if (-not $result.Success) { throw "VMMS $action failed: $($result.Error)" }
+            return $result
+        }
+        Set-Text 'VmmsNameTextBox' 'Mock VM'
+        Select-Choice 'VmmsGenerationComboBox' 'VmmsGeneration2'
+        Set-Text 'VmmsMemoryTextBox' '1024'
+        $created = Invoke-Vmms 'VmmsCreate'
+        Assert-Equal $created.Details.VM.Name 'Mock VM' 'Created VM'
+        $null = Select-ByName 'VmmsMachinesComboBox' 'Mock VM ('
+        Invoke-Control 'VmmsInspectButton'
+        $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'VmmsInspect'}
+        foreach ($operation in @(@('VmmsStart','Running'),@('VmmsPause','Paused'),@('VmmsResume','Running'),@('VmmsSave','Saved'),@('VmmsStart','Running'),@('VmmsRestart','Running'),@('VmmsShutdown','Off'),@('VmmsStart','Running'),@('VmmsPowerOff','Off'))) {
+            $result = Invoke-Vmms $operation[0]
+            Assert-Equal $result.Details.VM.State $operation[1] $operation[0]
+        }
+        Set-Text 'VmmsNameTextBox' 'Renamed VM'
+        $result = Invoke-Vmms 'VmmsRename'
+        Assert-Equal $result.Details.VM.Name 'Renamed VM' 'VM rename'
+        Set-Text 'VmmsProcessorTextBox' '4'
+        $result = Invoke-Vmms 'VmmsSetProcessor'
+        Assert-Equal $result.Details.VM.ProcessorCount 4 'VM processor count'
+        Set-Text 'VmmsNameTextBox' 'Before changes'
+        $result = Invoke-Vmms 'VmmsCheckpointCreate'
+        Assert-Equal @($result.Details.Checkpoints).Count 1 'Checkpoint created'
+        Set-Text 'VmmsMemoryTextBox' '4096'
+        $result = Invoke-Vmms 'VmmsSetMemory'
+        Assert-Equal $result.Details.VM.MemoryMiB 4096 'VM memory'
+        $null = Select-ByName 'VmmsCheckpointsComboBox' 'Before changes ('
+        $result = Invoke-Vmms 'VmmsCheckpointRestore'
+        Assert-Equal $result.Details.VM.MemoryMiB 1024 'Checkpoint restored'
+        $null = Select-ByName 'VmmsCheckpointsComboBox' 'Before changes ('
+        $result = Invoke-Vmms 'VmmsCheckpointRemove'
+        Assert-Equal @($result.Details.Checkpoints).Count 0 'Checkpoint removed'
+        Set-Text 'VmmsPathTextBox' 'C:\Export'
+        $result = Invoke-Vmms 'VmmsExport'
+        Assert-Equal $result.ExportedTo 'C:\Export' 'VM export'
+        Set-Text 'VmmsPathTextBox' 'C:\Moved'
+        $result = Invoke-Vmms 'VmmsMoveStorage'
+        Assert-Equal $result.Details.VM.Path 'C:\Moved' 'VM storage move'
+        $result = Invoke-Vmms 'VmmsRemove'
+        Assert-Equal @($result.Items).Count 0 'VM removed'
+        Set-Text 'VmmsPathTextBox' 'C:\Export\machine.vmcx'
+        $result = Invoke-Vmms 'VmmsImportRegister'
+        $firstId = $result.SelectedId
+        Set-Text 'VmmsDestinationTextBox' 'C:\Copy'
+        $result = Invoke-Vmms 'VmmsImportCopy'
+        if ($result.SelectedId -eq $firstId -or @($result.Items).Count -ne 2) { throw 'Imported copy must receive a new VM ID' }
+        $null = Invoke-Vmms 'VmmsRemove'
+        $null = Select-ByName 'VmmsMachinesComboBox' 'Imported VM ('
+        $result = Invoke-Vmms 'VmmsRemove'
+        Assert-Equal @($result.Items).Count 0 'Imported VMs removed'
+    }
     Select-Tab 'TabSession'
     Invoke-Control 'RefreshDriveButton'
     Invoke-Control 'RefreshDeviceButton'

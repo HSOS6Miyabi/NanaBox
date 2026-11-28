@@ -1806,4 +1806,115 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>如果目标文件已存在，是否替换？</value>
     <comment>Replace the destination if it already exists?</comment>
   </data>
+  <data name="TabVmms.Header" xml:space="preserve">
+    <value>Hyper-V 虚拟机</value>
+  </data>
+  <data name="VmmsTitle.Text" xml:space="preserve">
+    <value>Hyper-V 虚拟机管理</value>
+  </data>
+  <data name="VmmsNote.Text" xml:space="preserve">
+    <value>管理已在 Hyper-V 虚拟机管理服务中注册的虚拟机。NanaBox 独立 HCS 配置由原有界面管理；HCS 清单仅供查看。</value>
+  </data>
+  <data name="VmmsListButton.Content" xml:space="preserve">
+    <value>刷新虚拟机</value>
+  </data>
+  <data name="HcsInventoryButton.Content" xml:space="preserve">
+    <value>查看 HCS 计算系统</value>
+  </data>
+  <data name="VmmsMachinesComboBox.Header" xml:space="preserve">
+    <value>已注册虚拟机</value>
+  </data>
+  <data name="VmmsInspectButton.Content" xml:space="preserve">
+    <value>查看虚拟机和检查点</value>
+  </data>
+  <data name="VmmsActionComboBox.Header" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="VmmsFieldsNote.Text" xml:space="preserve">
+    <value>填写所选操作需要的参数。导入副本需要空目录。查看虚拟机后可刷新检查点列表。</value>
+  </data>
+  <data name="VmmsNameTextBox.Header" xml:space="preserve">
+    <value>虚拟机或新检查点名称</value>
+  </data>
+  <data name="VmmsGenerationComboBox.Header" xml:space="preserve">
+    <value>虚拟机代数（创建时）</value>
+  </data>
+  <data name="VmmsMemoryTextBox.Header" xml:space="preserve">
+    <value>启动内存（MiB）</value>
+  </data>
+  <data name="VmmsProcessorTextBox.Header" xml:space="preserve">
+    <value>虚拟处理器数量</value>
+  </data>
+  <data name="VmmsCheckpointsComboBox.Header" xml:space="preserve">
+    <value>检查点</value>
+  </data>
+  <data name="VmmsPathTextBox.Header" xml:space="preserve">
+    <value>配置文件或现有目录</value>
+  </data>
+  <data name="VmmsDestinationTextBox.Header" xml:space="preserve">
+    <value>空目标目录（导入副本）</value>
+  </data>
+  <data name="VmmsExecuteButton.Content" xml:space="preserve">
+    <value>执行所选操作</value>
+  </data>
+  <data name="VmmsResultTextBox.Header" xml:space="preserve">
+    <value>操作结果</value>
+  </data>
+  <data name="VmmsCreate.Content" xml:space="preserve">
+    <value>创建空虚拟机</value>
+  </data>
+  <data name="VmmsStart.Content" xml:space="preserve">
+    <value>启动</value>
+  </data>
+  <data name="VmmsShutdown.Content" xml:space="preserve">
+    <value>关机</value>
+  </data>
+  <data name="VmmsPowerOff.Content" xml:space="preserve">
+    <value>关闭电源</value>
+  </data>
+  <data name="VmmsPause.Content" xml:space="preserve">
+    <value>暂停</value>
+  </data>
+  <data name="VmmsResume.Content" xml:space="preserve">
+    <value>恢复</value>
+  </data>
+  <data name="VmmsSave.Content" xml:space="preserve">
+    <value>保存状态</value>
+  </data>
+  <data name="VmmsRestart.Content" xml:space="preserve">
+    <value>重新启动</value>
+  </data>
+  <data name="VmmsRename.Content" xml:space="preserve">
+    <value>重命名</value>
+  </data>
+  <data name="VmmsRemove.Content" xml:space="preserve">
+    <value>删除虚拟机配置</value>
+  </data>
+  <data name="VmmsCheckpointCreate.Content" xml:space="preserve">
+    <value>创建检查点</value>
+  </data>
+  <data name="VmmsCheckpointRestore.Content" xml:space="preserve">
+    <value>恢复检查点</value>
+  </data>
+  <data name="VmmsCheckpointRemove.Content" xml:space="preserve">
+    <value>删除检查点</value>
+  </data>
+  <data name="VmmsExport.Content" xml:space="preserve">
+    <value>导出虚拟机</value>
+  </data>
+  <data name="VmmsImportRegister.Content" xml:space="preserve">
+    <value>注册现有虚拟机</value>
+  </data>
+  <data name="VmmsImportCopy.Content" xml:space="preserve">
+    <value>以新 ID 导入副本</value>
+  </data>
+  <data name="VmmsMoveStorage.Content" xml:space="preserve">
+    <value>移动虚拟机存储</value>
+  </data>
+  <data name="VmmsSetProcessor.Content" xml:space="preserve">
+    <value>设置处理器数量</value>
+  </data>
+  <data name="VmmsSetMemory.Content" xml:space="preserve">
+    <value>设置启动内存</value>
+  </data>
 </root>

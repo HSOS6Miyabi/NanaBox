@@ -1614,6 +1614,55 @@
           </StackPanel>
         </ScrollViewer>
       </PivotItem>
+      <PivotItem x:Uid="/VirtualMachineSettingsPage/TabVmms" Header="Hyper-V VMs" AutomationProperties.AutomationId="TabVmms">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="16,4,16,16" Spacing="10">
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsTitle" Text="Hyper-V virtual machine manager" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsNote" Text="Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only." TextWrapping="Wrap" Opacity="0.75" />
+            <ContentControl x:Name="VmmsForm" HorizontalContentAlignment="Stretch">
+              <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Uid="/VirtualMachineSettingsPage/VmmsListButton" Content="Refresh VMs" Tag="VmmsList" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsListButton" />
+                  <Button x:Uid="/VirtualMachineSettingsPage/HcsInventoryButton" Content="HCS inventory" Tag="HcsInventory" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsInventoryButton" />
+                </StackPanel>
+                <ComboBox x:Name="VmmsMachinesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsMachinesComboBox" Header="Registered VM" HorizontalAlignment="Stretch" SelectionChanged="VmmsSelectionChanged" AutomationProperties.AutomationId="VmmsMachinesComboBox" />
+                <Button x:Uid="/VirtualMachineSettingsPage/VmmsInspectButton" Content="Inspect selected VM and checkpoints" Tag="VmmsInspect" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsInspectButton" />
+                <ComboBox x:Name="VmmsActionComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsActionComboBox" Header="Operation" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsActionComboBox">
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsCreate" Tag="VmmsCreate" Content="Create empty VM" AutomationProperties.AutomationId="VmmsCreate" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsStart" Tag="VmmsStart" Content="Start" AutomationProperties.AutomationId="VmmsStart" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsShutdown" Tag="VmmsShutdown" Content="Shut down" AutomationProperties.AutomationId="VmmsShutdown" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsPowerOff" Tag="VmmsPowerOff" Content="Power off" AutomationProperties.AutomationId="VmmsPowerOff" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsPause" Tag="VmmsPause" Content="Pause" AutomationProperties.AutomationId="VmmsPause" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsResume" Tag="VmmsResume" Content="Resume" AutomationProperties.AutomationId="VmmsResume" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsSave" Tag="VmmsSave" Content="Save state" AutomationProperties.AutomationId="VmmsSave" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsRestart" Tag="VmmsRestart" Content="Restart" AutomationProperties.AutomationId="VmmsRestart" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsRename" Tag="VmmsRename" Content="Rename" AutomationProperties.AutomationId="VmmsRename" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsRemove" Tag="VmmsRemove" Content="Remove VM configuration" AutomationProperties.AutomationId="VmmsRemove" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointCreate" Tag="VmmsCheckpointCreate" Content="Create checkpoint" AutomationProperties.AutomationId="VmmsCheckpointCreate" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointRestore" Tag="VmmsCheckpointRestore" Content="Restore checkpoint" AutomationProperties.AutomationId="VmmsCheckpointRestore" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointRemove" Tag="VmmsCheckpointRemove" Content="Delete checkpoint" AutomationProperties.AutomationId="VmmsCheckpointRemove" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsExport" Tag="VmmsExport" Content="Export VM" AutomationProperties.AutomationId="VmmsExport" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsImportRegister" Tag="VmmsImportRegister" Content="Register existing VM" AutomationProperties.AutomationId="VmmsImportRegister" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsImportCopy" Tag="VmmsImportCopy" Content="Import copy with new ID" AutomationProperties.AutomationId="VmmsImportCopy" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsMoveStorage" Tag="VmmsMoveStorage" Content="Move VM storage" AutomationProperties.AutomationId="VmmsMoveStorage" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsSetProcessor" Tag="VmmsSetProcessor" Content="Set processor count" AutomationProperties.AutomationId="VmmsSetProcessor" />
+                <ComboBoxItem x:Uid="/VirtualMachineSettingsPage/VmmsSetMemory" Tag="VmmsSetMemory" Content="Set startup memory" AutomationProperties.AutomationId="VmmsSetMemory" />
+                </ComboBox>
+                <TextBlock x:Uid="/VirtualMachineSettingsPage/VmmsFieldsNote" Text="Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints." TextWrapping="Wrap" Opacity="0.75" />
+                <TextBox x:Name="VmmsNameTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsNameTextBox" Header="VM or new checkpoint name" AutomationProperties.AutomationId="VmmsNameTextBox" />
+                <ComboBox x:Name="VmmsGenerationComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGenerationComboBox" Header="Generation (creation)" SelectedIndex="1" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGenerationComboBox"><ComboBoxItem Content="1" AutomationProperties.AutomationId="VmmsGeneration1" /><ComboBoxItem Content="2" AutomationProperties.AutomationId="VmmsGeneration2" /></ComboBox>
+                <TextBox x:Name="VmmsMemoryTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsMemoryTextBox" Header="Startup memory (MiB)" Text="2048" InputScope="Number" AutomationProperties.AutomationId="VmmsMemoryTextBox" />
+                <TextBox x:Name="VmmsProcessorTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsProcessorTextBox" Header="Virtual processor count" Text="2" InputScope="Number" AutomationProperties.AutomationId="VmmsProcessorTextBox" />
+                <ComboBox x:Name="VmmsCheckpointsComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsCheckpointsComboBox" Header="Checkpoint" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsCheckpointsComboBox" />
+                <TextBox x:Name="VmmsPathTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsPathTextBox" Header="Configuration file or existing directory" AutomationProperties.AutomationId="VmmsPathTextBox" />
+                <TextBox x:Name="VmmsDestinationTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsDestinationTextBox" Header="Empty destination directory (import copy)" AutomationProperties.AutomationId="VmmsDestinationTextBox" />
+                <Button x:Uid="/VirtualMachineSettingsPage/VmmsExecuteButton" Content="Execute selected operation" Tag="Execute" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsExecuteButton" />
+              </StackPanel>
+            </ContentControl>
+            <TextBox x:Name="VmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsResultTextBox" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="460" AutomationProperties.AutomationId="VmmsResultTextBox" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
     </Pivot>
     <Grid Grid.Row="2" Padding="12,6,12,8" ColumnSpacing="8">
       <Grid.ColumnDefinitions>

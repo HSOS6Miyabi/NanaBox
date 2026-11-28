@@ -20,6 +20,8 @@ namespace NanaBox
             std::vector<HostNetworkInfo> Networks;
             Json Switches = Json::array();
             Json Creators = Json::array();
+            Json Machines = Json::array();
+            std::map<std::string, Json> Checkpoints;
             std::map<std::string, Json> Firewall;
             std::map<std::string, std::vector<char>> GuestFiles;
             std::int64_t GuestClock = 1800000000000ll;
@@ -143,7 +145,55 @@ namespace NanaBox
                 return "NanaBox.Managed." + Value;
             };
             auto Result = Json{{"Success", true}};
-            if (Action == "SwitchList") Result = Data->Switches;
+            if (Action == "HcsInventory")
+                Result = Json{{"Items", Json::array({Json{{"Id", "mock-hcs"}, {"SystemType", "VirtualMachine"}, {"State", "Running"}}})}};
+            else if (Action.starts_with("Vmms"))
+            {
+                std::string Selected;
+                if (Action == "VmmsCreate" || Action == "VmmsImportRegister" || Action == "VmmsImportCopy")
+                {
+                    auto MachineName = Action == "VmmsCreate" ? Text("Name") : "Imported VM";
+                    if (MachineName.empty()) throw winrt::hresult_invalid_argument();
+                    Selected = NewId();
+                    Data->Machines.push_back(Json{{"Id", Selected}, {"Name", MachineName}, {"State", "Off"},
+                        {"Generation", A.value("Generation", 2)}, {"ProcessorCount", 1}, {"MemoryMiB", A.value("MemoryMiB", 2048)},
+                        {"Path", A.value("Path", std::string())}});
+                    Data->Checkpoints[Selected] = Json::array();
+                }
+                else if (Action != "VmmsList")
+                {
+                    Selected = Text("Id");
+                    auto It = Find(Data->Machines, Selected);
+                    auto& Machine = *It;
+                    auto& Snapshots = Data->Checkpoints.at(Selected);
+                    if (Action == "VmmsStart" || Action == "VmmsResume" || Action == "VmmsRestart") Machine["State"] = "Running";
+                    else if (Action == "VmmsShutdown" || Action == "VmmsPowerOff") Machine["State"] = "Off";
+                    else if (Action == "VmmsPause") Machine["State"] = "Paused";
+                    else if (Action == "VmmsSave") Machine["State"] = "Saved";
+                    else if (Action == "VmmsRename") Machine["Name"] = Text("Name");
+                    else if (Action == "VmmsSetProcessor") Machine["ProcessorCount"] = A.at("Count");
+                    else if (Action == "VmmsSetMemory") Machine["MemoryMiB"] = A.at("MemoryMiB");
+                    else if (Action == "VmmsCheckpointCreate")
+                        Snapshots.push_back(Json{{"Id", NewId()}, {"Name", Text("Name")}, {"MemoryMiB", Machine["MemoryMiB"]}});
+                    else if (Action == "VmmsCheckpointRestore") Machine["MemoryMiB"] = Find(Snapshots, Text("CheckpointId"))->at("MemoryMiB");
+                    else if (Action == "VmmsCheckpointRemove") Snapshots.erase(Find(Snapshots, Text("CheckpointId")));
+                    else if (Action == "VmmsMoveStorage") Machine["Path"] = Text("Path");
+                    else if (Action == "VmmsExport") Result["ExportedTo"] = Text("Path");
+                    else if (Action == "VmmsRemove")
+                    {
+                        if (Machine["State"] != "Off") throw winrt::hresult_error(E_FAIL, L"VM must be stopped.");
+                        Data->Machines.erase(It);
+                        Data->Checkpoints.erase(Selected);
+                        Selected.clear();
+                    }
+                    else if (Action != "VmmsInspect") throw winrt::hresult_invalid_argument();
+                }
+                Result["Items"] = Data->Machines;
+                Result["SelectedId"] = Selected.empty() ? Json() : Json(Selected);
+                Result["Details"] = Selected.empty() ? Json() : Json{{"VM", *Find(Data->Machines, Selected)},
+                    {"Checkpoints", Data->Checkpoints.at(Selected)}};
+            }
+            else if (Action == "SwitchList") Result = Data->Switches;
             else if (Action == "AdapterList")
                 Result = Json::array({Json{{"Name", "Mock Ethernet"}, {"Status", "Up"}}});
             else if (Action == "CreatorList") Result = Data->Creators;

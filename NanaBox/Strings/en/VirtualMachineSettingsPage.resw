@@ -1806,4 +1806,115 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>Replace the destination if it already exists?</value>
     <comment>Replace the destination if it already exists?</comment>
   </data>
+  <data name="TabVmms.Header" xml:space="preserve">
+    <value>Hyper-V VMs</value>
+  </data>
+  <data name="VmmsTitle.Text" xml:space="preserve">
+    <value>Hyper-V virtual machine manager</value>
+  </data>
+  <data name="VmmsNote.Text" xml:space="preserve">
+    <value>Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only.</value>
+  </data>
+  <data name="VmmsListButton.Content" xml:space="preserve">
+    <value>Refresh VMs</value>
+  </data>
+  <data name="HcsInventoryButton.Content" xml:space="preserve">
+    <value>HCS inventory</value>
+  </data>
+  <data name="VmmsMachinesComboBox.Header" xml:space="preserve">
+    <value>Registered VM</value>
+  </data>
+  <data name="VmmsInspectButton.Content" xml:space="preserve">
+    <value>Inspect selected VM and checkpoints</value>
+  </data>
+  <data name="VmmsActionComboBox.Header" xml:space="preserve">
+    <value>Operation</value>
+  </data>
+  <data name="VmmsFieldsNote.Text" xml:space="preserve">
+    <value>Enter only the fields required by the chosen operation. Import copy requires an empty destination directory. Inspect a VM to refresh its checkpoints.</value>
+  </data>
+  <data name="VmmsNameTextBox.Header" xml:space="preserve">
+    <value>VM or new checkpoint name</value>
+  </data>
+  <data name="VmmsGenerationComboBox.Header" xml:space="preserve">
+    <value>Generation (creation)</value>
+  </data>
+  <data name="VmmsMemoryTextBox.Header" xml:space="preserve">
+    <value>Startup memory (MiB)</value>
+  </data>
+  <data name="VmmsProcessorTextBox.Header" xml:space="preserve">
+    <value>Virtual processor count</value>
+  </data>
+  <data name="VmmsCheckpointsComboBox.Header" xml:space="preserve">
+    <value>Checkpoint</value>
+  </data>
+  <data name="VmmsPathTextBox.Header" xml:space="preserve">
+    <value>Configuration file or existing directory</value>
+  </data>
+  <data name="VmmsDestinationTextBox.Header" xml:space="preserve">
+    <value>Empty destination directory (import copy)</value>
+  </data>
+  <data name="VmmsExecuteButton.Content" xml:space="preserve">
+    <value>Execute selected operation</value>
+  </data>
+  <data name="VmmsResultTextBox.Header" xml:space="preserve">
+    <value>Operation result</value>
+  </data>
+  <data name="VmmsCreate.Content" xml:space="preserve">
+    <value>Create empty VM</value>
+  </data>
+  <data name="VmmsStart.Content" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="VmmsShutdown.Content" xml:space="preserve">
+    <value>Shut down</value>
+  </data>
+  <data name="VmmsPowerOff.Content" xml:space="preserve">
+    <value>Power off</value>
+  </data>
+  <data name="VmmsPause.Content" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="VmmsResume.Content" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="VmmsSave.Content" xml:space="preserve">
+    <value>Save state</value>
+  </data>
+  <data name="VmmsRestart.Content" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="VmmsRename.Content" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="VmmsRemove.Content" xml:space="preserve">
+    <value>Remove VM configuration</value>
+  </data>
+  <data name="VmmsCheckpointCreate.Content" xml:space="preserve">
+    <value>Create checkpoint</value>
+  </data>
+  <data name="VmmsCheckpointRestore.Content" xml:space="preserve">
+    <value>Restore checkpoint</value>
+  </data>
+  <data name="VmmsCheckpointRemove.Content" xml:space="preserve">
+    <value>Delete checkpoint</value>
+  </data>
+  <data name="VmmsExport.Content" xml:space="preserve">
+    <value>Export VM</value>
+  </data>
+  <data name="VmmsImportRegister.Content" xml:space="preserve">
+    <value>Register existing VM</value>
+  </data>
+  <data name="VmmsImportCopy.Content" xml:space="preserve">
+    <value>Import copy with new ID</value>
+  </data>
+  <data name="VmmsMoveStorage.Content" xml:space="preserve">
+    <value>Move VM storage</value>
+  </data>
+  <data name="VmmsSetProcessor.Content" xml:space="preserve">
+    <value>Set processor count</value>
+  </data>
+  <data name="VmmsSetMemory.Content" xml:space="preserve">
+    <value>Set startup memory</value>
+  </data>
 </root>

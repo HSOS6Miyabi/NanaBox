@@ -749,6 +749,129 @@ try {
     exit 1
 }
 )PS";
+
+    constexpr wchar_t VmmsManagementScript[] = LR"PS(
+function Get-SelectedVM($id) {
+    $items = @(Get-VM -Id ([guid]$id))
+    if ($items.Count -ne 1) { throw 'The selected Hyper-V VM is no longer available.' }
+    return $items[0]
+}
+function Get-SelectedCheckpoint($vm, $id) {
+    $items = @(Get-VMSnapshot -VM $vm | Where-Object { $_.Id -eq [guid]$id })
+    if ($items.Count -ne 1) { throw 'The selected checkpoint is no longer available.' }
+    return $items[0]
+}
+function RequireName($name) {
+    $value = ([string]$name).Trim()
+    if (!$value -or $value.Length -gt 100 -or $value.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0 -or $value -in @('.','..')) { throw 'Specify a valid name.' }
+    return $value
+}
+function RequireDirectory($path) {
+    $item = Get-Item -LiteralPath $path
+    if (!$item.PSIsContainer -or $item.PSProvider.Name -ne 'FileSystem') { throw 'Select an existing filesystem directory.' }
+    return $item.FullName
+}
+function RequireConfiguration($path) {
+    $item = Get-Item -LiteralPath $path
+    if ($item.PSIsContainer -or $item.PSProvider.Name -ne 'FileSystem' -or $item.Extension -notin @('.vmcx','.xml')) { throw 'Select a Hyper-V configuration file (.vmcx or .xml).' }
+    return $item.FullName
+}
+function VmInfo($vm) {
+    [pscustomobject]@{
+        Id=[string]$vm.Id; Name=$vm.Name; State=[string]$vm.State
+        Generation=[int]$vm.Generation; Version=[string]$vm.Version; Path=$vm.Path
+        CPUUsage=$vm.CPUUsage; MemoryAssigned=$vm.MemoryAssigned; Uptime=[string]$vm.Uptime
+        CheckpointType=[string]$vm.CheckpointType; ReplicationState=[string]$vm.ReplicationState
+    }
+}
+function VmDetails($vm) {
+    $cpu = Get-VMProcessor -VM $vm
+    $memory = Get-VMMemory -VM $vm
+    @{
+        VM=(VmInfo $vm)
+        Processor=@{Count=$cpu.Count; Maximum=$cpu.Maximum; Reserve=$cpu.Reserve; RelativeWeight=$cpu.RelativeWeight; ExposeVirtualizationExtensions=$cpu.ExposeVirtualizationExtensions}
+        Memory=@{Startup=$memory.Startup; Minimum=$memory.Minimum; Maximum=$memory.Maximum; DynamicMemoryEnabled=$memory.DynamicMemoryEnabled; Buffer=$memory.Buffer; Priority=$memory.Priority}
+        Checkpoints=@(Get-VMSnapshot -VM $vm | ForEach-Object { [pscustomobject]@{Id=[string]$_.Id; Name=$_.Name; CreationTime=[string]$_.CreationTime; ParentId=[string]$_.ParentSnapshotId; Type=[string]$_.SnapshotType} })
+        Disks=@(Get-VMHardDiskDrive -VM $vm | Select-Object ControllerType,ControllerNumber,ControllerLocation,Path,DiskNumber)
+        NetworkAdapters=@(Get-VMNetworkAdapter -VM $vm | Select-Object Name,SwitchName,MacAddress,IPAddresses,Status)
+        IntegrationServices=@(Get-VMIntegrationService -VM $vm | Select-Object Name,Enabled,PrimaryStatusDescription,SecondaryStatusDescription)
+    }
+}
+try {
+    Import-Module Hyper-V -ErrorAction Stop
+    $selected = $null
+    $result = @{Success=$true}
+    if ($a.Action -eq 'VmmsCreate') {
+        $name = RequireName $a.Name
+        if (@(Get-VM | Where-Object Name -eq $name).Count) { throw 'A virtual machine with this name already exists.' }
+        $generation = [int]$a.Generation
+        $memory = [long]$a.MemoryMiB
+        if ($generation -notin @(1,2) -or $memory -lt 32 -or $memory -gt 16777216) { throw 'Invalid virtual machine generation or startup memory.' }
+        $new = @{Name=$name; Generation=$generation; MemoryStartupBytes=($memory*1MB); NoVHD=$true}
+        if ($a.Path) { $new.Path = RequireDirectory $a.Path }
+        $vm = New-VM @new
+        $selected = [string]$vm.Id
+    } elseif ($a.Action -in @('VmmsImportRegister','VmmsImportCopy')) {
+        $config = RequireConfiguration $a.Path
+        if ($a.Action -eq 'VmmsImportCopy') {
+            $destination = RequireDirectory $a.Destination
+            if (@(Get-ChildItem -LiteralPath $destination -Force).Count) { throw 'Choose an empty destination directory for the imported copy.' }
+            $vm = Import-VM -Path $config -Copy -GenerateNewId -VirtualMachinePath $destination -VhdDestinationPath $destination -SnapshotFilePath $destination -SmartPagingFilePath $destination -Confirm:$false
+        } else { $vm = Import-VM -Path $config -Register -Confirm:$false }
+        $selected = [string]$vm.Id
+    } elseif ($a.Action -ne 'VmmsList') {
+        $vm = Get-SelectedVM $a.Id
+        $selected = [string]$vm.Id
+        switch ($a.Action) {
+            'VmmsInspect' {}
+            'VmmsStart' { Start-VM -VM $vm | Out-Null }
+            'VmmsShutdown' { Stop-VM -VM $vm -Confirm:$false | Out-Null }
+            'VmmsPowerOff' { Stop-VM -VM $vm -TurnOff -Force -Confirm:$false | Out-Null }
+            'VmmsPause' { Suspend-VM -VM $vm | Out-Null }
+            'VmmsResume' { Resume-VM -VM $vm | Out-Null }
+            'VmmsSave' { Save-VM -VM $vm | Out-Null }
+            'VmmsRestart' { Restart-VM -VM $vm -Confirm:$false | Out-Null }
+            'VmmsRename' { Rename-VM -VM $vm -NewName (RequireName $a.Name) | Out-Null }
+            'VmmsRemove' {
+                if ([string]$vm.State -ne 'Off') { throw 'Shut down the virtual machine before deleting its configuration.' }
+                Remove-VM -VM $vm -Confirm:$false
+                $selected = $null
+            }
+            'VmmsCheckpointCreate' { Checkpoint-VM -VM $vm -SnapshotName (RequireName $a.Name) | Out-Null }
+            'VmmsCheckpointRestore' { Restore-VMSnapshot -VMSnapshot (Get-SelectedCheckpoint $vm $a.CheckpointId) -Confirm:$false | Out-Null }
+            'VmmsCheckpointRemove' { Remove-VMSnapshot -VMSnapshot (Get-SelectedCheckpoint $vm $a.CheckpointId) -Confirm:$false | Out-Null }
+            'VmmsExport' { Export-VM -VM $vm -Path (RequireDirectory $a.Path) | Out-Null }
+            'VmmsMoveStorage' { Move-VMStorage -VM $vm -DestinationStoragePath (RequireDirectory $a.Path) -Confirm:$false | Out-Null }
+            'VmmsSetProcessor' {
+                $count = [int]$a.Count
+                if ($count -lt 1 -or $count -gt 2048) { throw 'Invalid virtual processor count.' }
+                Set-VMProcessor -VM $vm -Count $count -Confirm:$false | Out-Null
+            }
+            'VmmsSetMemory' {
+                $memory = [long]$a.MemoryMiB
+                if ($memory -lt 32 -or $memory -gt 16777216) { throw 'Invalid startup memory.' }
+                Set-VMMemory -VM $vm -StartupBytes ($memory*1MB) -Confirm:$false | Out-Null
+            }
+            default { throw 'Unsupported Hyper-V management operation.' }
+        }
+    }
+    $result.Items = @(Get-VM | ForEach-Object { VmInfo $_ })
+    $result.SelectedId = $selected
+    $result.Details = $null
+    if ($selected) {
+        try { $result.Details = VmDetails (Get-SelectedVM $selected) }
+        catch {
+            # The requested operation may have succeeded even if a later read fails.
+            $result.RefreshError = $_.Exception.Message
+        }
+    }
+    [Console]::WriteLine((ConvertTo-Json -InputObject $result -Depth 12 -Compress))
+    exit 0
+} catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
+}
+)PS";
 }
 
 winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments)
@@ -756,13 +879,23 @@ winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::h
     auto Data = nlohmann::json::parse(winrt::to_string(Arguments));
     if (!Data.is_object()) throw winrt::hresult_invalid_argument();
     Data["Action"] = winrt::to_string(Action);
+    if (Action == L"HcsInventory")
+    {
+        NanaBox::HcsOperation Operation(::HcsCreateOperation(nullptr, nullptr));
+        winrt::check_pointer(Operation.get());
+        winrt::check_hresult(::HcsEnumerateComputeSystems(nullptr, Operation.get()));
+        auto Items = nlohmann::json::parse(winrt::to_string(::WaitForOperationResult(Operation)));
+        if (!Items.is_array()) throw winrt::hresult_error(E_UNEXPECTED);
+        return winrt::to_hstring(nlohmann::json{{"Items", std::move(Items)}}.dump());
+    }
+    bool Vmms = std::wstring_view(Action.c_str()).starts_with(L"Vmms");
     auto Payload = Data.dump();
     std::wstring Script = L"$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';"
         L"$WarningPreference='SilentlyContinue';[Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false);"
         L"$a=ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('";
     Script += EncodeHostCommand(Payload.data(), Payload.size());
     Script += L"')));";
-    Script += ManagementScript;
+    Script += Vmms ? VmmsManagementScript : ManagementScript;
     std::wstring Command = L"powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand ";
     Command += EncodeHostCommand(Script.data(), Script.size() * sizeof(wchar_t));
     if (Command.size() > 32000) throw winrt::hresult_invalid_argument();
@@ -796,12 +929,12 @@ winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::h
     winrt::check_bool(::CreateProcessW(Exe.c_str(), Command.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
         nullptr, nullptr, &Startup, &Process));
     winrt::handle Child(Process.hProcess), Thread(Process.hThread);
-    DWORD Wait = ::WaitForSingleObject(Child.get(), 60000);
+    DWORD Wait = ::WaitForSingleObject(Child.get(), Vmms ? 30u * 60u * 1000u : 60000u);
     if (Wait == WAIT_TIMEOUT)
     {
         ::TerminateProcess(Child.get(), ERROR_TIMEOUT);
         ::WaitForSingleObject(Child.get(), 5000);
-        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT), L"Host management timed out.");
+        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT), L"Host management timed out. Refresh the affected resources before retrying.");
     }
     if (Wait != WAIT_OBJECT_0) winrt::throw_last_error();
     DWORD Exit = 0;

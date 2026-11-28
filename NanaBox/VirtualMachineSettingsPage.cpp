@@ -1988,6 +1988,175 @@ namespace winrt::NanaBox::implementation
         }
     }
 
+
+    void VirtualMachineSettingsPage::VmmsSelectionChanged(winrt::IInspectable const&,
+        winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+    {
+        if (auto Box = this->VmmsCheckpointsComboBox()) Box.Items().Clear();
+    }
+
+    void VirtualMachineSettingsPage::VmmsButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+    {
+        if (this->m_VmmsRunning) return;
+        using Json = nlohmann::json;
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        auto Selected = [](winrt::ComboBox const& Box) -> std::string
+        {
+            if (!Box.SelectedItem()) throw winrt::hresult_invalid_argument(L"Select an item first.");
+            return winrt::to_string(winrt::unbox_value<winrt::hstring>(Box.SelectedItem().as<Item>().Tag()));
+        };
+        auto Number = [](winrt::TextBox const& Box, std::uint64_t Minimum, std::uint64_t Maximum)
+        {
+            auto Text = winrt::to_string(Box.Text());
+            std::uint64_t Value = 0;
+            auto Parsed = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
+            if (Parsed.ec != std::errc() || Parsed.ptr != Text.data() + Text.size() ||
+                Value < Minimum || Value > Maximum) throw winrt::hresult_invalid_argument(L"Invalid numeric value.");
+            return Value;
+        };
+        try
+        {
+            auto Action = winrt::unbox_value<winrt::hstring>(
+                Sender.as<winrt::Windows::UI::Xaml::Controls::Button>().Tag());
+            std::wstring Confirmation;
+            Json Data = Json::object();
+            if (Action == L"Execute")
+            {
+                Action = winrt::to_hstring(Selected(this->VmmsActionComboBox()));
+                Confirmation = winrt::unbox_value<winrt::hstring>(this->VmmsActionComboBox().SelectedItem().as<Item>().Content()).c_str();
+                if (Action == L"VmmsCreate")
+                {
+                    Data["Name"] = winrt::to_string(this->VmmsNameTextBox().Text());
+                    Data["Generation"] = this->VmmsGenerationComboBox().SelectedIndex() + 1;
+                    Data["MemoryMiB"] = Number(this->VmmsMemoryTextBox(), 32, 16777216);
+                    Data["Path"] = winrt::to_string(this->VmmsPathTextBox().Text());
+                    Confirmation += L"\n" + std::wstring(this->VmmsNameTextBox().Text().c_str());
+                }
+                else if (Action == L"VmmsImportRegister" || Action == L"VmmsImportCopy")
+                {
+                    Data["Path"] = winrt::to_string(this->VmmsPathTextBox().Text());
+                    Data["Destination"] = winrt::to_string(this->VmmsDestinationTextBox().Text());
+                    Confirmation += L"\n" + std::wstring(this->VmmsPathTextBox().Text().c_str());
+                    if (Action == L"VmmsImportCopy")
+                        Confirmation += L"\n" + std::wstring(this->VmmsDestinationTextBox().Text().c_str());
+                }
+                else
+                {
+                    Data["Id"] = Selected(this->VmmsMachinesComboBox());
+                    Confirmation += L"\n" + std::wstring(winrt::unbox_value<winrt::hstring>(this->VmmsMachinesComboBox().SelectedItem().as<Item>().Content()).c_str());
+                    if (Action == L"VmmsRename" || Action == L"VmmsCheckpointCreate")
+                    {
+                        Data["Name"] = winrt::to_string(this->VmmsNameTextBox().Text());
+                        Confirmation += L"\n" + std::wstring(this->VmmsNameTextBox().Text().c_str());
+                    }
+                    else if (Action == L"VmmsCheckpointRestore" || Action == L"VmmsCheckpointRemove")
+                    {
+                        Data["CheckpointId"] = Selected(this->VmmsCheckpointsComboBox());
+                        Confirmation += L"\n" + std::wstring(winrt::unbox_value<winrt::hstring>(this->VmmsCheckpointsComboBox().SelectedItem().as<Item>().Content()).c_str());
+                    }
+                    else if (Action == L"VmmsExport" || Action == L"VmmsMoveStorage")
+                    {
+                        Data["Path"] = winrt::to_string(this->VmmsPathTextBox().Text());
+                        Confirmation += L"\n" + std::wstring(this->VmmsPathTextBox().Text().c_str());
+                    }
+                    else if (Action == L"VmmsSetProcessor")
+                    {
+                        Data["Count"] = Number(this->VmmsProcessorTextBox(), 1, 2048);
+                        Confirmation += L"\n" + std::wstring(this->VmmsProcessorTextBox().Text().c_str());
+                    }
+                    else if (Action == L"VmmsSetMemory")
+                    {
+                        Data["MemoryMiB"] = Number(this->VmmsMemoryTextBox(), 32, 16777216);
+                        Confirmation += L"\n" + std::wstring(this->VmmsMemoryTextBox().Text().c_str()) + L" MiB";
+                    }
+                }
+                Confirmation += L"\n\n" + std::wstring(::GetSettingsString(L"HostManagementConfirm").c_str());
+                if (::MessageBoxW(this->m_WindowHandle, Confirmation.c_str(), L"NanaBox",
+                    MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
+            }
+            else if (Action == L"VmmsInspect") Data["Id"] = Selected(this->VmmsMachinesComboBox());
+            else if (Action != L"VmmsList" && Action != L"HcsInventory") throw winrt::hresult_invalid_argument();
+            this->m_VmmsRunning = true;
+            this->VmmsForm().IsEnabled(false);
+            this->VmmsResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->RunVmmsOperation(Action, Data.dump());
+        }
+        catch (...)
+        {
+            this->m_VmmsRunning = false;
+            this->VmmsForm().IsEnabled(true);
+            this->VmmsResultTextBox().Text(winrt::to_hstring(Json{{"Success", false},
+                {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}.dump(2)));
+        }
+    }
+
+    winrt::fire_and_forget VirtualMachineSettingsPage::RunVmmsOperation(winrt::hstring Action, std::string Arguments)
+    {
+        auto Lifetime = this->get_strong();
+        winrt::apartment_context Foreground;
+        using Json = nlohmann::json;
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        Json Result;
+        try
+        {
+            co_await winrt::resume_background();
+            Result = Json::parse(winrt::to_string(this->m_HostOperations->Manage(Action, winrt::to_hstring(Arguments))));
+        }
+        catch (...)
+        {
+            Result = {{"Success", false}, {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}};
+        }
+        try
+        {
+            co_await Foreground;
+            this->m_VmmsRunning = false;
+            this->VmmsForm().IsEnabled(true);
+            if (Action != L"HcsInventory" && Result.value("Success", true))
+            {
+                auto Fill = [](winrt::ComboBox const& Box, Json const& Items, std::string const& Preferred)
+                {
+                    Box.Items().Clear();
+                    int Selection = -1;
+                    for (auto const& Entry : Items)
+                    {
+                        auto Id = Entry.at("Id").get<std::string>();
+                        auto Name = Entry.at("Name").get<std::string>();
+                        Item Value;
+                        Value.Tag(winrt::box_value(winrt::to_hstring(Id)));
+                        auto State = Entry.value("State", std::string());
+                        Value.Content(winrt::box_value(winrt::to_hstring(Name + " (" + Id + ")" + (State.empty() ? "" : " - " + State))));
+                        if (Id == Preferred) Selection = static_cast<int>(Box.Items().Size());
+                        Box.Items().Append(Value);
+                    }
+                    if (Selection >= 0) Box.SelectedIndex(Selection);
+                    else if (Box.Items().Size()) Box.SelectedIndex(0);
+                };
+                std::string Preferred;
+                if (Result.contains("SelectedId") && Result.at("SelectedId").is_string())
+                    Preferred = Result.at("SelectedId").get<std::string>();
+                else if (this->VmmsMachinesComboBox().SelectedItem())
+                    Preferred = winrt::to_string(winrt::unbox_value<winrt::hstring>(
+                        this->VmmsMachinesComboBox().SelectedItem().as<Item>().Tag()));
+                Fill(this->VmmsMachinesComboBox(), Result.at("Items"), Preferred);
+                if (Result.contains("Details") && Result.at("Details").is_object())
+                    Fill(this->VmmsCheckpointsComboBox(), Result.at("Details").at("Checkpoints"), "");
+            }
+            if (!Result.contains("Success")) Result["Success"] = true;
+            Result["Operation"] = winrt::to_string(Action);
+            this->VmmsResultTextBox().Text(winrt::to_hstring(Result.dump(2)));
+        }
+        catch (...)
+        {
+            this->m_VmmsRunning = false;
+            try
+            {
+                this->VmmsForm().IsEnabled(true);
+                this->VmmsResultTextBox().Text(Mile::WinRT::ToHResultError().message());
+            }
+            catch (...) {}
+        }
+    }
+
     void VirtualMachineSettingsPage::DiskManagerButtonClick(winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
     {
         if (this->m_DiskOperationRunning) return;
