@@ -15,6 +15,7 @@
 namespace NanaBox
 {
     class MainWindow;
+    class StructuredSettingsEditor;
 
     struct SettingsHostOperations
     {
@@ -190,6 +191,7 @@ namespace winrt::NanaBox::implementation
         };
 
         std::shared_ptr<::NanaBox::SettingsHostOperations> m_HostOperations;
+        std::shared_ptr<::NanaBox::StructuredSettingsEditor> m_NetworkEditor, m_HcnEditor, m_QueryEditor, m_SystemEditor;
         bool m_GuestToolsRunning = false;
         std::shared_ptr<std::atomic<bool>> m_GuestCancellation;
         std::function<std::string(std::string const&)> m_GuestQuery;

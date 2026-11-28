@@ -123,7 +123,7 @@
   <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>Add shared folder</value></data>
   <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>Add storage device</value></data>
   <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>Add shared folder</value></data>
-  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
+  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional system properties</value></data>
   <data name="AltEscHotkeyLabel.Text" xml:space="preserve"><value>Alt+Esc Hotkey</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>(Optional) Specifies the virtual-key code to add to ALT to determine the hotkey replacement for ALT+ESC.</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>Alt+Esc Hotkey</value></data>
@@ -354,12 +354,12 @@
   <data name="HcnResource.Header" xml:space="preserve"><value>Resource</value></data>
   <data name="HcnResourceNote.Text" xml:space="preserve"><value>Manage specialist virtual network resources. System-owned resources can be inspected but cannot be changed here. To create a normal virtual network, open Host networking.</value></data>
   <data name="HcnResult.Header" xml:space="preserve"><value>Operation result</value></data>
-  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN settings JSON</value></data>
-  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings.</value></data>
-  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>Enter additional VirtualMachine properties as JSON. Existing managed resources cannot be overwritten. The host validates feature support when creating the VM.</value></data>
+  <data name="HcnSettings.Header" xml:space="preserve"><value>Network resource properties</value></data>
+  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>Use property groups and lists to configure advanced resource settings. Existing guided forms remain available for common operations.</value></data>
+  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>Add optional system properties using the property editor. The host checks feature support when creating the virtual machine.</value></data>
   <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>Advanced HCS creation settings</value></data>
   <data name="HcsInventoryButton.Content" xml:space="preserve"><value>HCS inventory</value></data>
-  <data name="HcsQueryTextBox.Header" xml:space="preserve"><value>Optional HCS property query (JSON)</value></data>
+  <data name="HcsQueryTextBox.Header" xml:space="preserve"><value>Diagnostic query properties</value></data>
   <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS schema minor version (major 2)</value></data>
   <data name="HcsServicePropertiesButton.Content" xml:space="preserve"><value>HCS service properties</value></data>
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve"><value>Selected HCS system properties</value></data>
@@ -432,8 +432,8 @@
   <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve"><value>(Optional) The switch subnet suggested for the current network adapter.</value></data>
   <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve"><value>Network subnet (advanced)</value></data>
   <data name="NetworkAdapterTitle.Text" xml:space="preserve"><value>Network Adapters</value></data>
-  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>For specialist network configurations, enter a native HCN network object. The name and identifier are assigned automatically.</value></data>
-  <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>Advanced HCN settings (optional JSON)</value></data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>Add individual network properties and select their value types. The network name and identifier are assigned automatically.</value></data>
+  <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>Custom network properties</value></data>
   <data name="NetworkCopy.Content" xml:space="preserve"><value>Copy</value></data>
   <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve"><value>Network diagnostics</value></data>
   <data name="NetworkFirewall.Content" xml:space="preserve"><value>Enable Hyper-V firewall</value></data>
@@ -934,4 +934,30 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VmmsMicrosoftWindows.Content" xml:space="preserve"><value>Microsoft Windows</value></data>
   <data name="VmmsMicrosoftUEFICertificateAuthority.Content" xml:space="preserve"><value>Microsoft UEFI CA (Linux and other operating systems)</value></data>
   <data name="VmmsOpenSourceShieldedVM.Content" xml:space="preserve"><value>Open-source shielded VM</value></data>
+  <data name="NetworkProperties.Text" xml:space="preserve"><value>Custom network properties</value></data>
+  <data name="HcnProperties.Text" xml:space="preserve"><value>Network resource properties</value></data>
+  <data name="HcsQueryProperties.Text" xml:space="preserve"><value>Diagnostic query properties</value></data>
+  <data name="SystemProperties.Text" xml:space="preserve"><value>Additional system properties</value></data>
+  <data name="PropertyName" xml:space="preserve"><value>Property name</value></data>
+  <data name="PropertyType" xml:space="preserve"><value>Value type</value></data>
+  <data name="PropertyText" xml:space="preserve"><value>Text</value></data>
+  <data name="PropertyInteger" xml:space="preserve"><value>Integer</value></data>
+  <data name="PropertyDecimal" xml:space="preserve"><value>Decimal number</value></data>
+  <data name="PropertyBoolean" xml:space="preserve"><value>On or off</value></data>
+  <data name="PropertyObject" xml:space="preserve"><value>Property group</value></data>
+  <data name="PropertyList" xml:space="preserve"><value>List</value></data>
+  <data name="PropertyEmpty" xml:space="preserve"><value>Empty value</value></data>
+  <data name="PropertyValue" xml:space="preserve"><value>Value</value></data>
+  <data name="PropertyAdd" xml:space="preserve"><value>Add property</value></data>
+  <data name="PropertyAddItem" xml:space="preserve"><value>Add list item</value></data>
+  <data name="PropertyRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="PropertyClear" xml:space="preserve"><value>Clear properties</value></data>
+  <data name="PropertyInvalidName" xml:space="preserve"><value>Enter a unique property name.</value></data>
+  <data name="PropertyInvalidNumber" xml:space="preserve"><value>Enter a valid number in the selected format.</value></data>
+  <data name="PropertyDepth" xml:space="preserve"><value>The property group is nested too deeply.</value></data>
+  <data name="PropertyOn" xml:space="preserve"><value>On</value></data>
+  <data name="PropertyOff" xml:space="preserve"><value>Off</value></data>
+  <data name="PropertyItem" xml:space="preserve"><value>Item</value></data>
+  <data name="PropertyObjectExpected" xml:space="preserve"><value>A property group is required.</value></data>
+  <data name="PropertyCustomName" xml:space="preserve"><value>Custom property name</value></data>
 </root>

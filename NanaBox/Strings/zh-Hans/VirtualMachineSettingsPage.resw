@@ -123,7 +123,7 @@
   <data name="AddPlan9ShareButton.Content" xml:space="preserve"><value>添加共享文件夹</value></data>
   <data name="AddScsiDeviceButton.Content" xml:space="preserve"><value>添加存储设备</value></data>
   <data name="AddVirtualSmbShareButton.Content" xml:space="preserve"><value>添加共享文件夹</value></data>
-  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>附加 VirtualMachine 设置（JSON 对象）</value></data>
+  <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>附加系统属性</value></data>
   <data name="AltEscHotkeyLabel.Text" xml:space="preserve"><value>ALT+ESC 替代热键</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>指定与 ALT 组合的虚拟键码，用于替代 ALT+ESC（可选）。</value></data>
   <data name="AltEscHotkeyTextBox.AutomationProperties.Name" xml:space="preserve"><value>ALT+ESC 替代热键</value></data>
@@ -354,12 +354,12 @@
   <data name="HcnResource.Header" xml:space="preserve"><value>资源</value></data>
   <data name="HcnResourceNote.Text" xml:space="preserve"><value>管理高级虚拟网络资源。此处可查看系统资源，但不能修改。创建常用虚拟网络请前往宿主机网络页面。</value></data>
   <data name="HcnResult.Header" xml:space="preserve"><value>操作结果</value></data>
-  <data name="HcnSettings.Header" xml:space="preserve"><value>HCN JSON 配置</value></data>
-  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>创建终结点时请输入受管理的网络 ID。网络命名空间使用 Host 或 Guest 类型；添加终结点时使用 Endpoint 资源类型及 Settings.EndpointId。修改网络或终结点策略时使用 Policy 修改请求。负载均衡器和 SDN 路由引用受管理的终结点 ID；修改 SDN 路由配置需要重新创建。</value></data>
-  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>以 JSON 格式输入附加 VirtualMachine 属性。现有受管理资源不可覆盖。宿主机在创建虚拟机时验证功能是否受支持。</value></data>
+  <data name="HcnSettings.Header" xml:space="preserve"><value>网络资源属性</value></data>
+  <data name="HcnSettingsNote.Text" xml:space="preserve"><value>使用属性组和列表配置高级网络资源。常用操作仍可通过专用表单完成。</value></data>
+  <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>使用属性编辑器添加可选系统属性。创建虚拟机时，宿主机会检查相关功能是否受支持。</value></data>
   <data name="HcsExtensionsTitle.Text" xml:space="preserve"><value>HCS 高级创建设置</value></data>
   <data name="HcsInventoryButton.Content" xml:space="preserve"><value>查看 HCS 计算系统</value></data>
-  <data name="HcsQueryTextBox.Header" xml:space="preserve"><value>HCS 属性查询（可选，JSON）</value></data>
+  <data name="HcsQueryTextBox.Header" xml:space="preserve"><value>诊断查询属性</value></data>
   <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS 架构次版本号（主版本号为 2）</value></data>
   <data name="HcsServicePropertiesButton.Content" xml:space="preserve"><value>查询 HCS 服务属性</value></data>
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve"><value>查询所选 HCS 计算系统属性</value></data>
@@ -432,8 +432,8 @@
   <data name="NetworkAdapterSuggestedSwitchSubnetHelp" xml:space="preserve"><value>为此网络适配器建议的交换机子网（可选）。</value></data>
   <data name="NetworkAdapterSuggestedSwitchSubnetLabel" xml:space="preserve"><value>网络子网（高级）</value></data>
   <data name="NetworkAdapterTitle.Text" xml:space="preserve"><value>网络适配器</value></data>
-  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>用于专业网络配置。可输入 HCN 网络对象，名称和标识符由程序自动分配。</value></data>
-  <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>高级 HCN 设置（可选 JSON）</value></data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve"><value>逐项添加网络属性并选择数值类型。网络名称和标识符由程序自动分配。</value></data>
+  <data name="NetworkAdvancedSettings.Header" xml:space="preserve"><value>自定义网络属性</value></data>
   <data name="NetworkCopy.Content" xml:space="preserve"><value>复制</value></data>
   <data name="NetworkDiagnosticsTitle.Text" xml:space="preserve"><value>网络诊断</value></data>
   <data name="NetworkFirewall.Content" xml:space="preserve"><value>启用 Hyper-V 防火墙</value></data>
@@ -934,4 +934,30 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="VmmsMicrosoftWindows.Content" xml:space="preserve"><value>Microsoft Windows</value></data>
   <data name="VmmsMicrosoftUEFICertificateAuthority.Content" xml:space="preserve"><value>Microsoft UEFI 证书颁发机构（Linux 等操作系统）</value></data>
   <data name="VmmsOpenSourceShieldedVM.Content" xml:space="preserve"><value>开源屏蔽虚拟机</value></data>
+  <data name="NetworkProperties.Text" xml:space="preserve"><value>自定义网络属性</value></data>
+  <data name="HcnProperties.Text" xml:space="preserve"><value>网络资源属性</value></data>
+  <data name="HcsQueryProperties.Text" xml:space="preserve"><value>诊断查询属性</value></data>
+  <data name="SystemProperties.Text" xml:space="preserve"><value>附加系统属性</value></data>
+  <data name="PropertyName" xml:space="preserve"><value>属性名称</value></data>
+  <data name="PropertyType" xml:space="preserve"><value>数值类型</value></data>
+  <data name="PropertyText" xml:space="preserve"><value>文本</value></data>
+  <data name="PropertyInteger" xml:space="preserve"><value>整数</value></data>
+  <data name="PropertyDecimal" xml:space="preserve"><value>小数</value></data>
+  <data name="PropertyBoolean" xml:space="preserve"><value>开关</value></data>
+  <data name="PropertyObject" xml:space="preserve"><value>属性组</value></data>
+  <data name="PropertyList" xml:space="preserve"><value>列表</value></data>
+  <data name="PropertyEmpty" xml:space="preserve"><value>空值</value></data>
+  <data name="PropertyValue" xml:space="preserve"><value>值</value></data>
+  <data name="PropertyAdd" xml:space="preserve"><value>添加属性</value></data>
+  <data name="PropertyAddItem" xml:space="preserve"><value>添加列表项目</value></data>
+  <data name="PropertyRemove" xml:space="preserve"><value>移除</value></data>
+  <data name="PropertyClear" xml:space="preserve"><value>清空属性</value></data>
+  <data name="PropertyInvalidName" xml:space="preserve"><value>请输入非空且不重复的属性名称。</value></data>
+  <data name="PropertyInvalidNumber" xml:space="preserve"><value>请输入符合所选类型的数值。</value></data>
+  <data name="PropertyDepth" xml:space="preserve"><value>属性组的嵌套层级过多。</value></data>
+  <data name="PropertyOn" xml:space="preserve"><value>开启</value></data>
+  <data name="PropertyOff" xml:space="preserve"><value>关闭</value></data>
+  <data name="PropertyItem" xml:space="preserve"><value>项目</value></data>
+  <data name="PropertyObjectExpected" xml:space="preserve"><value>请选择属性组。</value></data>
+  <data name="PropertyCustomName" xml:space="preserve"><value>自定义属性名称</value></data>
 </root>

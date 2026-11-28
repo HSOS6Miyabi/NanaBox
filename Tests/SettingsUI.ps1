@@ -93,6 +93,51 @@ function Select-Choice([string]$id,[string]$choice) {
     (Pattern $item ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
     if ($expand.Current.ExpandCollapseState -eq [System.Windows.Automation.ExpandCollapseState]::Expanded) { $expand.Collapse() }
 }
+function Set-PropertyValue([string]$id,$value) {
+    if ($null -eq $value) {
+        Select-Choice ($id+'_Type') ($id+'_Type_Empty')
+    } elseif ($value -is [System.Management.Automation.PSCustomObject] -or $value -is [System.Collections.IDictionary]) {
+        Select-Choice ($id+'_Type') ($id+'_Type_Object')
+        Set-PropertyChildren $id $value
+    } elseif ($value -is [array]) {
+        Select-Choice ($id+'_Type') ($id+'_Type_List')
+        Set-PropertyChildren $id $value
+    } elseif ($value -is [bool]) {
+        Select-Choice ($id+'_Type') ($id+'_Type_Boolean')
+        Set-Check ($id+'_Value') $value
+    } elseif ($value -is [double] -or $value -is [decimal] -or $value -is [single]) {
+        Select-Choice ($id+'_Type') ($id+'_Type_Decimal')
+        Set-Text ($id+'_Value') ([string]$value)
+    } elseif ($value -is [ValueType]) {
+        Select-Choice ($id+'_Type') ($id+'_Type_Integer')
+        Set-Text ($id+'_Value') ([string]$value)
+    } else {
+        Select-Choice ($id+'_Type') ($id+'_Type_Text')
+        Set-Text ($id+'_Value') ([string]$value)
+    }
+}
+function Set-PropertyChildren([string]$id,$value) {
+    $index = 0
+    if ($value -is [array]) {
+        foreach ($entry in $value) {
+            Invoke-Control ($id+'_Add')
+            Set-PropertyValue ($id+'_'+$index) $entry
+            $index++
+        }
+    } else {
+        foreach ($property in $value.PSObject.Properties) {
+            Invoke-Control ($id+'_Add')
+            $child = $id+'_'+$index
+            Set-Text ($child+'_Name') $property.Name
+            Set-PropertyValue $child $property.Value
+            $index++
+        }
+    }
+}
+function Set-StructuredProperties([string]$id,[string]$data) {
+    Invoke-Control ($id+'_Clear')
+    Set-PropertyChildren $id ($data | ConvertFrom-Json)
+}
 function Wait-Result([string]$id,[scriptblock]$predicate,[int]$seconds=90) {
     $until = [DateTime]::UtcNow.AddSeconds($seconds)
     do {
@@ -536,13 +581,13 @@ try {
                 Select-Choice 'NetworkModeComboBox' 'NetworkModeAutomatic'
                 Set-Text 'NetworkNameTextBox' $name
                 Set-Check 'NetworkExpertCheckBox' $true
-                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","Name":"unauthorized"}'
+                Set-StructuredProperties 'NetworkAdvancedSettingsEditor' '{"Type":"NAT","Name":"unauthorized"}'
                 Invoke-Control 'CreateNetwork'
                 $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'Create'}
-                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","Flags":64}'
+                Set-StructuredProperties 'NetworkAdvancedSettingsEditor' '{"Type":"NAT","Flags":64}'
                 Invoke-Control 'CreateNetwork'
                 $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'Create'}
-                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","SchemaVersion":{"Major":2,"Minor":0},"Subnets":[{"IpAddressPrefix":"192.0.2.0/24"}]}'
+                Set-StructuredProperties 'NetworkAdvancedSettingsEditor' '{"Type":"NAT","SchemaVersion":{"Major":2,"Minor":0},"Subnets":[{"IpAddressPrefix":"192.0.2.0/24"}]}'
                 Set-Check 'NetworkFirewallCheckBox' $true
                 Invoke-Control 'CreateNetwork'
                 $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Create'}
@@ -655,7 +700,7 @@ try {
                 'Route' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"Setting":[{"DestinationPrefix":"192.0.2.0/24","NextHop":"192.0.2.1","NeedEncap":false}],"SchemaVersion":{"Major":2,"Minor":0}}' }
                 default { '{"SchemaVersion":{"Major":2,"Minor":0}}' }
             }
-            Set-Text 'HcnSettingsTextBox' $settings
+            Set-StructuredProperties 'HcnSettingsEditor' $settings
             Invoke-Control 'HcnCreate'
             $created = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
             Invoke-Control 'HcnInspect'
@@ -666,7 +711,7 @@ try {
                     'LoadBalancer' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"FrontendVIPs":["192.0.2.101"],"PortMappings":[{"Protocol":6,"InternalPort":80,"ExternalPort":80}],"SchemaVersion":{"Major":2,"Minor":0}}' }
                     default { '{"ResourceType":"Policy","RequestType":"Add","Settings":{"Policies":[]}}' }
                 }
-                Set-Text 'HcnSettingsTextBox' $modification
+                Set-StructuredProperties 'HcnSettingsEditor' $modification
                 Confirm-Change 'HcnModify'
                 $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnModify'}
                 Invoke-Control 'HcnInspect'
@@ -989,7 +1034,7 @@ try {
     Select-Tab 'TabAdvanced'
     Set-Text 'HcsSchemaMinorTextBox' '5'
     Set-Check 'HcsExtensionsExpertCheckBox' $true
-    Set-Text 'AdditionalHcsSettingsTextBox' '{"Chipset":{"UseUtc":true}}'
+    Set-StructuredProperties 'AdditionalHcsSettingsEditor' '{"Chipset":{"UseUtc":true}}'
     foreach ($id in @('BaseBoardSerialNumber','ChassisSerialNumber','ChassisAssetTag','Manufacturer','ProductName','ChipsetVersion','SerialNumber','SKUNumber','Family')) {
         Set-Text ($id+'TextBox') ('Test-'+$id)
     }

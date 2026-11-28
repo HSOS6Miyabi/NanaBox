@@ -725,6 +725,259 @@ namespace
     }
 }
 
+
+namespace NanaBox
+{
+    class StructuredSettingsEditor
+    {
+        using Json = nlohmann::json;
+        using Panel = winrt::Windows::UI::Xaml::Controls::StackPanel;
+        using Box = winrt::Windows::UI::Xaml::Controls::TextBox;
+        using Choice = winrt::Windows::UI::Xaml::Controls::ComboBox;
+        using Check = winrt::Windows::UI::Xaml::Controls::CheckBox;
+        using Button = winrt::Windows::UI::Xaml::Controls::Button;
+        using Item = winrt::Windows::UI::Xaml::Controls::ComboBoxItem;
+        using Block = winrt::Windows::UI::Xaml::Controls::TextBlock;
+        using Automation = winrt::Windows::UI::Xaml::Automation::AutomationProperties;
+        enum class Kind { Text, Integer, Decimal, Boolean, Object, List, Empty };
+
+        static Kind ValueKind(Json const& Value)
+        {
+            if (Value.is_object()) return Kind::Object;
+            if (Value.is_array()) return Kind::List;
+            if (Value.is_boolean()) return Kind::Boolean;
+            if (Value.is_number_integer()) return Kind::Integer;
+            if (Value.is_number_float()) return Kind::Decimal;
+            if (Value.is_null()) return Kind::Empty;
+            return Kind::Text;
+        }
+
+        static void Identify(winrt::Windows::UI::Xaml::DependencyObject const& Element,
+            std::wstring const& Name)
+        {
+            Automation::SetAutomationId(Element, winrt::hstring(Name));
+        }
+
+        struct Node : std::enable_shared_from_this<Node>
+        {
+            Panel Container{nullptr}, Values{nullptr}, ChildrenPanel{nullptr};
+            Box NameInput{nullptr}, Scalar{nullptr};
+            Choice TypeInput{nullptr};
+            Check Boolean{nullptr};
+            std::vector<std::shared_ptr<Node>> Children;
+            std::wstring Id;
+            Kind Type = Kind::Object;
+            unsigned Depth = 0;
+            std::size_t Next = 0;
+
+            static std::shared_ptr<Node> Make(Panel const& Host, std::wstring Identifier,
+                unsigned Level, bool IsRoot, bool HasName, std::string const& Key, Json const& Value)
+            {
+                auto Result = std::make_shared<Node>();
+                Result->Id = std::move(Identifier);
+                Result->Depth = Level;
+                Result->Container = IsRoot ? Host : Panel();
+                Result->Container.Spacing(6);
+                if (!IsRoot)
+                {
+                    Result->Container.Margin(winrt::ThicknessHelper::FromLengths(10, 4, 0, 8));
+                    if (HasName)
+                    {
+                        Result->NameInput = Box();
+                        Result->NameInput.Header(winrt::box_value(::GetSettingsString(L"PropertyName")));
+                        Result->NameInput.Text(winrt::to_hstring(Key));
+                        Identify(Result->NameInput, Result->Id + L"_Name");
+                        Result->Container.Children().Append(Result->NameInput);
+                    }
+                    Result->TypeInput = Choice();
+                    Result->TypeInput.Header(winrt::box_value(::GetSettingsString(L"PropertyType")));
+                    Result->TypeInput.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
+                    Identify(Result->TypeInput, Result->Id + L"_Type");
+                    constexpr std::pair<LPCWSTR, LPCWSTR> Types[] = {
+                        {L"Text", L"PropertyText"}, {L"Integer", L"PropertyInteger"},
+                        {L"Decimal", L"PropertyDecimal"}, {L"Boolean", L"PropertyBoolean"},
+                        {L"Object", L"PropertyObject"}, {L"List", L"PropertyList"},
+                        {L"Empty", L"PropertyEmpty"}
+                    };
+                    for (auto const& Entry : Types)
+                    {
+                        Item Option;
+                        Option.Content(winrt::box_value(::GetSettingsString(Entry.second)));
+                        Identify(Option, Result->Id + L"_Type_" + Entry.first);
+                        Result->TypeInput.Items().Append(Option);
+                    }
+                    Result->TypeInput.SelectedIndex(static_cast<int>(ValueKind(Value)));
+                    Result->Container.Children().Append(Result->TypeInput);
+                }
+                Result->Values = Panel();
+                Result->Values.Spacing(6);
+                Result->Container.Children().Append(Result->Values);
+                Result->LoadValue(Value);
+                if (!IsRoot)
+                {
+                    Result->TypeInput.SelectionChanged([Weak = std::weak_ptr<Node>(Result)](
+                        winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
+                    {
+                        if (auto Self = Weak.lock())
+                        {
+                            auto Index = Sender.as<Choice>().SelectedIndex();
+                            if (Index < 0 || static_cast<Kind>(Index) == Self->Type) return;
+                            switch (static_cast<Kind>(Index))
+                            {
+                            case Kind::Text: Self->LoadValue(""); break;
+                            case Kind::Integer: Self->LoadValue(0); break;
+                            case Kind::Decimal: Self->LoadValue(0.0); break;
+                            case Kind::Boolean: Self->LoadValue(false); break;
+                            case Kind::Object: Self->LoadValue(Json::object()); break;
+                            case Kind::List: Self->LoadValue(Json::array()); break;
+                            case Kind::Empty: Self->LoadValue(nullptr); break;
+                            }
+                        }
+                    });
+                }
+                return Result;
+            }
+
+            void Append(std::string const& Key, Json const& Value)
+            {
+                if (Depth >= 32) throw winrt::hresult_invalid_argument(::GetSettingsString(L"PropertyDepth"));
+                auto Child = Make(ChildrenPanel, Id + L"_" + std::to_wstring(Next++),
+                    Depth + 1, false, Type == Kind::Object, Key, Value);
+                Button Remove;
+                Remove.Content(winrt::box_value(::GetSettingsString(L"PropertyRemove")));
+                Identify(Remove, Child->Id + L"_Remove");
+                Remove.Click([Weak = weak_from_this(), ChildId = Child->Id](
+                    winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+                {
+                    if (auto Self = Weak.lock())
+                    {
+                        for (std::size_t Index = 0; Index < Self->Children.size(); ++Index)
+                            if (Self->Children[Index]->Id == ChildId)
+                            {
+                                Self->ChildrenPanel.Children().RemoveAt(static_cast<std::uint32_t>(Index));
+                                Self->Children.erase(Self->Children.begin() + Index);
+                                break;
+                            }
+                    }
+                });
+                Child->Container.Children().Append(Remove);
+                ChildrenPanel.Children().Append(Child->Container);
+                Children.push_back(std::move(Child));
+            }
+
+            void LoadValue(Json const& Value)
+            {
+                Type = ValueKind(Value);
+                Values.Children().Clear();
+                Children.clear();
+                Scalar = nullptr;
+                Boolean = nullptr;
+                ChildrenPanel = nullptr;
+                Next = 0;
+                if (Type == Kind::Object || Type == Kind::List)
+                {
+                    ChildrenPanel = Panel();
+                    ChildrenPanel.Spacing(8);
+                    Values.Children().Append(ChildrenPanel);
+                    if (Type == Kind::Object)
+                        for (auto It = Value.begin(); It != Value.end(); ++It) Append(It.key(), It.value());
+                    else
+                        for (auto const& Entry : Value) Append("", Entry);
+                    Button Add;
+                    Add.Content(winrt::box_value(::GetSettingsString(Type == Kind::Object ? L"PropertyAdd" : L"PropertyAddItem")));
+                    Identify(Add, Id + L"_Add");
+                    Add.IsEnabled(Depth < 32);
+                    Add.Click([Weak = weak_from_this()](
+                        winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+                    {
+                        if (auto Self = Weak.lock()) Self->Append("", "");
+                    });
+                    Values.Children().Append(Add);
+                }
+                else if (Type == Kind::Boolean)
+                {
+                    Boolean = Check();
+                    Boolean.Content(winrt::box_value(::GetSettingsString(L"PropertyOn")));
+                    Boolean.IsChecked(Value.get<bool>());
+                    Identify(Boolean, Id + L"_Value");
+                    Values.Children().Append(Boolean);
+                }
+                else if (Type != Kind::Empty)
+                {
+                    Scalar = Box();
+                    Scalar.Header(winrt::box_value(::GetSettingsString(L"PropertyValue")));
+                    Scalar.Text(Value.is_string() ? winrt::to_hstring(Value.get<std::string>()) : winrt::to_hstring(Value.dump()));
+                    Scalar.TextWrapping(winrt::TextWrapping::Wrap);
+                    Identify(Scalar, Id + L"_Value");
+                    Values.Children().Append(Scalar);
+                }
+                else
+                {
+                    Block Empty;
+                    Empty.Text(::GetSettingsString(L"PropertyEmpty"));
+                    Values.Children().Append(Empty);
+                }
+            }
+
+            Json Read() const
+            {
+                if (Type == Kind::Object)
+                {
+                    Json Value = Json::object();
+                    for (auto const& Child : Children)
+                    {
+                        auto Key = winrt::to_string(Child->NameInput.Text());
+                        if (Key.empty() || Value.contains(Key))
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"PropertyInvalidName"));
+                        Value[Key] = Child->Read();
+                    }
+                    return Value;
+                }
+                if (Type == Kind::List)
+                {
+                    Json Value = Json::array();
+                    for (auto const& Child : Children) Value.push_back(Child->Read());
+                    return Value;
+                }
+                if (Type == Kind::Boolean) return Boolean.IsChecked().Value();
+                if (Type == Kind::Empty) return nullptr;
+                auto Text = winrt::to_string(Scalar.Text());
+                if (Type == Kind::Text) return Text;
+                auto Number = Json::parse(Text, nullptr, false);
+                if ((Type == Kind::Integer && !Number.is_number_integer()) ||
+                    (Type == Kind::Decimal && !Number.is_number()))
+                    throw winrt::hresult_invalid_argument(::GetSettingsString(L"PropertyInvalidNumber"));
+                if (Type == Kind::Decimal) return Number.get<double>();
+                return Number;
+            }
+        };
+        std::shared_ptr<Node> m_Root;
+
+    public:
+        StructuredSettingsEditor(Panel const& Host, std::wstring Id)
+        {
+            m_Root = Node::Make(Host, std::move(Id), 0, true, false, "", Json::object());
+            Button Clear;
+            Clear.Content(winrt::box_value(::GetSettingsString(L"PropertyClear")));
+            Identify(Clear, m_Root->Id + L"_Clear");
+            Clear.Click([Weak = std::weak_ptr<Node>(m_Root)](
+                winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+            {
+                if (auto Root = Weak.lock()) Root->LoadValue(Json::object());
+            });
+            Host.Children().InsertAt(0, Clear);
+        }
+
+        void Load(Json const& Value)
+        {
+            if (!Value.is_object())
+                throw winrt::hresult_invalid_argument(::GetSettingsString(L"PropertyObjectExpected"));
+            m_Root->LoadValue(Value);
+        }
+        Json Read() const { return m_Root->Read(); }
+    };
+}
+
 namespace winrt::NanaBox::implementation
 {
     VirtualMachineSettingsPage::VirtualMachineSettingsPage(
@@ -880,6 +1133,10 @@ namespace winrt::NanaBox::implementation
             if (auto Page = Weak.get())
                 Page->SettingsNavigationColumn().Width(winrt::GridLengthHelper::FromPixels(Args.NewSize().Width < 720 ? 164 : 208));
         });
+        this->m_NetworkEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->NetworkAdvancedSettingsEditor(), L"NetworkAdvancedSettingsEditor");
+        this->m_HcnEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->HcnSettingsEditor(), L"HcnSettingsEditor");
+        this->m_QueryEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->HcsQueryEditor(), L"HcsQueryEditor");
+        this->m_SystemEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->AdditionalHcsSettingsEditor(), L"AdditionalHcsSettingsEditor");
         ::BindOperationDetails(this->NetworkPropertiesTextBox(), this->SummaryNetworkPropertiesTextBox(), this->DetailsNetworkPropertiesTextBox());
         ::BindOperationDetails(this->NetworkDiagnosticsTextBox(), this->SummaryNetworkDiagnosticsTextBox(), this->DetailsNetworkDiagnosticsTextBox());
         ::BindOperationDetails(this->HostManagementResult(), this->SummaryHostManagementResult(), this->DetailsHostManagementResult());
@@ -1251,7 +1508,8 @@ namespace winrt::NanaBox::implementation
             this->HcsExtensionsSection().Visibility(this->m_MainWindow
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
             this->HcsSchemaMinorTextBox().Text(winrt::to_hstring(this->m_Configuration.HcsSchemaMinor));
-            this->AdditionalHcsSettingsTextBox().Text(winrt::to_hstring(this->m_Configuration.AdditionalHcsSettings));
+            this->m_SystemEditor->Load(this->m_Configuration.AdditionalHcsSettings.empty()
+                ? nlohmann::json::object() : nlohmann::json::parse(this->m_Configuration.AdditionalHcsSettings));
         }
 
         {
@@ -1661,14 +1919,8 @@ namespace winrt::NanaBox::implementation
                 Result.HcsSchemaMinor = ::ReadSettingInteger<std::uint32_t>(this->HcsSchemaMinorTextBox());
                 if (!Result.HcsSchemaMinor || Result.HcsSchemaMinor > 65535)
                     ::InvalidSetting(::GetSettingsString(L"HcsSchemaMinor.Header"));
-                Result.AdditionalHcsSettings = winrt::to_string(this->AdditionalHcsSettingsTextBox().Text());
-                if (!Result.AdditionalHcsSettings.empty())
-                {
-                    auto Additional = nlohmann::json::parse(Result.AdditionalHcsSettings);
-                    if (!Additional.is_object())
-                        ::InvalidSetting(::GetSettingsString(L"AdditionalHcsSettings.Header"));
-                    Result.AdditionalHcsSettings = Additional.empty() ? std::string() : Additional.dump(2);
-                }
+                auto Additional = this->m_SystemEditor->Read();
+                Result.AdditionalHcsSettings = Additional.empty() ? std::string() : Additional.dump();
             }
         }
 
@@ -2392,7 +2644,7 @@ namespace winrt::NanaBox::implementation
         this->HostNetworksComboBox().IsEnabled(!Busy);
         this->NetworkNameTextBox().IsEnabled(!Busy);
         this->NetworkFirewallCheckBox().IsEnabled(!Busy);
-        this->NetworkAdvancedSettingsTextBox().IsEnabled(!Busy);
+        this->NetworkAdvancedSettingsEditorContainer().IsEnabled(!Busy);
         this->NetworkModeComboBox().IsEnabled(!Busy);
         this->NetworkSubnetTextBox().IsEnabled(!Busy);
         this->NetworkGatewayTextBox().IsEnabled(!Busy);
@@ -2411,7 +2663,10 @@ namespace winrt::NanaBox::implementation
         {
             winrt::hstring Settings;
             if (this->NetworkExpertCheckBox().IsChecked().Value())
-                Settings = this->NetworkAdvancedSettingsTextBox().Text();
+                {
+                    auto Properties = this->m_NetworkEditor->Read();
+                    Settings = Properties.empty() ? winrt::hstring() : winrt::to_hstring(Properties.dump());
+                }
             else if (this->NetworkModeComboBox().SelectedIndex() == 1)
                 Settings = ::BuildNatNetworkSettings(this->NetworkSubnetTextBox().Text(), this->NetworkGatewayTextBox().Text());
             this->RunNetworkManagementOperation(L"Create", this->NetworkNameTextBox().Text(),
@@ -2501,7 +2756,7 @@ namespace winrt::NanaBox::implementation
                 if (Action == L"Create" && this->NetworkNameTextBox().Text() == Value)
                 {
                     this->NetworkNameTextBox().Text(L"");
-                    this->NetworkAdvancedSettingsTextBox().Text(L"");
+                    this->m_NetworkEditor->Load(nlohmann::json::object());
                 }
             }
             this->NetworkPropertiesTextBox().Text(winrt::to_hstring(Result.dump(2)));
@@ -2711,7 +2966,7 @@ namespace winrt::NanaBox::implementation
             if (Action == L"HcnCreate" || Action == L"HcnModify")
             {
                 if (this->HcnExpertCheckBox().IsChecked().Value())
-                    Data["Settings"] = Json::parse(winrt::to_string(this->HcnSettingsTextBox().Text()));
+                    Data["Settings"] = this->m_HcnEditor->Read();
                 else
                 {
                     auto Kind = Data.at("Kind").get<std::string>();
@@ -3154,8 +3409,7 @@ namespace winrt::NanaBox::implementation
                 Data["Query"] = Json::object();
                 if (this->HcsQueryExpertCheckBox().IsChecked().Value())
                 {
-                    auto Query = winrt::to_string(this->HcsQueryTextBox().Text());
-                    if (!Query.empty()) Data["Query"] = Json::parse(Query);
+                    Data["Query"] = this->m_QueryEditor->Read();
                 }
                 else if (this->HcsQueryModeComboBox().SelectedIndex() > 0)
                     Data["Query"]["PropertyTypes"] = Json::array({Selected(this->HcsQueryModeComboBox())});
