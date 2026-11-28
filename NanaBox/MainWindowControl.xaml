@@ -100,6 +100,14 @@
         LabelPosition="Collapsed"
         ToolTipService.ToolTip="[Restore Virtual Machine Window Size]" AutomationProperties.AutomationId="RestoreVirtualMachineWindowSizeButton" />
       <AppBarButton
+        x:Name="TypeClipboardTextButton"
+        x:Uid="/MainWindow/TypeClipboardTextButton"
+        Icon="Paste" Width="48" LabelPosition="Collapsed"
+        Click="TypeClipboardTextButtonClick"
+        AutomationProperties.Name="Type clipboard text"
+        ToolTipService.ToolTip="Type clipboard text (US keyboard, ASCII)"
+        AutomationProperties.AutomationId="TypeClipboardTextButton" />
+      <AppBarButton
         x:Uid="/MainWindow/CopyScreenshotButton"
         Width="48"
         AutomationProperties.Name="[Copy Screenshot]"

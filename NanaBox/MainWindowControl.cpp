@@ -220,6 +220,13 @@ namespace winrt::NanaBox::implementation
             0);
     }
 
+    void MainWindowControl::TypeClipboardTextButtonClick(
+        winrt::IInspectable const&, winrt::RoutedEventArgs const&)
+    {
+        ::PostMessageW(this->m_WindowHandle, WM_COMMAND,
+            MAKEWPARAM(NanaBox::MainWindowCommands::TypeClipboardText, BN_CLICKED), 0);
+    }
+
     void MainWindowControl::CopyScreenshotButtonClick(
         winrt::IInspectable const& sender,
         winrt::RoutedEventArgs const& e)

@@ -247,4 +247,10 @@
   <data name="ForcePowerOffConfirm" xml:space="preserve">
     <value>Force power off the virtual machine? Unsaved guest data may be lost.</value>
   </data>
+  <data name="TypeClipboardTextButton.AutomationProperties.Name" xml:space="preserve">
+    <value>Type clipboard text</value>
+  </data>
+  <data name="TypeClipboardTextButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Type clipboard text (US keyboard layout, printable ASCII)</value>
+  </data>
 </root>

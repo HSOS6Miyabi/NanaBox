@@ -79,6 +79,7 @@ try {
     Assert-Command 'RedirectKeyboardNavigationButton' 0x1008 -Toggle
     Assert-Command 'RedirectKeyboardNavigationButton' 0x1009 -Toggle
     Assert-Command 'RestoreVirtualMachineWindowSizeButton' 0x100A
+    Assert-Command 'TypeClipboardTextButton' 0x1015
     Assert-Command 'CopyScreenshotButton' 0x100B
     Assert-Command 'RecordVideoButton' 0x100C -Toggle
     Assert-Command 'RecordVideoButton' 0x100C -Toggle

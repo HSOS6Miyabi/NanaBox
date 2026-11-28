@@ -19,6 +19,7 @@
 #include "NetworkReconciliation.h"
 #include "PowerTransition.h"
 #include "Plan9Reconciliation.h"
+#include "KeyboardText.h"
 
 #include <map>
 #include <optional>
@@ -258,6 +259,53 @@ void NanaBox::MainWindow::OnCommand(
             &WindowRect,
             SWP_NOZORDER | SWP_NOACTIVATE);
 
+        break;
+    }
+    case NanaBox::MainWindowCommands::TypeClipboardText:
+    {
+        try
+        {
+            if (!this->m_VirtualMachineRunning || this->m_VirtualMachinePaused ||
+                this->m_PowerTransitionPending || !this->m_RdpClient ||
+                this->m_RdpClient->Connected() != 1)
+                throw winrt::hresult_error(E_FAIL, L"The virtual machine console is not connected or is paused.");
+            std::wstring Text;
+            {
+                winrt::check_bool(::OpenClipboard(this->m_hWnd));
+                auto Close = Mile::ScopeExitTaskHandler([]() { ::CloseClipboard(); });
+                auto Data = ::GetClipboardData(CF_UNICODETEXT);
+                if (!Data) throw winrt::hresult_invalid_argument(L"The clipboard does not contain text.");
+                auto Buffer = static_cast<wchar_t const*>(::GlobalLock(Data));
+                winrt::check_pointer(Buffer);
+                auto Unlock = Mile::ScopeExitTaskHandler([&]() { ::GlobalUnlock(Data); });
+                auto Capacity = (std::min)(::GlobalSize(Data) / sizeof(wchar_t), std::size_t{4097});
+                std::size_t Length = 0;
+                while (Length < Capacity && Buffer[Length]) ++Length;
+                if (Length == Capacity)
+                    throw winrt::hresult_invalid_argument(L"Clipboard text is invalid or exceeds 4096 characters.");
+                Text.assign(Buffer, Length);
+            }
+            std::vector<NanaBox::KeyboardTextBatch> Batches;
+            try { Batches = NanaBox::EncodeKeyboardText(Text); }
+            catch (std::invalid_argument const& Error)
+            { throw winrt::hresult_invalid_argument(winrt::to_hstring(Error.what())); }
+            if (Batches.empty()) break;
+            for (auto const& Batch : Batches)
+            {
+                VARIANT_BOOL KeyUp[20]{};
+                LONG KeyData[20]{};
+                for (std::size_t I = 0; I < Batch.size(); ++I)
+                {
+                    KeyUp[I] = Batch[I].KeyUp ? VARIANT_TRUE : VARIANT_FALSE;
+                    KeyData[I] = static_cast<LONG>(1u |
+                        (static_cast<std::uint32_t>(Batch[I].ScanCode) << 16) |
+                        (Batch[I].KeyUp ? 0xc0000000u : 0u));
+                }
+                this->m_RdpClient->SendKeys(static_cast<LONG>(Batch.size()), KeyUp, KeyData);
+            }
+            this->m_RdpClientWindow.SetFocus();
+        }
+        catch (...) { ::ShowErrorMessageDialog(this->m_hWnd, Mile::WinRT::ToHResultError()); }
         break;
     }
     case NanaBox::MainWindowCommands::CopyScreenshot:
@@ -683,6 +731,7 @@ void NanaBox::MainWindow::UpdatePowerControls()
     Control->SetToggleState(Control->PauseVirtualMachineButton(), this->m_VirtualMachinePaused);
     Control->PauseVirtualMachineButton().IsEnabled(Enabled);
     Control->RestartVirtualMachineButton().IsEnabled(Enabled);
+    Control->TypeClipboardTextButton().IsEnabled(Enabled && !this->m_VirtualMachinePaused);
     // Keep the power menu available while a graceful shutdown is pending.
     Control->PowerMenuButton().IsEnabled(this->m_VirtualMachineRunning);
     Control->ShutdownAction().IsEnabled(Enabled);

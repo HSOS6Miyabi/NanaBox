@@ -247,4 +247,10 @@
   <data name="ForcePowerOffConfirm" xml:space="preserve">
     <value>是否强制关闭虚拟机电源？客户机未保存的数据可能丢失。</value>
   </data>
+  <data name="TypeClipboardTextButton.AutomationProperties.Name" xml:space="preserve">
+    <value>键盘输入剪贴板文本</value>
+  </data>
+  <data name="TypeClipboardTextButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>模拟键盘输入剪贴板文本（美式键盘布局，支持 ASCII 字符）</value>
+  </data>
 </root>

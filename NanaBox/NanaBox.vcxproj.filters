@@ -175,4 +175,7 @@
   <ItemGroup>
     <Midl Include="ProgressRing.idl" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="KeyboardText.h" />
+  </ItemGroup>
 </Project>

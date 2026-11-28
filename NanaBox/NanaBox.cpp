@@ -20,6 +20,7 @@
 #include "NetworkReconciliation.h"
 #include "PowerTransition.h"
 #include "Plan9Reconciliation.h"
+#include "KeyboardText.h"
 #include "QuickStartPage.h"
 #include "VirtualMachineSettingsPage.h"
 #include "SettingsHostMock.h"
@@ -103,6 +104,25 @@ int WINAPI wWinMain(
     {
         try
         {
+            {
+                auto Batches = NanaBox::EncodeKeyboardText(L"aA\r\n\t");
+                if (Batches.size() != 1 || Batches[0].size() != 10 ||
+                    Batches[0][0].ScanCode != 0x1e || Batches[0][2].ScanCode != 0x2a ||
+                    Batches[0][6].ScanCode != 0x1c || Batches[0][8].ScanCode != 0x0f) return 51;
+                for (auto const& Batch : NanaBox::EncodeKeyboardText(std::wstring(4096, L'A')))
+                {
+                    if (Batch.size() > 20 || Batch.size() % 4) return 51;
+                    for (size_t I = 0; I < Batch.size(); I += 4)
+                        if (Batch[I].ScanCode != 0x2a || Batch[I].KeyUp ||
+                            Batch[I+1].ScanCode != 0x1e || Batch[I+1].KeyUp ||
+                            Batch[I+2].ScanCode != 0x1e || !Batch[I+2].KeyUp ||
+                            Batch[I+3].ScanCode != 0x2a || !Batch[I+3].KeyUp) return 51;
+                }
+                bool Rejected = false;
+                try { NanaBox::EncodeKeyboardText(L"a\u4e2d"); }
+                catch (std::invalid_argument const&) { Rejected = true; }
+                if (!Rejected) return 51;
+            }
             if (!NanaBox::GuestToolsSelfTest()) return 33;
             if (!NanaBox::HostManagementSelfTest()) return 36;
             NanaBox::VirtualMachineConfiguration Config;
@@ -503,7 +523,7 @@ int WINAPI wWinMain(
                     {
                         if (Message == WM_COMMAND && HIWORD(WParam) == BN_CLICKED &&
                             LOWORD(WParam) >= NanaBox::MainWindowCommands::EnterBasicSession &&
-                            LOWORD(WParam) <= NanaBox::MainWindowCommands::Sponsor)
+                            LOWORD(WParam) <= NanaBox::MainWindowCommands::TypeClipboardText)
                         {
                             auto& State = *reinterpret_cast<CommandLog*>(Reference);
                             try

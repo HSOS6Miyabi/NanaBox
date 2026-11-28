@@ -165,6 +165,7 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ConfigurationManager.h" />
+    <ClInclude Include="KeyboardText.h" />
     <ClInclude Include="NanaBox.Configuration.Parser.h" />
     <ClInclude Include="NanaBox.Configuration.Specification.h" />
     <ClInclude Include="HostCompute.h" />

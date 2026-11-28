@@ -43,6 +43,7 @@ namespace NanaBox
             PowerOffVirtualMachine = 0x1012,
             SaveVirtualMachine = 0x1013,
             Sponsor = 0x1014,
+            TypeClipboardText = 0x1015,
         };
     }
 }
@@ -95,6 +96,10 @@ namespace winrt::NanaBox::implementation
             winrt::RoutedEventArgs const& e);
 
         void RestoreVirtualMachineWindowSizeButtonClick(
+            winrt::IInspectable const& sender,
+            winrt::RoutedEventArgs const& e);
+
+        void TypeClipboardTextButtonClick(
             winrt::IInspectable const& sender,
             winrt::RoutedEventArgs const& e);
 
