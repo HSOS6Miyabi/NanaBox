@@ -49,6 +49,7 @@ class Server:
     def __init__(self):
         self.root = Node(True)
         self.root.children["hello.txt"] = Node(contents=b"Hello 9P")
+        self.root.children["comma,semicolon;.txt"] = Node(contents=b"valid punctuation")
         self.root.children["Unicode-\u4e16\u754c.txt"] = Node(contents=b"UTF-8")
         self.fids = {}
         self.error = None
@@ -218,6 +219,7 @@ def run(exe, readonly):
                 assert (mount/"hello.txt").read_bytes()==b"Hello 9P"
                 assert (mount/"Unicode-\u4e16\u754c.txt").read_bytes()==b"UTF-8"
                 assert "hello.txt" in os.listdir(mount)
+                assert (mount/"comma,semicolon;.txt").read_bytes()==b"valid punctuation"
                 if readonly:
                     try:
                         (mount/"hello.txt").write_bytes(b"changed")

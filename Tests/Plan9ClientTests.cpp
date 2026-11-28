@@ -102,9 +102,9 @@ int main()
         partial=false;assert(fids.size()==1);
         for(auto path:{"/../escape","/a//b","a","/a/"})
             try{(void)c.Walk(path);assert(false);}catch(RemoteError const& e){assert(e.Number==22);}
-        assert(clunks>=7);
+        assert(clunks==6);
     }
-    assert(fids.empty());
+    assert(fids.empty()&&clunks==7);
     {
         Client c(exchange);c.Connect("Share");badTag=true;
         for(int i=0;i<2;++i)try{(void)c.Walk("/");assert(false);}catch(ProtocolError const&){}

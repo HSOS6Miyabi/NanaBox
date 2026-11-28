@@ -61,8 +61,11 @@ namespace
         try
         {
             auto wide=Wide(value);
-            return wide.size()<=255&&NanaBox::Wddm::SafeComponent(wide)&&
-                wide.find(L',')==std::wstring::npos;
+            if(wide.size()>255)return false;
+            // Semicolons and commas are legal in file names. The GPU helper
+            // excludes semicolons because its paths are also used in PATH.
+            for(auto& ch:wide)if(ch==L';')ch=L'_';
+            return NanaBox::Wddm::SafeComponent(wide);
         }
         catch(...){return false;}
     }
@@ -459,7 +462,7 @@ int wmain(int argc,wchar_t** argv)
             throw ProtocolError("Invalid 9P port");
         auto port=std::stoull(std::wstring(portText));
         if(!port||port>=NoFid||(loopback&&port>65535))throw ProtocolError("Invalid 9P port");
-        auto share=Utf8(argv[3]);if(!ValidName(share)||share.size()>200)throw ProtocolError("Invalid 9P share name");
+        auto share=Utf8(argv[3]);if(!ValidName(share)||share.size()>200||share.find_first_of(",;")!=std::string::npos)throw ProtocolError("Invalid 9P share name");
         auto mount=Utf8(argv[4]);
         bool readOnly=false,allUsers=false;std::wstring stopEvent;
         for(int i=5;i<argc;++i)
