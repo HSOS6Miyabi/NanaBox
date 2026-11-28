@@ -1915,7 +1915,7 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <TextBox x:Name="ConfigurationStatusTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="112" AutomationProperties.AutomationId="ConfigurationStatusTextBox" />
+      <TextBox x:Name="ConfigurationStatusTextBox" IsReadOnly="True" BorderThickness="0" Background="Transparent" IsTabStop="False" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="112" AutomationProperties.AutomationId="ConfigurationStatusTextBox" />
       <Button Grid.Column="1" x:Name="ValidateConfigurationButton" x:Uid="/VirtualMachineSettingsPage/ValidateConfiguration" Content="Check settings" VerticalAlignment="Top" Click="ValidateConfigurationButtonClick" AutomationProperties.AutomationId="ValidateConfigurationButton" />
       <Button
         x:Name="ApplyButton"

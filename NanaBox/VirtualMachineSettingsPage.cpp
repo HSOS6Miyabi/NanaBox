@@ -602,7 +602,7 @@ namespace winrt::NanaBox::implementation
             else if (Property == L"Header")
             {
                 if (auto Box = Element.try_as<TextBox>()) Box.Header(winrt::box_value(Value));
-                else if (auto Box = Element.try_as<ComboBox>()) Box.Header(winrt::box_value(Value));
+                else if (auto Choice = Element.try_as<ComboBox>()) Choice.Header(winrt::box_value(Value));
             }
             else if (Property == L"AutomationProperties.Name")
                 winrt::AutomationProperties::SetName(Element, Value);
@@ -3202,7 +3202,7 @@ namespace winrt::NanaBox::implementation
             true);
         Row.Path = winrt::TextBox();
         Row.Path.Text(winrt::to_hstring(Configuration.Path));
-        Row.Path.MinWidth(250);
+        Row.Path.MinWidth(0);
         Row.Path.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
         winrt::Grid PathRow = ::AddSettingRow(
             Row.Container,
@@ -3223,8 +3223,11 @@ namespace winrt::NanaBox::implementation
             ::GetSettingsString(L"BrowseScsiDevicePath"));
         winrt::ColumnDefinition BrowseColumn;
         BrowseColumn.Width(winrt::GridLengthHelper::Auto());
+        PathRow.ColumnDefinitions().Append(winrt::ColumnDefinition());
         PathRow.ColumnDefinitions().Append(BrowseColumn);
-        winrt::Grid::SetColumn(BrowseButton, 3);
+        winrt::Grid::SetColumnSpan(PathRow.Children().GetAt(0).as<winrt::FrameworkElement>(), 2);
+        winrt::Grid::SetColumn(BrowseButton, 1);
+        winrt::Grid::SetRow(BrowseButton, 1);
         PathRow.Children().Append(BrowseButton);
         Row.Type.SelectionChanged([
             WeakBrowse = winrt::make_weak(BrowseButton)](

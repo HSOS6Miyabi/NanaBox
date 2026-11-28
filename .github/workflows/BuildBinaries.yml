@@ -66,6 +66,12 @@ jobs:
       timeout-minutes: 12
       run: |
         & .\Tests\SettingsUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
+    - name: Open configuration in the real text editor
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
+      shell: powershell
+      timeout-minutes: 3
+      run: |
+        & .\Tests\ConfigurationEditorUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI\Editor"
     - name: Main window toolbar commands
       if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell
