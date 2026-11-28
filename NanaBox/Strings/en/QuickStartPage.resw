@@ -181,4 +181,40 @@
     <value>Compact Virtual Hard Disk</value>
     <comment>Compact Virtual Hard Disk</comment>
   </data>
+  <data name="WorkspaceTitle" xml:space="preserve"><value>NanaBox — Virtual machines</value></data>
+  <data name="WorkspaceHeading" xml:space="preserve"><value>Your virtual machines</value></data>
+  <data name="WorkspaceSubtitle" xml:space="preserve"><value>Create, open and manage your virtual machine workspaces.</value></data>
+  <data name="WorkspaceActions" xml:space="preserve"><value>Get started</value></data>
+  <data name="WorkspaceTools" xml:space="preserve"><value>Virtual disk tools</value></data>
+  <data name="WorkspaceOpen" xml:space="preserve"><value>Open and start</value></data>
+  <data name="WorkspaceNew" xml:space="preserve"><value>Create virtual machine</value></data>
+  <data name="WorkspaceAdd" xml:space="preserve"><value>Add to workspace</value></data>
+  <data name="WorkspaceBrowseSettings" xml:space="preserve"><value>Open settings file</value></data>
+  <data name="WorkspaceCreateDisk" xml:space="preserve"><value>Create virtual disk</value></data>
+  <data name="WorkspaceResizeDisk" xml:space="preserve"><value>Resize virtual disk</value></data>
+  <data name="WorkspaceCompactDisk" xml:space="preserve"><value>Compact virtual disk</value></data>
+  <data name="WorkspaceAbout" xml:space="preserve"><value>About NanaBox</value></data>
+  <data name="WorkspaceRecent" xml:space="preserve"><value>Recent workspaces</value></data>
+  <data name="WorkspaceSearch" xml:space="preserve"><value>Search by name or path</value></data>
+  <data name="WorkspaceRefresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="WorkspaceClear" xml:space="preserve"><value>Clear history</value></data>
+  <data name="WorkspaceStart" xml:space="preserve"><value>Start</value></data>
+  <data name="WorkspaceSettings" xml:space="preserve"><value>Settings</value></data>
+  <data name="WorkspaceFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="WorkspaceRemove" xml:space="preserve"><value>Remove from list</value></data>
+  <data name="WorkspaceEmpty" xml:space="preserve"><value>No recent virtual machines. Create a new virtual machine or add an existing configuration to get started.</value></data>
+  <data name="WorkspaceNoMatches" xml:space="preserve"><value>No virtual machines match your search.</value></data>
+  <data name="WorkspaceLoading" xml:space="preserve"><value>Loading recent workspaces…</value></data>
+  <data name="WorkspaceReady" xml:space="preserve"><value>Select a virtual machine to start it or change its settings.</value></data>
+  <data name="WorkspaceMissing" xml:space="preserve"><value>Configuration file unavailable</value></data>
+  <data name="WorkspaceInvalid" xml:space="preserve"><value>Configuration could not be read</value></data>
+  <data name="WorkspaceUnknown" xml:space="preserve"><value>Other operating system</value></data>
+  <data name="WorkspaceCpu" xml:space="preserve"><value>vCPU</value></data>
+  <data name="WorkspaceMemory" xml:space="preserve"><value>MiB memory</value></data>
+  <data name="WorkspaceClearConfirm" xml:space="preserve"><value>Clear the list of recent virtual machines? Your virtual machine files will be kept.</value></data>
+  <data name="WorkspaceRemoved" xml:space="preserve"><value>Removed from the list. The virtual machine files are unchanged.</value></data>
+  <data name="WorkspaceCleared" xml:space="preserve"><value>Recent workspace history cleared.</value></data>
+  <data name="WorkspaceFileType" xml:space="preserve"><value>NanaBox virtual machine configuration</value></data>
+  <data name="WorkspaceCannotRead" xml:space="preserve"><value>The selected virtual machine configuration could not be read. Verify the file location and try again.</value></data>
+  <data name="WorkspaceHistoryError" xml:space="preserve"><value>The recent workspace list could not be updated.</value></data>
 </root>

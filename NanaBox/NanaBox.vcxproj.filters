@@ -47,6 +47,7 @@
     <ClInclude Include="NanaBoxResources.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="WorkspaceHistory.h" />
     <ClInclude Include="ConfigurationManager.h">
       <Filter>Configuration</Filter>
     </ClInclude>

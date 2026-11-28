@@ -9,6 +9,7 @@
 #include "NanaBoxResources.h"
 #include "MainWindow.h"
 #include "SettingsText.h"
+#include "WorkspaceHistory.h"
 #include <shellapi.h>
 
 #include <algorithm>
@@ -2419,6 +2420,7 @@ namespace winrt::NanaBox::implementation
                     this->m_ConfigurationFilePath.empty() ? nullptr : &this->m_LoadedConfigurationContent);
                 this->m_LoadedConfigurationContent = "\xEF\xBB\xBF" + Content;
                 this->m_ConfigurationFilePath = FilePath;
+                ::NanaBox::WorkspaceHistory::TryRemember(FilePath);
             }
             this->m_Configuration = Configuration;
             this->PopulateControls();

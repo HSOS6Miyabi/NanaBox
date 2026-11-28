@@ -23,6 +23,7 @@
 #include "KeyboardText.h"
 #include "../GuestTool/WddmMapping.h"
 #include "QuickStartPage.h"
+#include "WorkspaceHistory.h"
 #include "ExitConfirmationPage.h"
 #include "AboutPage.h"
 #include "MessagePage.h"
@@ -712,7 +713,7 @@ int WINAPI wWinMain(
             }
             catch (...) { return -1; }
         }
-        if (ArgumentCount == 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-quickstart"))
+        if (ArgumentCount >= 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-quickstart"))
         {
             try
             {
@@ -723,12 +724,18 @@ int WINAPI wWinMain(
                 {
                     if (::IsWindow(WindowHandle)) ::DestroyWindow(WindowHandle);
                 });
+                if (ArgumentCount != 2 && ArgumentCount != 4) return ERROR_INVALID_PARAMETER;
+                std::wstring TestKey = L"Software\\NanaBox\\WorkspaceHistoryTests\\";
+                TestKey += ArgumentCount == 4 ? Arguments[2] : L"Default";
                 auto Page = winrt::make<winrt::NanaBox::implementation::QuickStartPage>(
-                    WindowHandle, &ConfigurationFilePath);
+                    WindowHandle, &ConfigurationFilePath, TestKey);
                 if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
                     return -1;
                 ::SetWindowTextW(WindowHandle, L"NanaBox Quick Start Test");
-                return ::ShowXamlWindow(WindowHandle, 460, 460, nullptr);
+                auto Result = ::ShowXamlWindow(WindowHandle, 940, 680, nullptr);
+                if (ArgumentCount == 4 && !ConfigurationFilePath.empty())
+                    ::WriteAllTextToUtf8TextFile(::GetAbsolutePath(Arguments[3]), winrt::to_string(winrt::hstring(ConfigurationFilePath)));
+                return Result;
             }
             catch (...) { return -1; }
         }
@@ -1014,16 +1021,9 @@ int WINAPI wWinMain(
     {
         HWND WindowHandle = ::CreateXamlWindow(
             nullptr,
-            WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME,
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
+            0,
+            WS_OVERLAPPEDWINDOW);
         if (!WindowHandle)
-        {
-            return -1;
-        }
-
-        if (FAILED(::MileAllowNonClientDefaultDrawingForWindow(
-            WindowHandle,
-            FALSE)))
         {
             return -1;
         }
@@ -1040,7 +1040,7 @@ int WINAPI wWinMain(
             return -1;
         }
 
-        ::ShowXamlWindow(WindowHandle, 460, 460, nullptr);
+        ::ShowXamlWindow(WindowHandle, 940, 680, nullptr);
         if (ConfigurationFilePath.empty())
         {
             return 0;
@@ -1074,6 +1074,7 @@ int WINAPI wWinMain(
         return -1;
     }
 
+    ::NanaBox::WorkspaceHistory::TryRemember(ConfigurationFilePath);
     MainWindow.ShowWindow(nShowCmd);
     MainWindow.UpdateWindow();
 

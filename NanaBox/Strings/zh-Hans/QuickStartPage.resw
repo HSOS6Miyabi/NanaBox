@@ -181,4 +181,40 @@
     <value>压缩虚拟磁盘</value>
     <comment>Compact Virtual Hard Disk</comment>
   </data>
+  <data name="WorkspaceTitle" xml:space="preserve"><value>NanaBox — 虚拟机</value></data>
+  <data name="WorkspaceHeading" xml:space="preserve"><value>我的虚拟机</value></data>
+  <data name="WorkspaceSubtitle" xml:space="preserve"><value>创建、打开和管理虚拟机工作区。</value></data>
+  <data name="WorkspaceActions" xml:space="preserve"><value>快速开始</value></data>
+  <data name="WorkspaceTools" xml:space="preserve"><value>虚拟磁盘工具</value></data>
+  <data name="WorkspaceOpen" xml:space="preserve"><value>打开并启动</value></data>
+  <data name="WorkspaceNew" xml:space="preserve"><value>创建虚拟机</value></data>
+  <data name="WorkspaceAdd" xml:space="preserve"><value>添加到工作区</value></data>
+  <data name="WorkspaceBrowseSettings" xml:space="preserve"><value>打开虚拟机设置</value></data>
+  <data name="WorkspaceCreateDisk" xml:space="preserve"><value>创建虚拟磁盘</value></data>
+  <data name="WorkspaceResizeDisk" xml:space="preserve"><value>调整磁盘容量</value></data>
+  <data name="WorkspaceCompactDisk" xml:space="preserve"><value>压缩虚拟磁盘</value></data>
+  <data name="WorkspaceAbout" xml:space="preserve"><value>关于 NanaBox</value></data>
+  <data name="WorkspaceRecent" xml:space="preserve"><value>最近的虚拟机工作区</value></data>
+  <data name="WorkspaceSearch" xml:space="preserve"><value>按名称或路径搜索</value></data>
+  <data name="WorkspaceRefresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="WorkspaceClear" xml:space="preserve"><value>清除历史记录</value></data>
+  <data name="WorkspaceStart" xml:space="preserve"><value>启动</value></data>
+  <data name="WorkspaceSettings" xml:space="preserve"><value>设置</value></data>
+  <data name="WorkspaceFolder" xml:space="preserve"><value>打开所在文件夹</value></data>
+  <data name="WorkspaceRemove" xml:space="preserve"><value>从列表移除</value></data>
+  <data name="WorkspaceEmpty" xml:space="preserve"><value>暂无最近使用的虚拟机。可以创建虚拟机，或添加已有的虚拟机配置。</value></data>
+  <data name="WorkspaceNoMatches" xml:space="preserve"><value>没有符合搜索条件的虚拟机。</value></data>
+  <data name="WorkspaceLoading" xml:space="preserve"><value>正在加载最近的工作区…</value></data>
+  <data name="WorkspaceReady" xml:space="preserve"><value>选择一台虚拟机，即可启动或修改设置。</value></data>
+  <data name="WorkspaceMissing" xml:space="preserve"><value>配置文件不可用</value></data>
+  <data name="WorkspaceInvalid" xml:space="preserve"><value>无法读取配置</value></data>
+  <data name="WorkspaceUnknown" xml:space="preserve"><value>其他操作系统</value></data>
+  <data name="WorkspaceCpu" xml:space="preserve"><value>个虚拟处理器</value></data>
+  <data name="WorkspaceMemory" xml:space="preserve"><value>MiB 内存</value></data>
+  <data name="WorkspaceClearConfirm" xml:space="preserve"><value>清除最近使用的虚拟机列表？虚拟机文件将予以保留。</value></data>
+  <data name="WorkspaceRemoved" xml:space="preserve"><value>已从列表移除，虚拟机文件未受影响。</value></data>
+  <data name="WorkspaceCleared" xml:space="preserve"><value>已清除最近的工作区历史记录。</value></data>
+  <data name="WorkspaceFileType" xml:space="preserve"><value>NanaBox 虚拟机配置</value></data>
+  <data name="WorkspaceCannotRead" xml:space="preserve"><value>无法读取所选虚拟机配置，请检查文件位置后重试。</value></data>
+  <data name="WorkspaceHistoryError" xml:space="preserve"><value>无法更新最近的工作区列表。</value></data>
 </root>

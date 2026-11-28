@@ -214,6 +214,7 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="WorkspaceHistory.h" />
     <ClInclude Include="ExitConfirmationPage.h">
       <DependentUpon>ExitConfirmationPage.xaml</DependentUpon>
       <SubType>Code</SubType>
