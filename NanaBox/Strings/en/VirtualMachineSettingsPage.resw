@@ -2081,4 +2081,10 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>Allowed files (one per line)</value></data>
   <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>Restrict access to these file names. Leave empty to share the entire directory.</value></data>
   <data name="GuestPlan9.Content" xml:space="preserve"><value>Plan 9 mounts</value></data>
+  <data name="GuestPlan9Title.Text" xml:space="preserve"><value>Plan 9 shared folders (Linux)</value></data>
+  <data name="GuestPlan9Note.Text" xml:space="preserve"><value>The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory.</value></data>
+  <data name="GuestPlan9Name.Header" xml:space="preserve"><value>Share name</value></data>
+  <data name="GuestPlan9Path.Header" xml:space="preserve"><value>Guest mount directory (optional)</value></data>
+  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>Mount share</value></data>
+  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>Unmount share</value></data>
 </root>

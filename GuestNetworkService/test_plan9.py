@@ -94,6 +94,27 @@ class MountTests(unittest.TestCase):
         self.manager.reconcile()
         self.assertEqual(self.rows, {})
 
+    def test_prepare_remove(self):
+        self.manager.update({'Projects': descriptor()})
+        self.manager.reconcile()
+        target = str(self.root / 'media' / 'Projects')
+        old_unmount = self.manager.unmount
+        self.manager.unmount = Mock(side_effect=OSError('busy'))
+        with self.assertRaises(OSError):
+            self.manager.prepare_remove('Projects', 50001)
+        self.assertIn(target, self.rows)
+        self.assertTrue(self.manager.status()['Shares'][0]['Available'])
+        self.manager.unmount = old_unmount
+        with self.assertRaises(ValueError):
+            self.manager.prepare_remove('Projects', 50002)
+        self.manager.prepare_remove('Projects', 50001)
+        self.assertEqual(self.rows, {})
+        self.assertEqual(self.manager.status()['Shares'], [])
+        # If the host operation fails, re-publishing restores the old mount.
+        self.manager.update({'Projects': descriptor()})
+        self.manager.reconcile()
+        self.assertIn(target, self.rows)
+
     def test_foreign_mount_and_busy(self):
         self.manager.update({'Projects': descriptor()})
         target = str(self.root / 'media' / 'Projects')

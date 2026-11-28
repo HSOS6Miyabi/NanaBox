@@ -14,6 +14,7 @@ namespace NanaBox
         std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
         std::shared_ptr<std::atomic<bool>> const& Cancellation = {});
     bool GuestToolsSelfTest();
+    void PrepareGuestPlan9ShareRemoval(winrt::guid const& RuntimeId, std::string const& Name, std::uint32_t Port);
     class Plan9MountManager
     {
     public:

@@ -1704,6 +1704,20 @@ void NanaBox::Plan9MountManager::Update(std::string Manifest)
     m_Impl->Wake.notify_all();
 }
 
+void NanaBox::PrepareGuestPlan9ShareRemoval(winrt::guid const& RuntimeId,
+    std::string const& Name, std::uint32_t Port)
+{
+    RegisterGuestSocket(false, false, true);
+    WSADATA Data{};
+    auto Result = ::WSAStartup(MAKEWORD(2, 2), &Data);
+    if (Result) winrt::throw_hresult(HRESULT_FROM_WIN32(Result));
+    auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
+    std::atomic<bool> Stop{false};
+    (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
+        {"RequestType", "PrepareRemove"}, {"Settings", {{"Name", Name}, {"Port", Port}}}},
+        Stop, 20, Plan9ServiceId);
+}
+
 std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
     std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
     std::shared_ptr<std::atomic<bool>> const& Cancellation)
@@ -1715,11 +1729,15 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
     std::atomic<bool> LocalStop{false};
     auto const& Stop = Cancellation ? *Cancellation : LocalStop;
-    if (Action == "Plan9Shares")
+    if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
     {
         RegisterGuestSocket(false, false, true);
+        Json Settings = Json::object();
+        auto Verb = Action == "Plan9Mount" ? "Mount" : Action == "Plan9Unmount" ? "Unmount" : "Query";
+        if (Action != "Plan9Shares") Settings["Name"] = GuestName;
+        if (Action == "Plan9Mount") Settings["Target"] = winrt::to_string(LocalPath);
         auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
-            {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, 15, Plan9ServiceId);
+            {"RequestType", Verb}, {"Settings", Settings}}, Stop, 30, Plan9ServiceId);
         return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
     }
     auto Reply = ExecuteGuestTools(Action, LocalPath, GuestName, Overwrite,

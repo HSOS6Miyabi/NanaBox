@@ -2081,4 +2081,10 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>允许访问的文件（每行一个）</value></data>
   <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>限制可访问的文件名称。留空时共享整个目录。</value></data>
   <data name="GuestPlan9.Content" xml:space="preserve"><value>9P 挂载状态</value></data>
+  <data name="GuestPlan9Title.Text" xml:space="preserve"><value>9P 共享目录（Linux）</value></data>
+  <data name="GuestPlan9Note.Text" xml:space="preserve"><value>客户机将启用自动挂载的共享目录挂载至 /media 下。输入共享名称即可挂载或卸载，也可指定客户机中的空目录。</value></data>
+  <data name="GuestPlan9Name.Header" xml:space="preserve"><value>共享名称</value></data>
+  <data name="GuestPlan9Path.Header" xml:space="preserve"><value>客户机挂载目录（可选）</value></data>
+  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>挂载共享</value></data>
+  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>卸载共享</value></data>
 </root>

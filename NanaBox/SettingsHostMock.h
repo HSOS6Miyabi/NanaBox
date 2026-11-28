@@ -26,6 +26,8 @@ namespace NanaBox
             std::map<std::string, Json> Firewall;
             std::map<std::string, std::vector<char>> GuestFiles;
             std::int64_t GuestClock = 1800000000000ll;
+            bool Plan9Mounted = true;
+            std::string Plan9MountPoint = "/media/Projects";
         };
         auto Data = std::make_shared<State>();
         auto Operations = std::make_shared<SettingsHostOperations>();
@@ -56,8 +58,17 @@ namespace NanaBox
             }
             std::lock_guard Lock(Data->Mutex);
             Json Result = Json::object();
-            if (Action == "Plan9Shares")
-                Result = {{"Shares", Json::array({Json{{"Name", "Projects"}, {"MountPoint", "/media/Projects"}, {"Mounted", true}}})}};
+            if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
+            {
+                if (Action != "Plan9Shares")
+                {
+                    if (Name != "Projects") throw winrt::hresult_invalid_argument();
+                    Data->Plan9Mounted = Action == "Plan9Mount";
+                    if (Data->Plan9Mounted) Data->Plan9MountPoint = Path.empty() ? "/media/Projects" : winrt::to_string(Path);
+                }
+                Result = {{"Shares", Json::array({Json{{"Name", "Projects"}, {"MountPoint", Data->Plan9MountPoint},
+                    {"Mounted", Data->Plan9Mounted}}})}};
+            }
             else if (Action == "TimeQuery" || Action == "TimeSync")
             {
                 if (Action == "TimeSync") Data->GuestClock = 1800000000123ll;

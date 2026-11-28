@@ -1642,7 +1642,17 @@
               <Button x:Name="GuestHeartbeatControl" x:Uid="/VirtualMachineSettingsPage/GuestHeartbeat" Content="Check heartbeat" Tag="Heartbeat" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestHeartbeatButton" />
               <Button x:Name="GuestInformationControl" x:Uid="/VirtualMachineSettingsPage/GuestInformation" Content="System information" Tag="GuestInformation" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestInformationButton" />
               <Button x:Name="GuestDiagnosticsControl" x:Uid="/VirtualMachineSettingsPage/GuestDiagnostics" Content="Network diagnostics" Tag="Diagnostics" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDiagnosticsButton" />
+            </StackPanel>
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestPlan9Title" Text="Plan 9 shared folders (Linux)" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestPlan9Note" Text="The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory." TextWrapping="Wrap" Opacity="0.75" />
+            <StackPanel Spacing="8">
               <Button x:Name="GuestPlan9Control" x:Uid="/VirtualMachineSettingsPage/GuestPlan9" Content="Plan 9 mounts" Tag="Plan9Shares" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9Button" />
+              <TextBox x:Name="GuestPlan9NameTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Name" Header="Share name" AutomationProperties.AutomationId="GuestPlan9NameTextBox" />
+              <TextBox x:Name="GuestPlan9PathTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Path" Header="Guest mount directory (optional)" AutomationProperties.AutomationId="GuestPlan9PathTextBox" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="GuestPlan9MountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Mount" Content="Mount share" Tag="Plan9Mount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9MountButton" />
+                <Button x:Name="GuestPlan9UnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Unmount" Content="Unmount share" Tag="Plan9Unmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9UnmountButton" />
+              </StackPanel>
             </StackPanel>
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestClockTitle" Text="Guest clock" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestClockNote" Text="Changing the guest clock requires explicit permission in the guest service." TextWrapping="Wrap" Opacity="0.75" />

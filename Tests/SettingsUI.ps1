@@ -174,6 +174,15 @@ try {
         $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Shares'}
         Assert-Equal $result.Data.Shares[0].MountPoint '/media/Projects' 'Plan9 guest mount point'
         Assert-Equal $result.Data.Shares[0].Mounted $true 'Plan9 mount status'
+        Set-Text 'GuestPlan9NameTextBox' 'Projects'
+        Invoke-Control 'GuestPlan9UnmountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Unmount'}
+        Assert-Equal $result.Data.Shares[0].Mounted $false 'Plan9 unmounted'
+        Set-Text 'GuestPlan9PathTextBox' '/mnt/Projects'
+        Invoke-Control 'GuestPlan9MountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Mount'}
+        Assert-Equal $result.Data.Shares[0].MountPoint '/mnt/Projects' 'Plan9 custom mount point'
+        Assert-Equal $result.Data.Shares[0].Mounted $true 'Plan9 mounted'
         Invoke-Control 'GuestInformationButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
         Invoke-Control 'GuestDiagnosticsButton'

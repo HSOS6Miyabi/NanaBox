@@ -376,6 +376,28 @@ class Manager:
             self.save(state)
             return self.status(state)
 
+    def prepare_remove(self, key, port):
+        key = name(key)
+        with self.locked():
+            state = self.load()
+            item = state['Shares'].get(key)
+            record = state['Mounted'].get(key)
+            for entry in (item, record['Share'] if record else None):
+                if entry and entry['Port'] != port:
+                    raise ValueError('Port differs from the configured share')
+            if record:
+                self.drop(state, key)
+            # Refuse independently mounted instances using the managed source.
+            candidate = source({'Name': key, 'Port': port})
+            if any(row['Type'] == '9p' and row['Source'] == candidate
+                   for rows in self.mounts().values() for row in rows):
+                raise RuntimeError('The share still has an active mount')
+            state['Shares'].pop(key, None)
+            state['Errors'].pop(key, None)
+            state['Suppressed'] = [value for value in state['Suppressed'] if value != key]
+            self.save(state)
+            return self.status(state)
+
     def cleanup(self):
         with self.locked():
             state = self.load()
@@ -391,8 +413,34 @@ class Manager:
 
 def handle(conn, manager):
     try:
-        desired = manifest(receive(conn))
-        result = manager.status() if desired is None else manager.update(desired)
+        request = receive(conn)
+        if (not isinstance(request, dict) or type(request.get('Version')) is not int or
+                request['Version'] != 1 or request.get('ResourceType') != 'Plan9Shares'):
+            raise ValueError('Invalid Plan 9 request')
+        action = request.get('RequestType')
+        if action in ('Mount', 'Unmount', 'PrepareRemove'):
+            settings = request.get('Settings')
+            if not isinstance(settings, dict):
+                raise ValueError('Invalid Plan 9 settings')
+            key = name(settings.get('Name'))
+            if action == 'Mount':
+                if set(settings) != {'Name', 'Target'} or not isinstance(settings['Target'], str):
+                    raise ValueError('Invalid mount settings')
+                target = settings['Target'] or None
+                result = manager.manual_mount(key, target)
+            elif action == 'Unmount':
+                if set(settings) != {'Name'}:
+                    raise ValueError('Invalid unmount settings')
+                result = manager.manual_unmount(key)
+            else:
+                if set(settings) != {'Name', 'Port'}:
+                    raise ValueError('Invalid removal settings')
+                port = settings['Port']
+                share({'Name': key, 'Port': port, 'ReadOnly': False, 'AutoMount': False})
+                result = manager.prepare_remove(key, port)
+        else:
+            desired = manifest(request)
+            result = manager.status() if desired is None else manager.update(desired)
         send(conn, {'Version': 1, 'Success': True, 'Data': result})
     except Exception as exc:
         send(conn, {'Version': 1, 'Success': False, 'Error': str(exc)[:2000]})

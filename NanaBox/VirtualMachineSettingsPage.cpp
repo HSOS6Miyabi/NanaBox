@@ -1621,6 +1621,12 @@ namespace winrt::NanaBox::implementation
                 if (Path.empty() || Name.empty())
                     throw winrt::hresult_invalid_argument(::GetSettingsString(L"GuestFileRequired"));
             }
+            if (Resource == "Plan9Mount" || Resource == "Plan9Unmount")
+            {
+                Name = winrt::to_string(this->GuestPlan9NameTextBox().Text());
+                if (Name.empty()) throw winrt::hresult_invalid_argument(::GetSettingsString(L"Plan9ShareNameLabel"));
+                if (Resource == "Plan9Mount") Path = this->GuestPlan9PathTextBox().Text().c_str();
+            }
             if ((Resource == "TimeSync" || (Transfer && Overwrite)) &&
                 ::MessageBoxW(this->m_WindowHandle,
                     ::GetSettingsString(Resource == "TimeSync" ? L"GuestClockConfirm" : L"GuestOverwriteConfirm").c_str(),
@@ -1659,10 +1665,13 @@ namespace winrt::NanaBox::implementation
     {
         this->m_GuestToolsRunning = Busy;
         for (auto const& Button : {this->GuestHeartbeatControl(), this->GuestInformationControl(),
-            this->GuestDiagnosticsControl(), this->GuestPlan9Control(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
+            this->GuestDiagnosticsControl(), this->GuestPlan9Control(), this->GuestPlan9MountControl(),
+            this->GuestPlan9UnmountControl(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
             this->GuestUploadControl(), this->GuestDownloadControl(), this->GuestBrowseUploadControl(),
             this->GuestBrowseDownloadControl()})
             Button.IsEnabled(!Busy);
+        this->GuestPlan9NameTextBox().IsEnabled(!Busy);
+        this->GuestPlan9PathTextBox().IsEnabled(!Busy);
         this->GuestFileNameTextBox().IsEnabled(!Busy);
         this->GuestFilePathTextBox().IsEnabled(!Busy);
         this->GuestFileOverwriteCheckBox().IsEnabled(!Busy);
