@@ -85,6 +85,10 @@ jobs:
         name: NanaBox_GUI_Test_Diagnostics
         path: ${{ runner.temp }}/NanaBox-UI
         if-no-files-found: ignore
+    - name: Verify dialog button actions
+      shell: powershell
+      run: |
+        .\Tests\DialogsUI.ps1 -Executable Output\Binaries\Root\Binaries\x64\NanaBox.exe
     - name: Build and test Windows GuestTool binaries
       shell: pwsh
       run: .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests

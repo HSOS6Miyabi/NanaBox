@@ -53,6 +53,7 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
+        this->m_Status = NanaBox::ExitConfirmationStatus::Cancel;
         ::PostMessageW(this->m_WindowHandle, WM_CLOSE, 0, 0);
     }
 

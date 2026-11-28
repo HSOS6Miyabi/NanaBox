@@ -15,8 +15,9 @@
 namespace winrt::NanaBox::implementation
 {
     AboutPage::AboutPage(
-        _In_ HWND WindowHandle) :
-        m_WindowHandle(WindowHandle)
+        _In_ HWND WindowHandle,
+        std::function<void(std::wstring const&)> ExternalAction) :
+        m_WindowHandle(WindowHandle), m_ExternalAction(std::move(ExternalAction))
     {
         ::SetWindowTextW(
             this->m_WindowHandle,
@@ -40,10 +41,16 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
+        constexpr wchar_t Address[] = L"https://github.com/M2Team/NanaBox";
+        if (this->m_ExternalAction)
+        {
+            this->m_ExternalAction(Address);
+            return;
+        }
         SHELLEXECUTEINFOW ExecInfo = {};
         ExecInfo.cbSize = sizeof(SHELLEXECUTEINFOW);
         ExecInfo.lpVerb = L"open";
-        ExecInfo.lpFile = L"https://github.com/M2Team/NanaBox";
+        ExecInfo.lpFile = Address;
         ExecInfo.nShow = SW_SHOWNORMAL;
         ::ShellExecuteExW(&ExecInfo);
     }

@@ -30,7 +30,7 @@
         <RowDefinition Height="66" />
       </Grid.RowDefinitions>
       <Button
-        x:Uid="/SponsorPage/ContributeButton"
+        x:Uid="/SponsorPage/ContributeButton" AutomationProperties.AutomationId="ContributeButton"
         Grid.Row="0"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
@@ -43,7 +43,7 @@
         </StackPanel>
       </Button>
       <Button
-        x:Uid="/SponsorPage/BuySponsorEditionButton"
+        x:Uid="/SponsorPage/BuySponsorEditionButton" AutomationProperties.AutomationId="BuySponsorEditionButton"
         Grid.Row="2"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
@@ -56,7 +56,7 @@
         </StackPanel>
       </Button>
       <Button
-        x:Uid="/SponsorPage/SponsorEditionPolicyButton"
+        x:Uid="/SponsorPage/SponsorEditionPolicyButton" AutomationProperties.AutomationId="SponsorEditionPolicyButton"
         Grid.Row="4"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"

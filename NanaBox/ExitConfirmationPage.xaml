@@ -37,19 +37,19 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
       <Button
-        x:Uid="/ExitConfirmationPage/SuspendButton"
+        x:Uid="/ExitConfirmationPage/SuspendButton" AutomationProperties.AutomationId="ExitSuspendButton"
         Grid.Column="0"
         HorizontalAlignment="Stretch"
         Click="SuspendButtonClick"
         Content="[Suspend]" />
       <Button
-        x:Uid="/ExitConfirmationPage/PowerOffButton"
+        x:Uid="/ExitConfirmationPage/PowerOffButton" AutomationProperties.AutomationId="ExitPowerOffButton"
         Grid.Column="2"
         HorizontalAlignment="Stretch"
         Click="PowerOffButtonClick"
         Content="[Power Off]" />
       <Button
-        x:Uid="/ExitConfirmationPage/CancelButton"
+        x:Uid="/ExitConfirmationPage/CancelButton" AutomationProperties.AutomationId="ExitCancelButton"
         Grid.Column="4"
         HorizontalAlignment="Stretch"
         Click="CancelButtonClick"

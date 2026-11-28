@@ -23,6 +23,9 @@
 #include "KeyboardText.h"
 #include "../GuestTool/WddmMapping.h"
 #include "QuickStartPage.h"
+#include "ExitConfirmationPage.h"
+#include "AboutPage.h"
+#include "MessagePage.h"
 #include "VirtualMachineSettingsPage.h"
 #include "SettingsHostMock.h"
 #include <shellapi.h>
@@ -489,6 +492,61 @@ int WINAPI wWinMain(
                 return 0;
             }
             catch (...) { return 18; }
+        }
+        if (ArgumentCount == 4 && 0 == ::_wcsicmp(Arguments[1], L"--test-dialog"))
+        {
+            try
+            {
+                std::wstring Kind = Arguments[2];
+                std::wstring Path = ::GetAbsolutePath(Arguments[3]);
+                std::string Log;
+                bool Failed = false;
+                HWND WindowHandle = ::CreateXamlWindow(nullptr, 0, WS_OVERLAPPEDWINDOW);
+                if (!WindowHandle) return -1;
+                auto CloseWindow = Mile::ScopeExitTaskHandler([&]()
+                {
+                    if (::IsWindow(WindowHandle)) ::DestroyWindow(WindowHandle);
+                });
+                auto Record = [&](std::wstring const& Value)
+                {
+                    try
+                    {
+                        Log += winrt::to_string(winrt::hstring(Value)) + "\n";
+                        ::WriteAllTextToUtf8TextFile(Path, Log);
+                    }
+                    catch (...)
+                    {
+                        Failed = true;
+                        ::PostMessageW(WindowHandle, WM_CLOSE, 0, 0);
+                    }
+                };
+                ::WriteAllTextToUtf8TextFile(Path, Log);
+                if (Kind == L"exit")
+                {
+                    auto Page = winrt::make<winrt::NanaBox::implementation::ExitConfirmationPage>(WindowHandle);
+                    if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
+                        return -1;
+                    ::ShowXamlWindow(WindowHandle, 480, 320, nullptr);
+                    Record(std::to_wstring(static_cast<int>(Page.Status())));
+                }
+                else
+                {
+                    winrt::Windows::UI::Xaml::Controls::Page Page = nullptr;
+                    if (Kind == L"about")
+                        Page = winrt::make<winrt::NanaBox::implementation::AboutPage>(WindowHandle, Record);
+                    else if (Kind == L"sponsor")
+                        Page = winrt::make<winrt::NanaBox::implementation::SponsorPage>(WindowHandle, Record);
+                    else if (Kind == L"message")
+                        Page = winrt::make<winrt::NanaBox::implementation::MessagePage>(
+                            WindowHandle, winrt::hstring(L"Test instruction"), winrt::hstring(L"Test content"));
+                    else return ERROR_INVALID_PARAMETER;
+                    if (FAILED(::MileXamlSetXamlContentForContentWindow(WindowHandle, winrt::get_abi(Page))))
+                        return -1;
+                    ::ShowXamlWindow(WindowHandle, 480, 360, nullptr);
+                }
+                return Failed ? -1 : 0;
+            }
+            catch (...) { return -1; }
         }
         if (ArgumentCount == 2 && 0 == ::_wcsicmp(Arguments[1], L"--test-quickstart"))
         {

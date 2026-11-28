@@ -3,6 +3,8 @@
 #include "SponsorPage.g.h"
 
 #include <Windows.h>
+#include <functional>
+#include <string>
 
 namespace winrt
 {
@@ -17,7 +19,8 @@ namespace winrt::NanaBox::implementation
     public:
 
         SponsorPage(
-            _In_ HWND WindowHandle = nullptr);
+            _In_ HWND WindowHandle = nullptr,
+            std::function<void(std::wstring const&)> ExternalAction = {});
 
         void InitializeComponent();
 
@@ -36,6 +39,7 @@ namespace winrt::NanaBox::implementation
     private:
 
         HWND m_WindowHandle;
+        std::function<void(std::wstring const&)> m_ExternalAction;
     };
 }
 

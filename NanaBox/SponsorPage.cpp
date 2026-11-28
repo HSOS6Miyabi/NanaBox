@@ -22,8 +22,9 @@ namespace winrt
 namespace winrt::NanaBox::implementation
 {
     SponsorPage::SponsorPage(
-        _In_ HWND WindowHandle) :
-        m_WindowHandle(WindowHandle)
+        _In_ HWND WindowHandle,
+        std::function<void(std::wstring const&)> ExternalAction) :
+        m_WindowHandle(WindowHandle), m_ExternalAction(std::move(ExternalAction))
     {
         ::SetWindowTextW(
             this->m_WindowHandle,
@@ -64,12 +65,17 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
+        constexpr wchar_t Address[] = L"https://github.com/M2Team/NanaBox/"
+            L"blob/main/CONTRIBUTING.md";
+        if (this->m_ExternalAction)
+        {
+            this->m_ExternalAction(Address);
+            return;
+        }
         SHELLEXECUTEINFOW ExecInfo = {};
         ExecInfo.cbSize = sizeof(SHELLEXECUTEINFOW);
         ExecInfo.lpVerb = L"open";
-        ExecInfo.lpFile =
-            L"https://github.com/M2Team/NanaBox/"
-            L"blob/main/CONTRIBUTING.md";
+        ExecInfo.lpFile = Address;
         ExecInfo.nShow = SW_SHOWNORMAL;
         ::ShellExecuteExW(&ExecInfo);
     }
@@ -81,6 +87,12 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
+        if (this->m_ExternalAction)
+        {
+            this->m_ExternalAction(L"ms-store-product:9P3KMWM424WK");
+            co_return;
+        }
+        auto Strong = this->get_strong();
         winrt::StoreContext Context = winrt::StoreContext::GetDefault();
         if (Context)
         {
@@ -108,12 +120,17 @@ namespace winrt::NanaBox::implementation
         UNREFERENCED_PARAMETER(sender);
         UNREFERENCED_PARAMETER(e);
 
+        constexpr wchar_t Address[] = L"https://github.com/M2Team/NanaBox/"
+            L"blob/main/Documents/SponsorEdition.md";
+        if (this->m_ExternalAction)
+        {
+            this->m_ExternalAction(Address);
+            return;
+        }
         SHELLEXECUTEINFOW ExecInfo = {};
         ExecInfo.cbSize = sizeof(SHELLEXECUTEINFOW);
         ExecInfo.lpVerb = L"open";
-        ExecInfo.lpFile =
-            L"https://github.com/M2Team/NanaBox/"
-            L"blob/main/Documents/SponsorEdition.md";
+        ExecInfo.lpFile = Address;
         ExecInfo.nShow = SW_SHOWNORMAL;
         ::ShellExecuteExW(&ExecInfo);
     }
