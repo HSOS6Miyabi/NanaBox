@@ -499,35 +499,36 @@ int ShowXamlWindow(
     int ScaledWidth = ::MulDiv(Width, DpiValue, USER_DEFAULT_SCREEN_DPI);
     int ScaledHeight = ::MulDiv(Height, DpiValue, USER_DEFAULT_SCREEN_DPI);
 
-    RECT ParentRect = {};
+    MONITORINFO MonitorInfo = {};
+    MonitorInfo.cbSize = sizeof(MONITORINFO);
+    HMONITOR Monitor = ::MonitorFromWindow(
+        ParentWindowHandle ? ParentWindowHandle : WindowHandle,
+        MONITOR_DEFAULTTONEAREST);
+    bool HaveWorkArea = Monitor && ::GetMonitorInfoW(Monitor, &MonitorInfo);
+    RECT ParentRect = HaveWorkArea ? MonitorInfo.rcWork : RECT{};
     if (ParentWindowHandle)
-    {
         ::GetWindowRect(ParentWindowHandle, &ParentRect);
-    }
-    else
-    {
-        HMONITOR MonitorHandle = ::MonitorFromWindow(
-            WindowHandle,
-            MONITOR_DEFAULTTONEAREST);
-        if (MonitorHandle)
-        {
-            MONITORINFO MonitorInfo;
-            MonitorInfo.cbSize = sizeof(MONITORINFO);
-            if (::GetMonitorInfoW(MonitorHandle, &MonitorInfo))
-            {
-                ParentRect = MonitorInfo.rcWork;
-            }
-        }
-    }
 
-    int ParentWidth = ParentRect.right - ParentRect.left;
-    int ParentHeight = ParentRect.bottom - ParentRect.top;
+    if (HaveWorkArea)
+    {
+        ScaledWidth = (std::min)(ScaledWidth, static_cast<int>(MonitorInfo.rcWork.right - MonitorInfo.rcWork.left));
+        ScaledHeight = (std::min)(ScaledHeight, static_cast<int>(MonitorInfo.rcWork.bottom - MonitorInfo.rcWork.top));
+    }
+    int X = ParentRect.left + ((ParentRect.right - ParentRect.left - ScaledWidth) / 2);
+    int Y = ParentRect.top + ((ParentRect.bottom - ParentRect.top - ScaledHeight) / 2);
+    if (HaveWorkArea)
+    {
+        X = std::clamp(X, static_cast<int>(MonitorInfo.rcWork.left),
+            static_cast<int>(MonitorInfo.rcWork.right) - ScaledWidth);
+        Y = std::clamp(Y, static_cast<int>(MonitorInfo.rcWork.top),
+            static_cast<int>(MonitorInfo.rcWork.bottom) - ScaledHeight);
+    }
 
     ::SetWindowPos(
         WindowHandle,
         nullptr,
-        ParentRect.left + ((ParentWidth - ScaledWidth) / 2),
-        ParentRect.top + ((ParentHeight - ScaledHeight) / 2),
+        X,
+        Y,
         ScaledWidth,
         ScaledHeight,
         SWP_NOZORDER | SWP_NOACTIVATE);

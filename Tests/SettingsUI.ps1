@@ -168,6 +168,12 @@ try {
     $status = Get-Text 'ConfigurationStatusTextBox'
     if ($status -match 'VirtualMachineSettingsPage/|^\[') { throw "Unresolved settings resource: $status" }
     $window = $root.FindAll($children,$pidCondition) | Select-Object -First 1
+    $work = [System.Windows.Forms.Screen]::FromHandle([IntPtr]$window.Current.NativeWindowHandle).WorkingArea
+    $initialBounds = $window.Current.BoundingRectangle
+    if ($initialBounds.Left -lt ($work.Left-8) -or $initialBounds.Top -lt ($work.Top-8) -or
+        $initialBounds.Right -gt ($work.Right+8) -or $initialBounds.Bottom -gt ($work.Bottom+8)) {
+        throw 'Initial settings window extends beyond the monitor work area'
+    }
     $transform = Pattern $window ([System.Windows.Automation.TransformPattern]::Pattern)
     if (-not $transform.Current.CanResize) { throw 'Settings window is not resizable' }
     $transform.Resize(680,520)
