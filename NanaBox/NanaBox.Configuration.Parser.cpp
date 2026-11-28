@@ -973,6 +973,7 @@ nlohmann::json NanaBox::FromVirtualSmbShareConfiguration(
     }
     if (!Value.AutoMount) Result["AutoMount"] = false;
     if (Value.NoDirectmap) Result["NoDirectmap"] = true;
+    if (!Value.Options.empty()) Result["Options"] = Value.Options;
 
     if (!Value.Path.empty())
     {
@@ -991,14 +992,28 @@ NanaBox::VirtualSmbShareConfiguration NanaBox::ToVirtualSmbShareConfiguration(
     nlohmann::json const& Value)
 {
     NanaBox::VirtualSmbShareConfiguration Result;
-
-    Result.ReadOnly = Mile::Json::ToBoolean(
-        Mile::Json::GetSubKey(Value, "ReadOnly"),
-        Result.ReadOnly);
-    Result.AutoMount = Mile::Json::ToBoolean(
-        Mile::Json::GetSubKey(Value, "AutoMount"), Result.AutoMount);
-    Result.NoDirectmap = Mile::Json::ToBoolean(
-        Mile::Json::GetSubKey(Value, "NoDirectmap"), Result.NoDirectmap);
+    if (!Value.is_object()) throw std::invalid_argument("Invalid Virtual SMB share");
+    for (auto const& Field : {std::pair{"ReadOnly", &Result.ReadOnly},
+        std::pair{"AutoMount", &Result.AutoMount}, std::pair{"NoDirectmap", &Result.NoDirectmap}})
+    {
+        if (Value.contains(Field.first))
+        {
+            if (!Value.at(Field.first).is_boolean())
+                throw std::invalid_argument(std::string(Field.first) + " must be Boolean");
+            *Field.second = Value.at(Field.first).get<bool>();
+        }
+    }
+    if (Value.contains("Options"))
+    {
+        auto const& Options = Value.at("Options");
+        if (!Options.is_object()) throw std::invalid_argument("Virtual SMB Options must be an object");
+        for (auto It = Options.begin(); It != Options.end(); ++It)
+        {
+            if (!It.value().is_boolean())
+                throw std::invalid_argument("Virtual SMB option must be Boolean: " + It.key());
+            Result.Options.emplace(It.key(), It.value().get<bool>());
+        }
+    }
 
     Result.Path = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "Path"),

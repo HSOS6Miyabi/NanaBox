@@ -172,11 +172,16 @@ namespace NanaBox
         std::vector<std::string> AllowedFiles;
     };
 
+    inline constexpr char const* VirtualSmbDirectoryOptions[] = {
+        "ShareRead", "CacheIo", "NonCacheIo", "NoOplocks", "ForceLevelIIOplocks", "PseudoOplocks", "NoLocks", "NoDirnotify", "PseudoDirnotify", "UseShareRootIdentity", "TakeBackupPrivilege", "SupportCloudFiles"
+    };
+
     struct VirtualSmbShareConfiguration
     {
         bool ReadOnly = false;
         bool AutoMount = true;
         bool NoDirectmap = false;
+        std::map<std::string, bool> Options;
         std::string Path;
         std::string Name;
     };

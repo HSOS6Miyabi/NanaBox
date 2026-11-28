@@ -1563,4 +1563,32 @@
   <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>禁用将宿主机文件页直接映射到客户机的功能，适用于不支持直接映射的宿主机文件系统。</value></data>
   <data name="GuestVsmbMount.Content" xml:space="preserve"><value>挂载 VSMB</value></data>
   <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>卸载 VSMB</value></data>
+  <data name="VirtualSmbShowOptions" xml:space="preserve"><value>VSMB 高级选项</value></data>
+  <data name="VirtualSmbOptionDefault" xml:space="preserve"><value>默认</value></data>
+  <data name="VirtualSmbOptionEnabled" xml:space="preserve"><value>启用</value></data>
+  <data name="VirtualSmbOptionDisabled" xml:space="preserve"><value>禁用</value></data>
+  <data name="VirtualSmbOptionShareReadLabel" xml:space="preserve"><value>共享读取访问</value></data>
+  <data name="VirtualSmbOptionShareReadHelp" xml:space="preserve"><value>将独占文件访问转换为共享读取访问。</value></data>
+  <data name="VirtualSmbOptionCacheIoLabel" xml:space="preserve"><value>缓存 I/O</value></data>
+  <data name="VirtualSmbOptionCacheIoHelp" xml:space="preserve"><value>打开文件时使用缓存 I/O。与非缓存 I/O 互斥。</value></data>
+  <data name="VirtualSmbOptionNonCacheIoLabel" xml:space="preserve"><value>非缓存 I/O</value></data>
+  <data name="VirtualSmbOptionNonCacheIoHelp" xml:space="preserve"><value>打开文件时使用非缓存 I/O。与缓存 I/O 互斥。</value></data>
+  <data name="VirtualSmbOptionNoOplocksLabel" xml:space="preserve"><value>禁用机会锁</value></data>
+  <data name="VirtualSmbOptionNoOplocksHelp" xml:space="preserve"><value>禁用 SMB 机会锁。</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksLabel" xml:space="preserve"><value>仅使用二级机会锁</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksHelp" xml:space="preserve"><value>仅保留二级机会锁。</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksLabel" xml:space="preserve"><value>模拟机会锁</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksHelp" xml:space="preserve"><value>启用 VSMB 模拟机会锁。</value></data>
+  <data name="VirtualSmbOptionNoLocksLabel" xml:space="preserve"><value>禁用字节范围锁</value></data>
+  <data name="VirtualSmbOptionNoLocksHelp" xml:space="preserve"><value>禁用字节范围锁。依赖文件锁的应用程序可能无法正常工作。</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyLabel" xml:space="preserve"><value>禁用目录变更通知</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyHelp" xml:space="preserve"><value>禁用目录变更通知。</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyLabel" xml:space="preserve"><value>模拟目录变更通知</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyHelp" xml:space="preserve"><value>启用模拟目录变更通知。</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>使用共享根目录身份</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>打开文件时使用共享根目录的身份。</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>取得备份特权</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>启用后，HCS 打开文件时可取得备份特权。仅对受信任的客户机和共享目录启用。</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>支持云文件</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>启用 HCS 云文件兼容选项。</value></data>
 </root>

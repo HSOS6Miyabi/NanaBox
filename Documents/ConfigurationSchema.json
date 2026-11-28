@@ -486,6 +486,24 @@
                 },
                 "AutoMount": { "type": "boolean", "default": true },
                 "NoDirectmap": { "type": "boolean", "default": false, "description": "Disable direct mapping of host file pages into the guest." },
+                "Options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ShareRead": { "type": "boolean" },
+                    "CacheIo": { "type": "boolean" },
+                    "NonCacheIo": { "type": "boolean" },
+                    "NoOplocks": { "type": "boolean" },
+                    "ForceLevelIIOplocks": { "type": "boolean" },
+                    "PseudoOplocks": { "type": "boolean" },
+                    "NoLocks": { "type": "boolean" },
+                    "NoDirnotify": { "type": "boolean" },
+                    "PseudoDirnotify": { "type": "boolean" },
+                    "UseShareRootIdentity": { "type": "boolean" },
+                    "TakeBackupPrivilege": { "type": "boolean" },
+                    "SupportCloudFiles": { "type": "boolean" }
+                  }
+                },
                 "Path": {
                   "type": "string",
                   "description": "The host path of the current Virtual SMB share. The relative path is supported. Available starting with NanaBox 1.6 Update 1.",

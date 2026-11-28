@@ -184,6 +184,7 @@ namespace winrt::NanaBox::implementation
             winrt::CheckBox ReadOnly = nullptr;
             winrt::CheckBox AutoMount = nullptr;
             winrt::CheckBox NoDirectmap = nullptr;
+            std::map<std::string, winrt::ComboBox> Options;
             winrt::TextBox Path = nullptr;
             winrt::TextBox Name = nullptr;
         };

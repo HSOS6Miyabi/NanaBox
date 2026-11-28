@@ -1563,4 +1563,32 @@
   <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>Use VSMB without direct mapping of host file pages into the guest. This can help compatibility with host filesystems that lack direct mapping support.</value></data>
   <data name="GuestVsmbMount.Content" xml:space="preserve"><value>Mount VSMB</value></data>
   <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>Unmount VSMB</value></data>
+  <data name="VirtualSmbShowOptions" xml:space="preserve"><value>Advanced VSMB options</value></data>
+  <data name="VirtualSmbOptionDefault" xml:space="preserve"><value>Default</value></data>
+  <data name="VirtualSmbOptionEnabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="VirtualSmbOptionDisabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="VirtualSmbOptionShareReadLabel" xml:space="preserve"><value>Shared read access</value></data>
+  <data name="VirtualSmbOptionShareReadHelp" xml:space="preserve"><value>Convert exclusive file opens to shared read access.</value></data>
+  <data name="VirtualSmbOptionCacheIoLabel" xml:space="preserve"><value>Cached I/O</value></data>
+  <data name="VirtualSmbOptionCacheIoHelp" xml:space="preserve"><value>Force cached I/O for file opens. Mutually exclusive with non-cached I/O.</value></data>
+  <data name="VirtualSmbOptionNonCacheIoLabel" xml:space="preserve"><value>Non-cached I/O</value></data>
+  <data name="VirtualSmbOptionNonCacheIoHelp" xml:space="preserve"><value>Force non-cached I/O for file opens. Mutually exclusive with cached I/O.</value></data>
+  <data name="VirtualSmbOptionNoOplocksLabel" xml:space="preserve"><value>Disable opportunistic locks</value></data>
+  <data name="VirtualSmbOptionNoOplocksHelp" xml:space="preserve"><value>Disable SMB opportunistic locks.</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksLabel" xml:space="preserve"><value>Level II opportunistic locks only</value></data>
+  <data name="VirtualSmbOptionForceLevelIIOplocksHelp" xml:space="preserve"><value>Disable opportunistic locks other than Level II.</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksLabel" xml:space="preserve"><value>Pseudo-opportunistic locks</value></data>
+  <data name="VirtualSmbOptionPseudoOplocksHelp" xml:space="preserve"><value>Enable VSMB pseudo-opportunistic locks.</value></data>
+  <data name="VirtualSmbOptionNoLocksLabel" xml:space="preserve"><value>Disable byte-range locks</value></data>
+  <data name="VirtualSmbOptionNoLocksHelp" xml:space="preserve"><value>Disable byte-range locking; applications relying on locking may be incompatible.</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyLabel" xml:space="preserve"><value>Disable directory notifications</value></data>
+  <data name="VirtualSmbOptionNoDirnotifyHelp" xml:space="preserve"><value>Disable directory change notifications.</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyLabel" xml:space="preserve"><value>Pseudo-directory notifications</value></data>
+  <data name="VirtualSmbOptionPseudoDirnotifyHelp" xml:space="preserve"><value>Enable pseudo-directory change notifications.</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
+  <data name="VirtualSmbOptionUseShareRootIdentityHelp" xml:space="preserve"><value>Use the identity of the share root when opening files.</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeLabel" xml:space="preserve"><value>Acquire backup privilege</value></data>
+  <data name="VirtualSmbOptionTakeBackupPrivilegeHelp" xml:space="preserve"><value>Opt-in: HCS can acquire the backup privilege when opening files. Enable only for trusted guests and exports.</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesLabel" xml:space="preserve"><value>Support cloud files</value></data>
+  <data name="VirtualSmbOptionSupportCloudFilesHelp" xml:space="preserve"><value>Enable the HCS cloud file compatibility option.</value></data>
 </root>

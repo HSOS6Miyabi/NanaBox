@@ -237,6 +237,8 @@ int WINAPI wWinMain(
                 Smb.ReadOnly = true;
                 Smb.AutoMount = false;
                 Smb.NoDirectmap = true;
+                Smb.Options = {{"NonCacheIo",true},{"NoOplocks",true},{"SupportCloudFiles",false},
+                    {"NoLocks",true},{"PseudoDirnotify",true}};
                 Shared.VirtualSmbShares.push_back(Smb);
                 auto RoundTrip = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Shared));
                 auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(RoundTrip));
@@ -248,7 +250,21 @@ int WINAPI wWinMain(
                     VirtualSmb["Shares"][0]["Options"]["NoDirectmap"] != true ||
                     VirtualSmb["Shares"][0].contains("AutoMount") ||
                     RoundTrip.VirtualSmbShares[0].AutoMount ||
-                    !RoundTrip.VirtualSmbShares[0].NoDirectmap) return 53;
+                    !RoundTrip.VirtualSmbShares[0].NoDirectmap ||
+                    RoundTrip.VirtualSmbShares[0].Options != Smb.Options) return 53;
+                auto const& SmbOptions = VirtualSmb["Shares"][0]["Options"];
+                if (SmbOptions.value("CacheIo",false) || SmbOptions.value("PseudoOplocks",false) ||
+                    SmbOptions.value("SupportCloudFiles",true) || !SmbOptions.value("NonCacheIo",false) ||
+                    !SmbOptions.value("NoOplocks",false) || !SmbOptions.value("NoLocks",false) ||
+                    !SmbOptions.value("PseudoDirnotify",false)) return 53;
+                for (auto const& Key : {"CacheIo","PseudoOplocks","ForceLevelIIOplocks","NoDirnotify","InvalidOption","ReadOnly"})
+                {
+                    auto Invalid = Shared;
+                    Invalid.VirtualSmbShares[0].Options[Key] = true;
+                    bool Rejected = false;
+                    try { (void)NanaBox::MakeHcsConfiguration(Invalid); } catch (...) { Rejected = true; }
+                    if (!Rejected) return 53;
+                }
                 auto DuplicateSmb = Shared;
                 Smb.Name = "readonlysmb";
                 DuplicateSmb.VirtualSmbShares.push_back(Smb);

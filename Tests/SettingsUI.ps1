@@ -841,6 +841,19 @@ try {
     Set-Check 'VirtualSmbShareReadOnlyLabel' $true
     Set-Check 'VirtualSmbAutoMountLabel' $false
     Set-Check 'VirtualSmbNoDirectmapLabel' $true
+    Set-Check 'VirtualSmbShowOptions' $true
+    Select-Choice 'VirtualSmbOptionShareReadLabel' 'VirtualSmbOptionShareReadDisabled'
+    Select-Choice 'VirtualSmbOptionCacheIoLabel' 'VirtualSmbOptionCacheIoDisabled'
+    Select-Choice 'VirtualSmbOptionNonCacheIoLabel' 'VirtualSmbOptionNonCacheIoEnabled'
+    Select-Choice 'VirtualSmbOptionNoOplocksLabel' 'VirtualSmbOptionNoOplocksEnabled'
+    Select-Choice 'VirtualSmbOptionForceLevelIIOplocksLabel' 'VirtualSmbOptionForceLevelIIOplocksDisabled'
+    Select-Choice 'VirtualSmbOptionPseudoOplocksLabel' 'VirtualSmbOptionPseudoOplocksDisabled'
+    Select-Choice 'VirtualSmbOptionNoLocksLabel' 'VirtualSmbOptionNoLocksEnabled'
+    Select-Choice 'VirtualSmbOptionNoDirnotifyLabel' 'VirtualSmbOptionNoDirnotifyDisabled'
+    Select-Choice 'VirtualSmbOptionPseudoDirnotifyLabel' 'VirtualSmbOptionPseudoDirnotifyEnabled'
+    Select-Choice 'VirtualSmbOptionUseShareRootIdentityLabel' 'VirtualSmbOptionUseShareRootIdentityDisabled'
+    Select-Choice 'VirtualSmbOptionTakeBackupPrivilegeLabel' 'VirtualSmbOptionTakeBackupPrivilegeDisabled'
+    Select-Choice 'VirtualSmbOptionSupportCloudFilesLabel' 'VirtualSmbOptionSupportCloudFilesDisabled'
     $saved = Save-Config
     Assert-Equal $saved.Name 'UI automation saved' 'Name'
     Assert-Equal $saved.HcsSchemaMinor 5 'HCS schema minor version'
@@ -878,6 +891,18 @@ try {
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
     Assert-Equal $saved.VirtualSmbShares[0].AutoMount $false 'VSMB manual mounting'
     Assert-Equal $saved.VirtualSmbShares[0].NoDirectmap $true 'VSMB direct mapping disabled'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.ShareRead $false 'VSMB ShareRead'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.CacheIo $false 'VSMB CacheIo'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.NonCacheIo $true 'VSMB NonCacheIo'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.NoOplocks $true 'VSMB NoOplocks'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.ForceLevelIIOplocks $false 'VSMB ForceLevelIIOplocks'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.PseudoOplocks $false 'VSMB PseudoOplocks'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.NoLocks $true 'VSMB NoLocks'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.NoDirnotify $false 'VSMB NoDirnotify'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.PseudoDirnotify $true 'VSMB PseudoDirnotify'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.UseShareRootIdentity $false 'VSMB UseShareRootIdentity'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.TakeBackupPrivilege $false 'VSMB TakeBackupPrivilege'
+    Assert-Equal $saved.VirtualSmbShares[0].Options.SupportCloudFiles $false 'VSMB SupportCloudFiles'
     Assert-Equal $saved.Keyboard.ClipboardKeyboardLayout '00000407' 'Clipboard keyboard layout'
     Assert-Equal $saved.Keyboard.ClipboardGtkUnicode $true 'GTK Unicode input'
     Assert-Equal ([bool]$saved.Keyboard.ClipboardWindowsUnicode) $false 'Windows Unicode disabled for Linux'

@@ -1172,6 +1172,11 @@ namespace winrt::NanaBox::implementation
                         Row.ReadOnly.IsChecked().Value();
                     Configuration.AutoMount = Row.AutoMount.IsChecked().Value();
                     Configuration.NoDirectmap = Row.NoDirectmap.IsChecked().Value();
+                    for (auto const& [Key, Control] : Row.Options)
+                    {
+                        auto Index = Control.SelectedIndex();
+                        if (Index == 1 || Index == 2) Configuration.Options.emplace(Key, Index == 1);
+                    }
                     Configuration.Path =
                         winrt::to_string(Row.Path.Text());
                     Configuration.Name =
@@ -3205,6 +3210,43 @@ namespace winrt::NanaBox::implementation
             L"VirtualSmbShareNameHelp",
             winrt::to_hstring(Configuration.Name),
             false);
+
+        winrt::StackPanel Advanced;
+        Advanced.Spacing(4);
+        Advanced.Visibility(winrt::Visibility::Collapsed);
+        winrt::CheckBox ShowOptions;
+        ShowOptions.Content(winrt::box_value(::GetSettingsString(L"VirtualSmbShowOptions")));
+        winrt::AutomationProperties::SetAutomationId(ShowOptions, L"VirtualSmbShowOptions");
+        ShowOptions.IsChecked(!Configuration.Options.empty());
+        Advanced.Visibility(Configuration.Options.empty()?winrt::Visibility::Collapsed:winrt::Visibility::Visible);
+        ShowOptions.Checked([Weak = winrt::make_weak(Advanced)](auto const&, auto const&)
+        {
+            if (auto Panel = Weak.get()) Panel.Visibility(winrt::Visibility::Visible);
+        });
+        ShowOptions.Unchecked([Weak = winrt::make_weak(Advanced)](auto const&, auto const&)
+        {
+            if (auto Panel = Weak.get()) Panel.Visibility(winrt::Visibility::Collapsed);
+        });
+        Row.Container.Children().Append(ShowOptions);
+        for (auto Key : ::NanaBox::VirtualSmbDirectoryOptions)
+        {
+            auto Prefix = L"VirtualSmbOption" + std::wstring(winrt::to_hstring(Key).c_str());
+            winrt::ComboBox Choice;
+            Choice.HorizontalAlignment(winrt::HorizontalAlignment::Stretch);
+            for (auto const& [Id, Resource] : {std::pair{L"Default",L"VirtualSmbOptionDefault"},
+                std::pair{L"Enabled",L"VirtualSmbOptionEnabled"},std::pair{L"Disabled",L"VirtualSmbOptionDisabled"}})
+            {
+                winrt::Windows::UI::Xaml::Controls::ComboBoxItem Item;
+                Item.Content(winrt::box_value(::GetSettingsString(Resource)));
+                winrt::AutomationProperties::SetAutomationId(Item, winrt::hstring(Prefix + Id));
+                Choice.Items().Append(Item);
+            }
+            auto It = Configuration.Options.find(Key);
+            Choice.SelectedIndex(It == Configuration.Options.end() ? 0 : It->second ? 1 : 2);
+            ::AddSettingRow(Advanced, Choice, (Prefix + L"Label").c_str(), (Prefix + L"Help").c_str(), true);
+            Row.Options.emplace(Key, Choice);
+        }
+        Row.Container.Children().Append(Advanced);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
         winrt::AutomationProperties::SetAutomationId(RemoveButton, L"SmbRemove");

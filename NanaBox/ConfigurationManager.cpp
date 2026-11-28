@@ -184,6 +184,42 @@ namespace
         (void)winrt::to_hstring(Name);
     }
 
+    nlohmann::json MakeVirtualSmbOptions(NanaBox::VirtualSmbShareConfiguration const& Share)
+    {
+        nlohmann::json Options = nlohmann::json::object();
+        auto Requested = [&](char const* Key)
+        {
+            auto It = Share.Options.find(Key);
+            return It != Share.Options.end() && It->second;
+        };
+        if (Share.ReadOnly)
+        {
+            Options["ReadOnly"] = true;
+            Options["ShareRead"] = true;
+            if (!Requested("NonCacheIo")) Options["CacheIo"] = true;
+            if (!Requested("NoOplocks") && !Requested("ForceLevelIIOplocks"))
+                Options["PseudoOplocks"] = true;
+        }
+        Options["SupportCloudFiles"] = true;
+        if (Share.NoDirectmap) Options["NoDirectmap"] = true;
+        for (auto const& [Key, Value] : Share.Options)
+        {
+            if (std::none_of(std::begin(NanaBox::VirtualSmbDirectoryOptions),
+                std::end(NanaBox::VirtualSmbDirectoryOptions), [&](auto Name) { return Key == Name; }))
+                throw std::invalid_argument("Unsupported Virtual SMB directory option: " + Key);
+            Options[Key] = Value;
+        }
+        auto Enabled = [&](char const* Key) { return Options.value(Key, false); };
+        if (Enabled("CacheIo") && Enabled("NonCacheIo"))
+            throw std::invalid_argument("Virtual SMB cached and non-cached I/O are mutually exclusive");
+        if (int(Enabled("NoOplocks")) + int(Enabled("ForceLevelIIOplocks")) +
+            int(Enabled("PseudoOplocks")) > 1)
+            throw std::invalid_argument("Virtual SMB opportunistic lock modes are mutually exclusive");
+        if (Enabled("NoDirnotify") && Enabled("PseudoDirnotify"))
+            throw std::invalid_argument("Virtual SMB directory notification modes are mutually exclusive");
+        return Options;
+    }
+
     bool SamePlan9Name(std::string const& A, std::string const& B)
     {
         auto Left = winrt::to_hstring(A), Right = winrt::to_hstring(B);
@@ -233,6 +269,7 @@ void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configurati
             ::_strnicmp(Share.Name.c_str(), "NanaBox.GpuExtra.", 17) == 0 ||
             std::any_of(SmbNames.begin(), SmbNames.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))
             throw std::invalid_argument("Invalid, duplicate or reserved Virtual SMB share: " + Share.Name);
+        (void)MakeVirtualSmbOptions(Share);
         SmbNames.push_back(Share.Name);
     }
 }
@@ -701,15 +738,7 @@ std::string NanaBox::MakeHcsConfiguration(
                 nlohmann::json Current;
                 Current["Name"] = VirtualSmbShare.Name;
                 Current["Path"] = ::GetAbsoluteUtf8Path(VirtualSmbShare.Path);
-                if (VirtualSmbShare.ReadOnly)
-                {
-                    Current["Options"]["ReadOnly"] = true;
-                    Current["Options"]["ShareRead"] = true;
-                    Current["Options"]["CacheIo"] = true;
-                    Current["Options"]["PseudoOplocks"] = true;
-                }
-                Current["Options"]["SupportCloudFiles"] = true;
-                if (VirtualSmbShare.NoDirectmap) Current["Options"]["NoDirectmap"] = true;
+                Current["Options"] = MakeVirtualSmbOptions(VirtualSmbShare);
                 VirtualSmbShares.push_back(Current);
             }
             if (!VirtualSmbShares.empty())

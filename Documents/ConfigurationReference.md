@@ -139,6 +139,7 @@
     - ReadOnly (Boolean)
     - AutoMount (Boolean)
     - NoDirectmap (Boolean)
+    - Options (Object)
     - Path (String)
     - Name (String)
 
@@ -985,6 +986,27 @@ Optional, defaults to true. Automatically mount this share in a Windows guest ru
 #### NoDirectmap
 
 Optional, defaults to false. Set to true to disable HCS direct file mapping for this share. This option is independent of read-only access and GuestTool directory mounting.
+
+#### Options
+
+Optional object of Boolean HCS directory-share options. Omit an option to use NanaBox's default. Read-only shares default to shared-read access, cached I/O and pseudo-opportunistic locks. Cloud file support defaults to enabled. Explicit false values override these defaults.
+
+| Option | Effect |
+|---|---|
+| `ShareRead` | Convert exclusive file opens to shared read access. |
+| `CacheIo` | Force cached I/O for file opens. Mutually exclusive with non-cached I/O. |
+| `NonCacheIo` | Force non-cached I/O for file opens. Mutually exclusive with cached I/O. |
+| `NoOplocks` | Disable SMB opportunistic locks. |
+| `ForceLevelIIOplocks` | Disable opportunistic locks other than Level II. |
+| `PseudoOplocks` | Enable VSMB pseudo-opportunistic locks. |
+| `NoLocks` | Disable byte-range locking; applications relying on locking may be incompatible. |
+| `NoDirnotify` | Disable directory change notifications. |
+| `PseudoDirnotify` | Enable pseudo-directory change notifications. |
+| `UseShareRootIdentity` | Use the identity of the share root when opening files. |
+| `TakeBackupPrivilege` | Opt-in: HCS can acquire the backup privilege when opening files. Enable only for trusted guests and exports. |
+| `SupportCloudFiles` | Enable the HCS cloud file compatibility option. |
+
+Cached and non-cached I/O are mutually exclusive. Select at most one of disabled, Level II only, or pseudo-opportunistic locks. Disabled and pseudo-directory notifications are mutually exclusive. The read-only defaults adapt to an explicitly selected non-cached or alternative opportunistic lock mode. These options are available in the advanced VSMB share settings.
 
 #### Path
 
