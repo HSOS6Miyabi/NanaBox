@@ -566,18 +566,65 @@ std::vector<NanaBox::HostNetworkInfo> NanaBox::EnumerateHostNetworks()
     return Result;
 }
 
-void NanaBox::CreateManagedNetwork(winrt::hstring const& Name, bool Firewall)
+winrt::hstring NanaBox::BuildManagedNetworkSettings(winrt::hstring const& Name, bool Firewall,
+    winrt::hstring const& CustomSettings)
 {
-    if (Name.empty()) throw winrt::hresult_invalid_argument();
+    using Json = nlohmann::json;
+    std::wstring_view InputName(Name.c_str(), Name.size());
+    if (InputName.empty() || InputName.size() > 128 ||
+        InputName.find_first_not_of(L" \t\r\n") == std::wstring_view::npos ||
+        InputName.find(L'\0') != std::wstring_view::npos)
+        throw winrt::hresult_invalid_argument(L"A non-empty network name of at most 128 characters is required.");
+    Json Settings;
+    auto Text = winrt::to_string(CustomSettings);
+    if (Text.size() > 1024 * 1024)
+        throw winrt::hresult_invalid_argument(L"HCN network settings exceed 1 MiB.");
+    if (Text.find_first_not_of(" \t\r\n") == std::string::npos)
+        Settings = {{"Type", "ICS"}, {"IsolateSwitch", true},
+            {"Flags", HcnNetworkFlags::EnableDns | HcnNetworkFlags::EnableDhcp}};
+    else
+    {
+        Settings = Json::parse(Text);
+        if (!Settings.is_object() || !Settings.contains("Type") ||
+            !Settings["Type"].is_string() || Settings["Type"].get<std::string>().empty())
+            throw winrt::hresult_invalid_argument(L"HCN network settings must be an object with a non-empty Type.");
+        for (auto It = Settings.begin(); It != Settings.end(); ++It)
+        {
+            const auto Key = winrt::to_hstring(It.key());
+            if (_wcsicmp(Key.c_str(), L"Name") == 0 || _wcsicmp(Key.c_str(), L"Id") == 0 ||
+                _wcsicmp(Key.c_str(), L"Owner") == 0 ||
+                (_wcsicmp(Key.c_str(), L"Flags") == 0 && It.key() != "Flags"))
+                throw winrt::hresult_invalid_argument(L"Name, Id and Owner are managed by NanaBox; use the canonical Flags key.");
+        }
+    }
+    std::uint32_t Flags = 0;
+    if (Settings.contains("Flags"))
+    {
+        auto const& Value = Settings["Flags"];
+        if (!Value.is_number_integer() || Value < 0 || Value > UINT32_MAX)
+            throw winrt::hresult_invalid_argument(L"HCN network Flags must be an unsigned 32-bit integer.");
+        Flags = Value.get<std::uint32_t>();
+    }
+    if (Flags & (HcnNetworkFlags::EnableNonPersistent | HcnNetworkFlags::EnableFlowSteering))
+        throw winrt::hresult_invalid_argument(L"Managed networks must be persistent and cannot enable host-controlled flow steering.");
+    Flags |= HcnNetworkFlags::EnablePersistent;
+    if (Firewall) Flags |= HcnNetworkFlags::EnableFirewall;
+    Settings["Flags"] = Flags;
+    Settings["Name"] = winrt::to_string(winrt::hstring(ManagedNetworkPrefix)) + winrt::to_string(Name);
+    return winrt::to_hstring(Settings.dump());
+}
+
+void NanaBox::CreateManagedNetwork(winrt::hstring const& Name, bool Firewall,
+    winrt::hstring const& CustomSettings)
+{
+    auto Settings = BuildManagedNetworkSettings(Name, Firewall, CustomSettings);
+    auto FullName = winrt::to_hstring(nlohmann::json::parse(winrt::to_string(Settings))["Name"].get<std::string>());
+    for (auto const& Network : EnumerateHostNetworks())
+        if (_wcsicmp(Network.Name.c_str(), FullName.c_str()) == 0)
+            throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS), L"Network name already exists.");
     GUID Id{};
     winrt::check_hresult(::CoCreateGuid(&Id));
-    nlohmann::json Settings = {
-        {"Name", winrt::to_string(winrt::hstring(ManagedNetworkPrefix)) + winrt::to_string(Name)},
-        {"Type", "ICS"}, {"IsolateSwitch", true},
-        {"Flags", HcnNetworkFlags::EnableDns | HcnNetworkFlags::EnableDhcp |
-            HcnNetworkFlags::EnablePersistent | (Firewall ? HcnNetworkFlags::EnableFirewall : 0)}
-    };
-    NanaBox::HcnCreateNetwork(Id, winrt::to_hstring(Settings.dump()));
+    NanaBox::HcnCreateNetwork(Id, Settings);
 }
 
 void NanaBox::DeleteManagedNetwork(winrt::guid const& Id)

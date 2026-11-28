@@ -100,18 +100,20 @@ namespace NanaBox
             std::lock_guard Lock(Data->Mutex);
             return Data->Networks;
         };
-        Operations->CreateNetwork = [Data, NewId](winrt::hstring const& Name, bool Firewall)
+        Operations->CreateNetwork = [Data, NewId](winrt::hstring const& Name, bool Firewall,
+            winrt::hstring const& CustomSettings)
         {
+            auto Properties = Json::parse(winrt::to_string(BuildManagedNetworkSettings(Name, Firewall, CustomSettings)));
+            auto FullName = winrt::to_hstring(Properties["Name"].get<std::string>());
+            auto Type = winrt::to_hstring(Properties["Type"].get<std::string>());
+            unsigned Flags = Properties["Flags"].get<unsigned>();
             std::lock_guard Lock(Data->Mutex);
-            if (Name.empty()) throw winrt::hresult_invalid_argument(L"Network name is required.");
-            auto FullName = winrt::to_hstring("NanaBox.Managed." + winrt::to_string(Name));
             for (auto const& Network : Data->Networks)
-                if (Network.Name == FullName) throw winrt::hresult_error(E_FAIL, L"Network name already exists.");
+                if (_wcsicmp(Network.Name.c_str(), FullName.c_str()) == 0)
+                    throw winrt::hresult_error(E_FAIL, L"Network name already exists.");
             auto Id = NewId();
-            unsigned Flags = HcnNetworkFlags::EnableDns | HcnNetworkFlags::EnableDhcp |
-                HcnNetworkFlags::EnablePersistent | (Firewall ? HcnNetworkFlags::EnableFirewall : 0);
-            auto Properties = Json{{"Id", Id}, {"Name", winrt::to_string(FullName)}, {"Type", "ICS"}, {"Flags", Flags}};
-            Data->Networks.push_back({winrt::guid(Id), FullName, L"ICS", Flags, winrt::to_hstring(Properties.dump())});
+            Properties["Id"] = Id;
+            Data->Networks.push_back({winrt::guid(Id), FullName, Type, Flags, winrt::to_hstring(Properties.dump())});
         };
         Operations->QueryNetwork = [Data](winrt::guid const& Id)
         {

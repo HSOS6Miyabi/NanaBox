@@ -1404,13 +1404,13 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>删除已管理的网络</value>
   </data>
   <data name="NetworkName.Header" xml:space="preserve">
-    <value>新建 NAT (ICS) 网络名称</value>
+    <value>新建受管理网络的名称</value>
   </data>
   <data name="NetworkFirewall.Content" xml:space="preserve">
     <value>启用 Hyper-V 防火墙</value>
   </data>
   <data name="CreateNetwork.Content" xml:space="preserve">
-    <value>创建 NAT 网络</value>
+    <value>创建受管理网络</value>
   </data>
   <data name="NetworkManagerNote.Text" xml:space="preserve">
     <value>创建网络后刷新列表，添加网卡并选择要连接的网络。</value>
@@ -1995,4 +1995,10 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS 架构次版本号（主版本号为 2）</value></data>
   <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>以 JSON 格式输入附加 VirtualMachine 属性。现有受管理资源不可覆盖。宿主机在创建虚拟机时验证功能是否受支持。</value></data>
   <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>附加 VirtualMachine 设置（JSON 对象）</value></data>
+  <data name="NetworkAdvancedSettings.Header" xml:space="preserve">
+    <value>高级 HCN 设置（可选 JSON）</value>
+  </data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve">
+    <value>留空时创建 ICS NAT 网络。可指定 Type 及宿主机支持的 HCN 创建属性，例如 Subnets、Policies、Dns 和 SchemaVersion。网络名称和 ID 由 NanaBox 分配。</value>
+  </data>
 </root>

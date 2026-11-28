@@ -1752,6 +1752,9 @@ namespace winrt::NanaBox::implementation
         this->DeleteNetworkControl().IsEnabled(!Busy);
         this->InspectNetworkControl().IsEnabled(!Busy);
         this->HostNetworksComboBox().IsEnabled(!Busy);
+        this->NetworkNameTextBox().IsEnabled(!Busy);
+        this->NetworkFirewallCheckBox().IsEnabled(!Busy);
+        this->NetworkAdvancedSettingsTextBox().IsEnabled(!Busy);
     }
 
     void VirtualMachineSettingsPage::RefreshNetworksButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
@@ -1763,7 +1766,7 @@ namespace winrt::NanaBox::implementation
     {
         if (this->m_NetworkManagementRunning) return;
         this->RunNetworkManagementOperation(L"Create", this->NetworkNameTextBox().Text(),
-            this->NetworkFirewallCheckBox().IsChecked().Value());
+            this->NetworkFirewallCheckBox().IsChecked().Value(), this->NetworkAdvancedSettingsTextBox().Text());
     }
 
     void VirtualMachineSettingsPage::DeleteNetworkButtonClick(winrt::IInspectable const&, winrt::RoutedEventArgs const&)
@@ -1796,7 +1799,7 @@ namespace winrt::NanaBox::implementation
     }
 
     winrt::fire_and_forget VirtualMachineSettingsPage::RunNetworkManagementOperation(
-        winrt::hstring Action, winrt::hstring Value, bool Firewall)
+        winrt::hstring Action, winrt::hstring Value, bool Firewall, winrt::hstring CustomSettings)
     {
         if (this->m_NetworkManagementRunning) co_return;
         auto Lifetime = this->get_strong();
@@ -1818,7 +1821,7 @@ namespace winrt::NanaBox::implementation
             }
             else
             {
-                if (Action == L"Create") this->m_HostOperations->CreateNetwork(Value, Firewall);
+                if (Action == L"Create") this->m_HostOperations->CreateNetwork(Value, Firewall, CustomSettings);
                 else if (Action == L"Delete") this->m_HostOperations->DeleteNetwork(winrt::guid(winrt::to_string(Value)));
                 Networks = this->m_HostOperations->EnumerateNetworks();
                 Result = {{"Success", true}, {"Operation", winrt::to_string(Action)}, {"Count", Networks.size()}};
@@ -1837,7 +1840,10 @@ namespace winrt::NanaBox::implementation
                 for (auto& Row : this->m_NetworkAdapterSettings)
                     if (Row.NetworkPicker) ::FillNetworkPicker(Row.NetworkPicker, this->m_HostNetworks, true);
                 if (Action == L"Create" && this->NetworkNameTextBox().Text() == Value)
+                {
                     this->NetworkNameTextBox().Text(L"");
+                    this->NetworkAdvancedSettingsTextBox().Text(L"");
+                }
             }
             this->NetworkPropertiesTextBox().Text(winrt::to_hstring(Result.dump(2)));
         }

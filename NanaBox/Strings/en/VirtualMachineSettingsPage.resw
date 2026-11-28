@@ -1404,13 +1404,13 @@ UseExtendedMaxVpPerSocketLimit</comment>
     <value>Delete managed network</value>
   </data>
   <data name="NetworkName.Header" xml:space="preserve">
-    <value>New NAT (ICS) network name</value>
+    <value>New managed network name</value>
   </data>
   <data name="NetworkFirewall.Content" xml:space="preserve">
     <value>Enable Hyper-V firewall</value>
   </data>
   <data name="CreateNetwork.Content" xml:space="preserve">
-    <value>Create NAT network</value>
+    <value>Create managed network</value>
   </data>
   <data name="NetworkManagerNote.Text" xml:space="preserve">
     <value>Refresh after creating a network. Add a NIC and choose the network to attach it.</value>
@@ -1995,4 +1995,10 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="HcsSchemaMinor.Header" xml:space="preserve"><value>HCS schema minor version (major 2)</value></data>
   <data name="HcsExtensionsNote.Text" xml:space="preserve"><value>Enter additional VirtualMachine properties as JSON. Existing managed resources cannot be overwritten. The host validates feature support when creating the VM.</value></data>
   <data name="AdditionalHcsSettings.Header" xml:space="preserve"><value>Additional VirtualMachine settings (JSON object)</value></data>
+  <data name="NetworkAdvancedSettings.Header" xml:space="preserve">
+    <value>Advanced HCN settings (optional JSON)</value>
+  </data>
+  <data name="NetworkAdvancedNote.Text" xml:space="preserve">
+    <value>Leave empty for an ICS NAT network. Specify a Type and any supported HCN creation properties, such as Subnets, Policies, Dns and SchemaVersion. NanaBox assigns the name and ID.</value>
+  </data>
 </root>

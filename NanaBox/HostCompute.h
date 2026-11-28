@@ -212,7 +212,10 @@ namespace NanaBox
     std::vector<HostGpuInfo> EnumeratePartitionableGpus();
     std::vector<HostNetworkInfo> EnumerateHostNetworks();
     HostNetworkInfo QueryHostNetwork(winrt::guid const& Id);
-    void CreateManagedNetwork(winrt::hstring const& Name, bool Firewall);
+    winrt::hstring BuildManagedNetworkSettings(winrt::hstring const& Name, bool Firewall,
+        winrt::hstring const& CustomSettings = {});
+    void CreateManagedNetwork(winrt::hstring const& Name, bool Firewall,
+        winrt::hstring const& CustomSettings);
     void DeleteManagedNetwork(winrt::guid const& Id);
     winrt::hstring RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments);
 

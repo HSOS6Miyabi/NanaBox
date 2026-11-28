@@ -399,6 +399,28 @@ try {
             $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Refresh'}
             if (Select-ByName 'HostNetworksComboBox' ($managed+' (') -Optional) { throw 'HCN network was not deleted' }
             $networkCreated = $false
+            if (-not $HostIntegration) {
+                Set-Text 'NetworkNameTextBox' $name
+                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","Name":"unauthorized"}'
+                Invoke-Control 'CreateNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'Create'}
+                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","Flags":64}'
+                Invoke-Control 'CreateNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'Create'}
+                Set-Text 'NetworkAdvancedSettingsTextBox' '{"Type":"NAT","SchemaVersion":{"Major":2,"Minor":0},"Subnets":[{"IpAddressPrefix":"192.0.2.0/24"}]}'
+                Set-Check 'NetworkFirewallCheckBox' $true
+                Invoke-Control 'CreateNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Create'}
+                $null = Select-ByName 'HostNetworksComboBox' ($managed+' (')
+                Invoke-Control 'InspectNetwork'
+                $created = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Inspect' -and $v.Type -eq 'NAT'}
+                if ($created.Subnets[0].IpAddressPrefix -ne '192.0.2.0/24' -or
+                    $created.SchemaVersion.Major -ne 2 -or ($created.Flags -band 272) -ne 272) {
+                    throw 'Custom HCN network settings were not preserved'
+                }
+                Confirm-Change 'DeleteNetwork'
+                $null = Wait-Result 'NetworkPropertiesTextBox' {param($v) $v.Success -and $v.Operation -eq 'Delete'}
+            }
         } finally {
             if ($HostIntegration -and $networkCreated -and -not $process.HasExited) {
                 try {

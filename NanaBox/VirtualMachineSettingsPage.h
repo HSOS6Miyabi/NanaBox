@@ -20,7 +20,7 @@ namespace NanaBox
     {
         std::function<std::vector<HostNetworkInfo>()> EnumerateNetworks = EnumerateHostNetworks;
         std::function<HostNetworkInfo(winrt::guid const&)> QueryNetwork = QueryHostNetwork;
-        std::function<void(winrt::hstring const&, bool)> CreateNetwork = CreateManagedNetwork;
+        std::function<void(winrt::hstring const&, bool, winrt::hstring const&)> CreateNetwork = CreateManagedNetwork;
         std::function<void(winrt::guid const&)> DeleteNetwork = DeleteManagedNetwork;
         std::function<winrt::hstring(winrt::hstring const&, winrt::hstring const&)> Manage = RunHostManagement;
         std::function<winrt::hstring(bool)> NetworkDiagnostics;
@@ -186,7 +186,7 @@ namespace winrt::NanaBox::implementation
         bool m_NetworkManagementRunning = false;
         std::vector<::NanaBox::HostNetworkInfo> m_HostNetworks;
         void SetNetworkManagementBusy(bool Busy);
-        winrt::fire_and_forget RunNetworkManagementOperation(winrt::hstring Action, winrt::hstring Value = {}, bool Firewall = false);
+        winrt::fire_and_forget RunNetworkManagementOperation(winrt::hstring Action, winrt::hstring Value = {}, bool Firewall = false, winrt::hstring CustomSettings = {});
         winrt::fire_and_forget RunHostManagementOperation(winrt::hstring Action, std::string Arguments);
         HWND m_WindowHandle = nullptr;
         std::wstring m_ConfigurationFilePath;
