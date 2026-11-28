@@ -137,6 +137,38 @@ int WINAPI wWinMain(
                     if (!Rejected) return 35;
                 }
             }
+            {
+                auto Shared = Config;
+                NanaBox::Plan9ShareConfiguration Share;
+                Share.Name = "Projects";
+                Share.Path = "C:\\Projects";
+                Share.ReadOnly = true;
+                Share.LinuxMetadata = true;
+                Share.AllowedFiles = {"file.txt"};
+                Shared.Plan9Shares.push_back(Share);
+                auto RoundTrip = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Shared));
+                auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(RoundTrip));
+                auto const& Device = Hcs["VirtualMachine"]["Devices"]["Plan9"]["Shares"][0];
+                auto Guest = NanaBox::MakePlan9GuestManifest(RoundTrip, Hcs);
+                if (Hcs["SchemaVersion"]["Minor"] != 2 || Device["Flags"] != 133 ||
+                    Device["AccessName"] != "Projects" || Device["AllowedFiles"][0] != "file.txt" ||
+                    Guest.size() != 1 || Guest[0]["Name"] != "Projects" || Guest[0]["Port"] != 50001 ||
+                    Guest[0]["ReadOnly"] != true || Guest[0]["AutoMount"] != true || Guest[0].contains("Path"))
+                    return 40;
+                for (auto const& Bad : {"..", "a/b", "a,b", "Projects:"})
+                {
+                    Shared.Plan9Shares[0].Name = Bad;
+                    bool Rejected = false;
+                    try { NanaBox::ValidatePlan9Shares(Shared); } catch (...) { Rejected = true; }
+                    if (!Rejected) return 41;
+                }
+                Shared.Plan9Shares[0].Name = "Projects";
+                Shared.Plan9Shares.push_back(Shared.Plan9Shares[0]);
+                Shared.Plan9Shares[1].Name = "projects";
+                bool Rejected = false;
+                try { NanaBox::ValidatePlan9Shares(Shared); } catch (...) { Rejected = true; }
+                if (!Rejected) return 42;
+            }
             Config.ProcessorLimit = 75000;
             Config.ProcessorWeight = 250;
             Config.EnableDeferredCommit = true;

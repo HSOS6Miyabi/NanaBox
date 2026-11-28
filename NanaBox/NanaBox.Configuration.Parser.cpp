@@ -855,6 +855,14 @@ nlohmann::json NanaBox::FromPlan9ShareConfiguration(
         Result["ReadOnly"] = true;
     }
 
+    if (!Value.AutoMount) Result["AutoMount"] = false;
+    if (Value.LinuxMetadata) Result["LinuxMetadata"] = true;
+    if (Value.CaseSensitive) Result["CaseSensitive"] = true;
+    if (Value.UseShareRootIdentity) Result["UseShareRootIdentity"] = true;
+    if (Value.AllowOptions) Result["AllowOptions"] = true;
+    if (Value.AllowSubPaths) Result["AllowSubPaths"] = true;
+    if (Value.UnlimitedConnections) Result["UnlimitedConnections"] = true;
+    if (!Value.AllowedFiles.empty()) Result["AllowedFiles"] = Value.AllowedFiles;
     Result["Port"] = Value.Port;
 
     if (!Value.Path.empty())
@@ -879,9 +887,55 @@ NanaBox::Plan9ShareConfiguration NanaBox::ToPlan9ShareConfiguration(
         Mile::Json::GetSubKey(Value, "ReadOnly"),
         Result.ReadOnly);
 
-    Result.Port = static_cast<std::uint32_t>(Mile::Json::ToUInt64(
-        Mile::Json::GetSubKey(Value, "Port"),
-        Result.Port));
+    if (!Value.is_object()) throw std::invalid_argument("Invalid Plan9 share");
+    if (Value.contains("AutoMount"))
+    {
+        if (!Value.at("AutoMount").is_boolean()) throw std::invalid_argument("AutoMount must be Boolean");
+        Result.AutoMount = Value.at("AutoMount").get<bool>();
+    }
+    if (Value.contains("LinuxMetadata"))
+    {
+        if (!Value.at("LinuxMetadata").is_boolean()) throw std::invalid_argument("LinuxMetadata must be Boolean");
+        Result.LinuxMetadata = Value.at("LinuxMetadata").get<bool>();
+    }
+    if (Value.contains("CaseSensitive"))
+    {
+        if (!Value.at("CaseSensitive").is_boolean()) throw std::invalid_argument("CaseSensitive must be Boolean");
+        Result.CaseSensitive = Value.at("CaseSensitive").get<bool>();
+    }
+    if (Value.contains("UseShareRootIdentity"))
+    {
+        if (!Value.at("UseShareRootIdentity").is_boolean()) throw std::invalid_argument("UseShareRootIdentity must be Boolean");
+        Result.UseShareRootIdentity = Value.at("UseShareRootIdentity").get<bool>();
+    }
+    if (Value.contains("AllowOptions"))
+    {
+        if (!Value.at("AllowOptions").is_boolean()) throw std::invalid_argument("AllowOptions must be Boolean");
+        Result.AllowOptions = Value.at("AllowOptions").get<bool>();
+    }
+    if (Value.contains("AllowSubPaths"))
+    {
+        if (!Value.at("AllowSubPaths").is_boolean()) throw std::invalid_argument("AllowSubPaths must be Boolean");
+        Result.AllowSubPaths = Value.at("AllowSubPaths").get<bool>();
+    }
+    if (Value.contains("UnlimitedConnections"))
+    {
+        if (!Value.at("UnlimitedConnections").is_boolean()) throw std::invalid_argument("UnlimitedConnections must be Boolean");
+        Result.UnlimitedConnections = Value.at("UnlimitedConnections").get<bool>();
+    }
+    if (Value.contains("Port"))
+    {
+        auto const& Port = Value.at("Port");
+        if (!Port.is_number_integer() || Port < 1 || Port >= UINT32_MAX)
+            throw std::invalid_argument("Invalid Plan9 port");
+        Result.Port = Port.get<std::uint32_t>();
+    }
+    if (Value.contains("AllowedFiles"))
+    {
+        auto const& Files = Value.at("AllowedFiles");
+        if (!Files.is_array()) throw std::invalid_argument("AllowedFiles must be an array");
+        Result.AllowedFiles = Files.get<std::vector<std::string>>();
+    }
 
     Result.Path = Mile::Json::ToString(
         Mile::Json::GetSubKey(Value, "Path"),
@@ -1107,9 +1161,7 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
             : Value.Plan9Shares)
         {
             if (Plan9Share.Path.empty() || Plan9Share.Name.empty())
-            {
-                continue;
-            }
+                throw std::invalid_argument("Plan9 share requires a path and name");
 
             Plan9Shares.push_back(
                 NanaBox::FromPlan9ShareConfiguration(Plan9Share));
@@ -1301,9 +1353,7 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
             NanaBox::ToPlan9ShareConfiguration(Plan9Share);
 
         if (Current.Path.empty() || Current.Name.empty())
-        {
-            continue;
-        }
+            throw std::invalid_argument("Plan9 share requires a path and name");
 
         Result.Plan9Shares.push_back(Current);
     }

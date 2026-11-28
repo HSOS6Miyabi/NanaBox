@@ -41,6 +41,8 @@ namespace NanaBox
             UseShareRootIdentity = 0x00000010,
             AllowOptions = 0x00000020,
             AllowSubPaths = 0x00000040,
+            RestrictFileAccess = 0x00000080,
+            UnlimitedConnections = 0x00000100,
         };
     }
 

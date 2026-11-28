@@ -164,6 +164,14 @@ namespace winrt::NanaBox::implementation
         {
             winrt::StackPanel Container = nullptr;
             winrt::CheckBox ReadOnly = nullptr;
+            winrt::CheckBox AutoMount = nullptr;
+            winrt::CheckBox LinuxMetadata = nullptr;
+            winrt::CheckBox CaseSensitive = nullptr;
+            winrt::CheckBox UseShareRootIdentity = nullptr;
+            winrt::CheckBox AllowOptions = nullptr;
+            winrt::CheckBox AllowSubPaths = nullptr;
+            winrt::CheckBox UnlimitedConnections = nullptr;
+            winrt::TextBox AllowedFiles = nullptr;
             winrt::TextBox Port = nullptr;
             winrt::TextBox Path = nullptr;
             winrt::TextBox Name = nullptr;

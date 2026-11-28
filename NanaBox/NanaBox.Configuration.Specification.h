@@ -156,9 +156,17 @@ namespace NanaBox
     struct Plan9ShareConfiguration
     {
         bool ReadOnly = false;
-        std::uint32_t Port;
+        bool AutoMount = true;
+        bool LinuxMetadata = false;
+        bool CaseSensitive = false;
+        bool UseShareRootIdentity = false;
+        bool AllowOptions = false;
+        bool AllowSubPaths = false;
+        bool UnlimitedConnections = false;
+        std::uint32_t Port = 50001;
         std::string Path;
         std::string Name;
+        std::vector<std::string> AllowedFiles;
     };
 
     struct VirtualSmbShareConfiguration

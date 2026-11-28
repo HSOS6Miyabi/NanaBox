@@ -687,6 +687,14 @@ try {
     Set-Text 'Plan9SharePathLabel' 'C:\Temp'
     Set-Text 'Plan9ShareNameLabel' 'test-share'
     Set-Check 'Plan9ShareReadOnlyLabel' $true
+    Set-Check 'Plan9AutoMountLabel' $false
+    Set-Check 'Plan9LinuxMetadataLabel' $true
+    Set-Check 'Plan9CaseSensitiveLabel' $true
+    Set-Check 'Plan9UseShareRootIdentityLabel' $true
+    Set-Check 'Plan9AllowOptionsLabel' $true
+    Set-Check 'Plan9AllowSubPathsLabel' $true
+    Set-Check 'Plan9UnlimitedConnectionsLabel' $true
+    Set-Text 'Plan9AllowedFilesLabel' 'example.txt'
     Invoke-Control 'AddVirtualSmbShareButton'
     Set-Text 'VirtualSmbSharePathLabel' 'C:\Temp'
     Set-Text 'VirtualSmbShareNameLabel' 'test-smb'
@@ -720,6 +728,11 @@ try {
     Assert-Equal $saved.NetworkAdapters[0].FirewallCreatorId '06b34f94-82ae-4ad9-9f35-3a2a7da8508c' 'Firewall'
     Assert-Equal $saved.ScsiDevices[0].Path 'test.vhdx' 'Disk'
     Assert-Equal $saved.Plan9Shares[0].Name 'test-share' 'Plan9'
+    Assert-Equal $saved.Plan9Shares[0].AutoMount $false 'Manual Plan9'
+    foreach ($key in @('LinuxMetadata','CaseSensitive','UseShareRootIdentity','AllowOptions','AllowSubPaths','UnlimitedConnections','ReadOnly')) {
+        Assert-Equal $saved.Plan9Shares[0].$key $true "Plan9 $key"
+    }
+    Assert-Equal $saved.Plan9Shares[0].AllowedFiles[0] 'example.txt' 'Plan9 allowed file'
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
     Assert-Equal $saved.VideoMonitor.HorizontalResolution 1280 'Resolution'
     Assert-Equal $saved.VideoMonitor.EnableDpiScalingValueOverride $true 'Display scaling override'

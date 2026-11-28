@@ -171,6 +171,88 @@ namespace
     }
 }
 
+namespace
+{
+    void CheckShareComponent(std::string const& Name)
+    {
+        if (Name.empty() || Name.size() > 200 || Name == "." || Name == ".." ||
+            Name.front() == ' ' || Name.back() == ' ' || Name.find_first_of("/\\,:") != std::string::npos ||
+            std::any_of(Name.begin(), Name.end(), [](unsigned char Ch) { return Ch < 32 || Ch == 127; }))
+            throw std::invalid_argument("Invalid Plan9 share or allowed file name: " + Name);
+        (void)winrt::to_hstring(Name);
+    }
+
+    bool SamePlan9Name(std::string const& A, std::string const& B)
+    {
+        auto Left = winrt::to_hstring(A), Right = winrt::to_hstring(B);
+        return ::CompareStringOrdinal(Left.c_str(), -1, Right.c_str(), -1, TRUE) == CSTR_EQUAL;
+    }
+}
+
+void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configuration)
+{
+    std::vector<std::string> Names;
+    if (Configuration.Gpu.EnableHostDriverStore)
+        Names = {"HostDriverStore", "NanaBox.HostDrivers", "NanaBox.HostLxssLib"};
+    if (Names.size() + Configuration.Plan9Shares.size() > 128)
+        throw std::invalid_argument("At most 128 Plan9 shares are supported");
+    for (auto const& Share : Configuration.Plan9Shares)
+    {
+        CheckShareComponent(Share.Name);
+        if (Share.Path.empty() || Share.Path.find('\0') != std::string::npos)
+            throw std::invalid_argument("Plan9 share requires a valid host path");
+        if (!Share.Port || Share.Port == UINT32_MAX || (Share.Port >= 27453 && Share.Port <= 27456))
+            throw std::invalid_argument("Invalid or reserved Plan9 port");
+        if (std::any_of(Names.begin(), Names.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))
+            throw std::invalid_argument("Duplicate or reserved Plan9 share name: " + Share.Name);
+        Names.push_back(Share.Name);
+        std::vector<std::string> Allowed;
+        if (Share.AllowedFiles.size() > 4096) throw std::invalid_argument("Too many allowed Plan9 files");
+        for (auto const& File : Share.AllowedFiles)
+        {
+            CheckShareComponent(File);
+            if (std::any_of(Allowed.begin(), Allowed.end(), [&](auto const& Name) { return SamePlan9Name(Name, File); }))
+                throw std::invalid_argument("Duplicate allowed Plan9 file: " + File);
+            Allowed.push_back(File);
+        }
+    }
+}
+
+nlohmann::json NanaBox::MakeHcsPlan9Share(Plan9ShareConfiguration const& Share)
+{
+    std::uint32_t Flags = Share.ReadOnly ? Plan9ShareFlags::ReadOnly : Plan9ShareFlags::None;
+    if (Share.LinuxMetadata) Flags |= Plan9ShareFlags::LinuxMetadata;
+    if (Share.CaseSensitive) Flags |= Plan9ShareFlags::CaseSensitive;
+    if (Share.UseShareRootIdentity) Flags |= Plan9ShareFlags::UseShareRootIdentity;
+    if (Share.AllowOptions) Flags |= Plan9ShareFlags::AllowOptions;
+    if (Share.AllowSubPaths) Flags |= Plan9ShareFlags::AllowSubPaths;
+    if (Share.UnlimitedConnections) Flags |= Plan9ShareFlags::UnlimitedConnections;
+    if (!Share.AllowedFiles.empty()) Flags |= Plan9ShareFlags::RestrictFileAccess;
+    nlohmann::json Result = {{"Name", Share.Name}, {"AccessName", Share.Name},
+        {"Path", ::GetAbsoluteUtf8Path(Share.Path)}, {"Port", Share.Port}, {"Flags", Flags}};
+    if (!Share.AllowedFiles.empty()) Result["AllowedFiles"] = Share.AllowedFiles;
+    return Result;
+}
+
+nlohmann::json NanaBox::MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
+    nlohmann::json const& HcsConfiguration)
+{
+    auto Result = nlohmann::json::array();
+    auto const& Devices = HcsConfiguration.at("VirtualMachine").at("Devices");
+    if (!Devices.contains("Plan9")) return Result;
+    for (auto const& Share : Devices.at("Plan9").at("Shares"))
+    {
+        auto Name = Share.at("AccessName").get<std::string>();
+        bool AutoMount = true;
+        for (auto const& Configured : Configuration.Plan9Shares)
+            if (Configured.Name == Name) AutoMount = Configured.AutoMount;
+        Result.push_back({{"Name", Name}, {"Port", Share.at("Port")},
+            {"ReadOnly", (Share.at("Flags").get<std::uint32_t>() & Plan9ShareFlags::ReadOnly) != 0},
+            {"AutoMount", AutoMount}});
+    }
+    return Result;
+}
+
 std::string NanaBox::MakeHcsConfiguration(
     NanaBox::VirtualMachineConfiguration const& Configuration)
 {
@@ -179,7 +261,11 @@ std::string NanaBox::MakeHcsConfiguration(
     Result["SchemaVersion"]["Major"] = 2;
     if (!Configuration.HcsSchemaMinor || Configuration.HcsSchemaMinor > 65535)
         throw std::invalid_argument("Invalid HCS schema minor version");
-    Result["SchemaVersion"]["Minor"] = Configuration.HcsSchemaMinor;
+    NanaBox::ValidatePlan9Shares(Configuration);
+    auto Minor = Configuration.HcsSchemaMinor;
+    for (auto const& Share : Configuration.Plan9Shares)
+        if (!Share.AllowedFiles.empty()) Minor = (std::max)(Minor, 2u);
+    Result["SchemaVersion"]["Minor"] = Minor;
 
     Result["Owner"] = Configuration.Name;
 
@@ -528,15 +614,7 @@ std::string NanaBox::MakeHcsConfiguration(
             for (NanaBox::Plan9ShareConfiguration const& Plan9Share
                 : Configuration.Plan9Shares)
             {
-                nlohmann::json Current;
-                Current["Name"] = Plan9Share.Name;
-                Current["AccessName"] = Plan9Share.Name;
-                Current["Path"] = ::GetAbsoluteUtf8Path(Plan9Share.Path);
-                Current["Port"] = Plan9Share.Port;
-                Current["Flags"] = Plan9Share.ReadOnly
-                    ? NanaBox::Plan9ShareFlags::ReadOnly
-                    : NanaBox::Plan9ShareFlags::None;
-                Plan9Shares.push_back(Current);
+                Plan9Shares.push_back(NanaBox::MakeHcsPlan9Share(Plan9Share));
             }
             if (!Plan9Shares.empty())
             {
@@ -1346,6 +1424,7 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
     if (Result.MirroredHostAddressLoopback && !Result.MirroredLoopback)
         throw std::exception("Host address loopback requires GELNIC loopback");
 
+    NanaBox::ValidatePlan9Shares(Result);
     if (!Result.AdditionalHcsSettings.empty())
         (void)NanaBox::MakeHcsConfiguration(Result);
 

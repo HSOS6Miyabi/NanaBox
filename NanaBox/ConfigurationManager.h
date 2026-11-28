@@ -33,6 +33,11 @@ namespace NanaBox
     nlohmann::json MakeHcsScsiDeviceConfiguration(
         ScsiDeviceConfiguration const& Configuration);
 
+    void ValidatePlan9Shares(VirtualMachineConfiguration const& Configuration);
+    nlohmann::json MakeHcsPlan9Share(Plan9ShareConfiguration const& Share);
+    nlohmann::json MakePlan9GuestManifest(VirtualMachineConfiguration const& Configuration,
+        nlohmann::json const& HcsConfiguration);
+
     std::string MakeHcsConfiguration(
         VirtualMachineConfiguration const& Configuration);
 

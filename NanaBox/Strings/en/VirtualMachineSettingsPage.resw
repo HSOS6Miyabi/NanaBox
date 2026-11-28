@@ -2064,4 +2064,20 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="HcnKindNamespace.Content" xml:space="preserve"><value>Namespace</value></data>
   <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>Load balancer</value></data>
   <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN route</value></data>
+  <data name="Plan9AutoMountLabel" xml:space="preserve"><value>Automatically mount in Linux</value></data>
+  <data name="Plan9AutoMountHelp" xml:space="preserve"><value>Mount this share under /media using the guest service.</value></data>
+  <data name="Plan9LinuxMetadataLabel" xml:space="preserve"><value>Linux metadata</value></data>
+  <data name="Plan9LinuxMetadataHelp" xml:space="preserve"><value>Allow the provider to store Linux file metadata.</value></data>
+  <data name="Plan9CaseSensitiveLabel" xml:space="preserve"><value>Case-sensitive directories</value></data>
+  <data name="Plan9CaseSensitiveHelp" xml:space="preserve"><value>Create case-sensitive directories when supported by the host filesystem.</value></data>
+  <data name="Plan9UseShareRootIdentityLabel" xml:space="preserve"><value>Use share root identity</value></data>
+  <data name="Plan9UseShareRootIdentityHelp" xml:space="preserve"><value>Use the share root identity when opening files.</value></data>
+  <data name="Plan9AllowOptionsLabel" xml:space="preserve"><value>Allow guest share options</value></data>
+  <data name="Plan9AllowOptionsHelp" xml:space="preserve"><value>Allow additional options in the guest attach request.</value></data>
+  <data name="Plan9AllowSubPathsLabel" xml:space="preserve"><value>Allow subpaths</value></data>
+  <data name="Plan9AllowSubPathsHelp" xml:space="preserve"><value>Allow a guest attach request to select a subpath.</value></data>
+  <data name="Plan9UnlimitedConnectionsLabel" xml:space="preserve"><value>Unlimited connections</value></data>
+  <data name="Plan9UnlimitedConnectionsHelp" xml:space="preserve"><value>Allow multiple concurrent connections where supported by the host.</value></data>
+  <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>Allowed files (one per line)</value></data>
+  <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>Restrict access to these file names. Leave empty to share the entire directory.</value></data>
 </root>

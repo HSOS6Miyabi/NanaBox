@@ -2064,4 +2064,20 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="HcnKindNamespace.Content" xml:space="preserve"><value>网络命名空间</value></data>
   <data name="HcnKindLoadBalancer.Content" xml:space="preserve"><value>负载均衡器</value></data>
   <data name="HcnKindRoute.Content" xml:space="preserve"><value>SDN 路由</value></data>
+  <data name="Plan9AutoMountLabel" xml:space="preserve"><value>在 Linux 中自动挂载</value></data>
+  <data name="Plan9AutoMountHelp" xml:space="preserve"><value>由客户机服务将共享挂载至 /media 下。</value></data>
+  <data name="Plan9LinuxMetadataLabel" xml:space="preserve"><value>Linux 元数据</value></data>
+  <data name="Plan9LinuxMetadataHelp" xml:space="preserve"><value>允许共享服务保存 Linux 文件元数据。</value></data>
+  <data name="Plan9CaseSensitiveLabel" xml:space="preserve"><value>区分大小写的目录</value></data>
+  <data name="Plan9CaseSensitiveHelp" xml:space="preserve"><value>宿主机文件系统支持时创建区分大小写的目录。</value></data>
+  <data name="Plan9UseShareRootIdentityLabel" xml:space="preserve"><value>使用共享根目录的身份</value></data>
+  <data name="Plan9UseShareRootIdentityHelp" xml:space="preserve"><value>打开文件时使用共享根目录的身份。</value></data>
+  <data name="Plan9AllowOptionsLabel" xml:space="preserve"><value>允许客户机指定共享选项</value></data>
+  <data name="Plan9AllowOptionsHelp" xml:space="preserve"><value>允许客户机在连接共享时指定附加选项。</value></data>
+  <data name="Plan9AllowSubPathsLabel" xml:space="preserve"><value>允许连接子路径</value></data>
+  <data name="Plan9AllowSubPathsHelp" xml:space="preserve"><value>允许客户机连接共享目录的子路径。</value></data>
+  <data name="Plan9UnlimitedConnectionsLabel" xml:space="preserve"><value>允许多个连接</value></data>
+  <data name="Plan9UnlimitedConnectionsHelp" xml:space="preserve"><value>宿主机支持时允许多个并发连接。</value></data>
+  <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>允许访问的文件（每行一个）</value></data>
+  <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>限制可访问的文件名称。留空时共享整个目录。</value></data>
 </root>

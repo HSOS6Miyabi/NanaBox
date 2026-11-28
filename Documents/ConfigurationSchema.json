@@ -432,8 +432,16 @@
                   "type": "boolean",
                   "description": "Set it true if you want to make the current Plan 9 share read-only. Available starting with NanaBox 1.5 Update 2."
                 },
+                "AutoMount": { "type": "boolean", "default": true },
+                "LinuxMetadata": { "type": "boolean", "default": false },
+                "CaseSensitive": { "type": "boolean", "default": false },
+                "UseShareRootIdentity": { "type": "boolean", "default": false },
+                "AllowOptions": { "type": "boolean", "default": false },
+                "AllowSubPaths": { "type": "boolean", "default": false },
+                "UnlimitedConnections": { "type": "boolean", "default": false },
+                "AllowedFiles": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "maxItems": 4096 },
                 "Port": {
-                  "type": "number",
+                  "type": "integer", "minimum": 1, "maximum": 4294967294, "default": 50001,
                   "description": "The Hyper-V Socket port number of the current Plan 9 share. Available starting with NanaBox 1.5 Update 2."
                 },
                 "Path": {

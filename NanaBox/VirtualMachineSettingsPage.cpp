@@ -1118,6 +1118,14 @@ namespace winrt::NanaBox::implementation
                     NanaBox::Plan9ShareConfiguration Configuration;
                     Configuration.ReadOnly =
                         Row.ReadOnly.IsChecked().Value();
+                    Configuration.AutoMount = Row.AutoMount.IsChecked().Value();
+                    Configuration.LinuxMetadata = Row.LinuxMetadata.IsChecked().Value();
+                    Configuration.CaseSensitive = Row.CaseSensitive.IsChecked().Value();
+                    Configuration.UseShareRootIdentity = Row.UseShareRootIdentity.IsChecked().Value();
+                    Configuration.AllowOptions = Row.AllowOptions.IsChecked().Value();
+                    Configuration.AllowSubPaths = Row.AllowSubPaths.IsChecked().Value();
+                    Configuration.UnlimitedConnections = Row.UnlimitedConnections.IsChecked().Value();
+                    Configuration.AllowedFiles = ::ReadSettingLines(Row.AllowedFiles);
                     Configuration.Port =
                         ::ReadSettingInteger<std::uint32_t>(Row.Port);
                     Configuration.Path =
@@ -2912,6 +2920,24 @@ namespace winrt::NanaBox::implementation
             L"Plan9ShareNameHelp",
             winrt::to_hstring(Configuration.Name),
             false);
+        Row.AutoMount = ::AddSettingCheckBox(Row.Container, L"Plan9AutoMountLabel",
+            L"Plan9AutoMountHelp", Configuration.AutoMount, false);
+        Row.LinuxMetadata = ::AddSettingCheckBox(Row.Container, L"Plan9LinuxMetadataLabel",
+            L"Plan9LinuxMetadataHelp", Configuration.LinuxMetadata, false);
+        Row.CaseSensitive = ::AddSettingCheckBox(Row.Container, L"Plan9CaseSensitiveLabel",
+            L"Plan9CaseSensitiveHelp", Configuration.CaseSensitive, false);
+        Row.UseShareRootIdentity = ::AddSettingCheckBox(Row.Container, L"Plan9UseShareRootIdentityLabel",
+            L"Plan9UseShareRootIdentityHelp", Configuration.UseShareRootIdentity, false);
+        Row.AllowOptions = ::AddSettingCheckBox(Row.Container, L"Plan9AllowOptionsLabel",
+            L"Plan9AllowOptionsHelp", Configuration.AllowOptions, false);
+        Row.AllowSubPaths = ::AddSettingCheckBox(Row.Container, L"Plan9AllowSubPathsLabel",
+            L"Plan9AllowSubPathsHelp", Configuration.AllowSubPaths, false);
+        Row.UnlimitedConnections = ::AddSettingCheckBox(Row.Container, L"Plan9UnlimitedConnectionsLabel",
+            L"Plan9UnlimitedConnectionsHelp", Configuration.UnlimitedConnections, false);
+        Row.AllowedFiles = ::AddSettingTextBox(Row.Container, L"Plan9AllowedFilesLabel",
+            L"Plan9AllowedFilesHelp", ::MakeSettingLines(Configuration.AllowedFiles), false);
+        Row.AllowedFiles.AcceptsReturn(true);
+        Row.AllowedFiles.MinHeight(64);
 
         winrt::Windows::UI::Xaml::Controls::Button RemoveButton;
         winrt::AutomationProperties::SetAutomationId(RemoveButton, L"Plan9Remove");
