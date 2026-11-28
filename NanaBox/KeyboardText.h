@@ -47,8 +47,8 @@ namespace NanaBox
             else if (Ch == L'\t') Code = 0x0f;
             else if (auto Position = Plain.find(Ch); Position != std::wstring_view::npos)
                 Code = Codes[Position];
-            else if (auto Position = Shifted.find(Ch); Position != std::wstring_view::npos)
-            { Code = Codes[Position]; Shift = true; }
+            else if (auto ShiftedPosition = Shifted.find(Ch); ShiftedPosition != std::wstring_view::npos)
+            { Code = Codes[ShiftedPosition]; Shift = true; }
             else throw std::invalid_argument("Keyboard input supports printable ASCII, tabs and line breaks (US keyboard layout).");
             if (Result.empty() || Result.back().size() + (Shift ? 4 : 2) > 20)
                 Result.emplace_back();
