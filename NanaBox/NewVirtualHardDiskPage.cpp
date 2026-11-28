@@ -147,7 +147,10 @@ namespace winrt::NanaBox::implementation
         }
         catch (...)
         {
-            ::ShowErrorMessageDialog(this->m_WindowHandle, winrt::hresult_invalid_argument(L"Specify a valid VHD/VHDX path and capacity."));
+            ::MessageBoxW(this->m_WindowHandle,
+                L"Specify a valid VHD/VHDX path and capacity.",
+                Mile::WinRT::GetLocalizedString(L"Messages/ErrorInstructionText").c_str(),
+                MB_OK | MB_ICONERROR);
             return;
         }
 

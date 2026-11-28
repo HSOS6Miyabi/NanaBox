@@ -61,14 +61,14 @@ try {
     Invoke-Control 'QuickStartCreateVirtualHardDiskButton'
     $null = Find-Control 'CreateButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
-    Invoke-ModalAction $process.Id 'CreateButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
+    Invoke-ModalAction $process.Id 'CreateButton' { Invoke-NativeDialogButton $process.Id 1 }
     $diskWindow = Find-OwnedWindowContaining 'CreateButton'
     Invoke-Control 'CancelButton'
     Wait-NativeWindowClosed $diskWindow 'CreateButton'
     Invoke-Control 'QuickStartResizeVirtualHardDiskButton'
     $null = Find-Control 'ResizeButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
-    Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
+    Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-NativeDialogButton $process.Id 1 }
     $diskWindow = Find-OwnedWindowContaining 'ResizeButton'
     Invoke-Control 'CancelButton'
     Wait-NativeWindowClosed $diskWindow 'ResizeButton'
