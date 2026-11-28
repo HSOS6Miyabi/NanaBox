@@ -81,12 +81,12 @@ jobs:
       timeout-minutes: 5
       run: |
         & .\Tests\ToolbarUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI\Toolbar"
-    - name: Quick start and disk dialogs
+    - name: Welcome workspace and disk dialogs
       if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell
-      timeout-minutes: 5
+      timeout-minutes: 10
       run: |
-        & .\Tests\QuickStartUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe')
+        & .\Tests\QuickStartUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI\Welcome"
     - name: Verify dialog button actions
       if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell

@@ -69,8 +69,8 @@ namespace
             {
                 auto Fallback = Chinese ? Entry.Chinese : Entry.English;
                 auto Resource = std::wstring(L"QuickStartPage/") + Entry.Key;
-                auto Text = Mile::WinRT::GetLocalizedString(Resource, Fallback);
-                return Text.empty() || Text == Resource ? winrt::hstring(Fallback) : Text;
+                auto Text = Mile::WinRT::GetLocalizedString(winrt::hstring(Resource), Fallback);
+                return Text.empty() || std::wstring_view(Text.c_str()) == Resource ? winrt::hstring(Fallback) : Text;
             }
         return {};
     }
@@ -131,9 +131,9 @@ namespace winrt::NanaBox::implementation
         _In_ HWND WindowHandle,
         _Out_opt_ std::wstring* ConfigurationFilePath,
         std::wstring const& HistoryKey) :
+        m_HistoryKey(HistoryKey.empty() ? ::NanaBox::WorkspaceHistory::DefaultKey : HistoryKey),
         m_WindowHandle(WindowHandle),
-        m_ConfigurationFilePath(ConfigurationFilePath),
-        m_HistoryKey(HistoryKey.empty() ? ::NanaBox::WorkspaceHistory::DefaultKey : HistoryKey)
+        m_ConfigurationFilePath(ConfigurationFilePath)
     {
         ::SetWindowTextW(
             this->m_WindowHandle,
@@ -231,7 +231,7 @@ namespace winrt::NanaBox::implementation
 
     QuickStartPage::~QuickStartPage()
     {
-        if (this->m_Timer) this->m_Timer.Stop();
+        try { if (this->m_Timer) this->m_Timer.Stop(); } catch (...) {}
     }
 
     winrt::fire_and_forget QuickStartPage::RefreshWorkspaces(bool Force)
@@ -254,6 +254,7 @@ namespace winrt::NanaBox::implementation
         this->m_Refreshing = true;
         this->m_HistoryPaths = Paths;
         std::vector<Workspace> Records;
+        bool Failed = false;
         try
         {
             co_await winrt::resume_background();
@@ -287,8 +288,19 @@ namespace winrt::NanaBox::implementation
                 }
                 Records.push_back(std::move(Entry));
             }
+        }
+        catch (...) { Failed = true; }
+        try
+        {
             co_await Foreground;
             if (!::IsWindow(this->m_WindowHandle)) co_return;
+            this->m_Refreshing = false;
+            if (Failed)
+            {
+                this->m_HistoryPaths.clear();
+                this->WorkspaceStatusText().Text(::WelcomeText(L"WorkspaceHistoryError"));
+                co_return;
+            }
             this->m_Workspaces = std::move(Records);
             this->m_Refreshing = false;
             this->RenderWorkspaces();
@@ -307,7 +319,9 @@ namespace winrt::NanaBox::implementation
 
     std::wstring QuickStartPage::SelectedWorkspacePath()
     {
-        auto Item = this->WorkspaceList().SelectedItem().try_as<winrt::Windows::UI::Xaml::Controls::ListViewItem>();
+        auto List = this->WorkspaceList();
+        if (!List) return {};
+        auto Item = List.SelectedItem().try_as<winrt::Windows::UI::Xaml::Controls::ListViewItem>();
         return Item ? std::wstring(winrt::unbox_value<winrt::hstring>(Item.Tag()).c_str()) : std::wstring();
     }
 
@@ -315,6 +329,7 @@ namespace winrt::NanaBox::implementation
     {
         using namespace winrt::Windows::UI::Xaml::Controls;
         using Automation = winrt::Windows::UI::Xaml::Automation::AutomationProperties;
+        if (!this->WorkspaceList() || !this->WorkspaceSearchBox() || !this->WorkspaceEmptyText()) return;
         auto Previous = this->SelectedWorkspacePath();
         auto Search = ::Lowercase(this->WorkspaceSearchBox().Text().c_str());
         auto List = this->WorkspaceList();
@@ -337,8 +352,9 @@ namespace winrt::NanaBox::implementation
             IconColumn.Width(winrt::Windows::UI::Xaml::GridLengthHelper::FromPixels(32));
             Row.ColumnDefinitions().Append(IconColumn);
             Row.ColumnDefinitions().Append(ColumnDefinition());
-            SymbolIcon Icon;
-            Icon.Symbol(Symbol::Computer);
+            FontIcon Icon;
+            Icon.FontFamily(winrt::Windows::UI::Xaml::Media::FontFamily(L"Segoe MDL2 Assets"));
+            Icon.Glyph(L"\uE7F4");
             Icon.VerticalAlignment(winrt::Windows::UI::Xaml::VerticalAlignment::Top);
             Icon.Margin(winrt::Windows::UI::Xaml::ThicknessHelper::FromLengths(0, 4, 0, 0));
             Row.Children().Append(Icon);
@@ -384,6 +400,8 @@ namespace winrt::NanaBox::implementation
 
     void QuickStartPage::UpdateWorkspaceActions()
     {
+        if (!this->WorkspaceStartButton() || !this->WorkspaceSettingsButton() ||
+            !this->WorkspaceFolderButton() || !this->WorkspaceRemoveButton()) return;
         auto Path = this->SelectedWorkspacePath();
         auto Found = std::find_if(this->m_Workspaces.begin(), this->m_Workspaces.end(),
             [&](auto const& Entry) { return ::NanaBox::WorkspaceHistory::SamePath(Entry.Path, Path); });
