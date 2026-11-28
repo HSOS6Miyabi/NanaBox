@@ -253,10 +253,10 @@ def run(exe, readonly):
                 assert (mount/"Unicode-\u4e16\u754c.txt").read_bytes()==b"UTF-8"
                 assert "hello.txt" in os.listdir(mount)
                 assert (mount/"comma,semicolon;.txt").read_bytes()==b"valid punctuation"
-                with (mount/"hello.txt").open("rb") as source:
-                    with mmap.mmap(source.fileno(),0,access=mmap.ACCESS_READ) as mapped:
-                        assert mapped[:]==b"Hello 9P"
-                check_image_section(mount/"image.exe")
+                # Windows page faults and mmap APIs may hold the Python GIL.
+                # Keep the 9P server independent of the mapping process.
+                subprocess.run([sys.executable,__file__,"--check-read-maps",str(mount)],
+                               check=True,timeout=60)
                 if readonly:
                     try:
                         (mount/"hello.txt").write_bytes(b"changed")
@@ -274,12 +274,8 @@ def run(exe, readonly):
                         stream.truncate(120003)
                     expected=data[:80003]+b"XYZ"+data[80006:120003]
                     assert file.read_bytes()==expected
-                    with file.open("r+b") as stream:
-                        with mmap.mmap(stream.fileno(),0,access=mmap.ACCESS_WRITE) as mapped:
-                            assert mapped[17003:17122]==expected[17003:17122]
-                            mapped[30001:30004]=b"MAP"
-                            mapped.flush()
-                        os.fsync(stream.fileno())
+                    subprocess.run([sys.executable,__file__,"--check-write-map",str(file)],
+                                   check=True,timeout=60)
                     expected=expected[:30001]+b"MAP"+expected[30004:]
                     assert file.read_bytes()==expected
                     renamed=mount/"renamed.bin";file.rename(renamed)
@@ -314,6 +310,20 @@ def run(exe, readonly):
     print("WinFsp 9P mount passed:", "read-only" if readonly else "read-write")
 
 if __name__=="__main__":
-    binary=str(pathlib.Path(sys.argv[1]).resolve())
-    run(binary,False)
-    run(binary,True)
+    if len(sys.argv)==3 and sys.argv[1]=="--check-read-maps":
+        mount=pathlib.Path(sys.argv[2])
+        with (mount/"hello.txt").open("rb") as source:
+            with mmap.mmap(source.fileno(),0,access=mmap.ACCESS_READ) as mapped:
+                assert mapped[:]==b"Hello 9P"
+        check_image_section(mount/"image.exe")
+    elif len(sys.argv)==3 and sys.argv[1]=="--check-write-map":
+        with pathlib.Path(sys.argv[2]).open("r+b") as stream:
+            with mmap.mmap(stream.fileno(),0,access=mmap.ACCESS_WRITE) as mapped:
+                assert mapped[17003:17122]==(bytes(range(251))*1000)[17003:17122]
+                mapped[30001:30004]=b"MAP"
+                mapped.flush()
+            os.fsync(stream.fileno())
+    else:
+        binary=str(pathlib.Path(sys.argv[1]).resolve())
+        run(binary,False)
+        run(binary,True)
