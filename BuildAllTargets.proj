@@ -59,6 +59,10 @@
     <Copy SourceFiles="$(InputBinariesPath)x64\Mile.Xaml.Styles.SunValley.xbf" DestinationFiles="$(OutputBinariesPath)x64\Mile.Xaml.Styles.SunValley.xbf" />
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.exe" DestinationFiles="$(OutputBinariesPath)x64\NanaBox.exe" />
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.pri" DestinationFiles="$(OutputBinariesPath)x64\resources.pri" />
+    <ItemGroup>
+      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestNetworkService\gns.py;$(MSBuildThisFileDirectory)GuestNetworkService\*.ps1;$(MSBuildThisFileDirectory)GuestNetworkService\*.sh;$(MSBuildThisFileDirectory)GuestNetworkService\*.service;$(MSBuildThisFileDirectory)GuestNetworkService\README.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GuestToolsFiles)" DestinationFolder="$(OutputBinariesPath)GuestTools" />
 
     <Copy SourceFiles="$(MSBuildThisFileDirectory)License.md" DestinationFiles="$(OutputSymbolsPath)License.txt" />
     <Copy SourceFiles="$(InputBinariesPath)arm64\NanaBox.pdb" DestinationFiles="$(OutputSymbolsPath)arm64\NanaBox.pdb" />

@@ -8,23 +8,21 @@ The NanaBox host's MirroredNetworking component registers an HCN guest network s
 
 Run `RegisterHost.ps1` as an administrator on the Windows Hyper-V host.
 
-On a Linux guest with systemd, Python 3, iproute2 and systemd-resolved:
+On a Linux guest with systemd, Python 3, iproute2 and systemd-resolved, run the installer from the extracted GuestTools directory:
 
 ```sh
-sudo install -d -m 755 /opt/nanabox-gns
-sudo install -m 644 gns.py /opt/nanabox-gns/gns.py
-sudo install -m 644 nanabox-gns.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now nanabox-gns.service
+sudo sh InstallLinuxGuest.sh --enable-file-exchange
 ```
+
+Add `--allow-clock-set` to enable manual clock synchronization. Run the same command to upgrade or change permissions. Uninstall with `sudo sh UninstallLinuxGuest.sh`; exchanged files are preserved.
 
 On a Windows guest with Python 3.12 or later installed for all users, run as administrator:
 
 ```powershell
-.\InstallWindowsGuest.ps1 -PythonPath 'C:\Program Files\Python313\python.exe'
+.\InstallWindowsGuest.ps1 -PythonPath 'C:\Program Files\Python313\python.exe' -EnableFileExchange
 ```
 
-Specify the installed interpreter's actual path. The startup task runs as SYSTEM. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
+Specify the installed interpreter's actual path. The startup task runs as SYSTEM. Add `-AllowClockSet` to permit manual clock synchronization. Re-run the installer to upgrade or change permissions. Run `UninstallWindowsGuest.ps1` to remove the service while preserving exchanged files. Configure only adapters dedicated to host-managed networking; other guest network managers may overwrite these settings.
 
 ## Guest tools
 
@@ -38,7 +36,7 @@ python gns.py query <runtime-vm-guid> GuestInformation
 python gns.py query <runtime-vm-guid> Diagnostics
 ```
 
-These read-only queries require the installed guest service. They do not execute guest shell commands or change the guest clock.
+The Guest tools tab also offers clock-offset measurement, explicit clock synchronization, and file exchange. Clock changes require the installation option above and confirmation in the host UI. File exchange is enabled by the file-exchange installation option and uses a protected directory: `/var/lib/nanabox-gns/exchange` on Linux and `ProgramData\NanaBox Guest Exchange` on Windows. Specify the filename within that directory and the local host file path. The service transfers 64 KiB chunks, checks SHA-256, publishes a completed file atomically, and rejects existing destinations unless replacement is explicitly authorized. Aborted uploads remain unpublished; expired or interrupted sessions are cleaned up by the service. File exchange does not expose arbitrary guest filesystem paths.
 
 ## Host requests
 

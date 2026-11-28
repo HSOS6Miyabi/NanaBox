@@ -13,6 +13,8 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+StateDirectory=nanabox-gns
+StateDirectoryMode=0700
 CapabilityBoundingSet=CAP_NET_ADMIN
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_VSOCK
 

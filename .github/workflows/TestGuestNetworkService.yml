@@ -23,6 +23,10 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m unittest discover -s GuestNetworkService -v
+      - name: Validate Linux installation scripts
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash -n GuestNetworkService/InstallLinuxGuest.sh GuestNetworkService/UninstallLinuxGuest.sh
       - name: Reconcile real Linux interfaces and routes in a network namespace
         if: runner.os == 'Linux'
         shell: bash
@@ -34,5 +38,6 @@ jobs:
           path: |
             GuestNetworkService/gns.py
             GuestNetworkService/*.ps1
+            GuestNetworkService/*.sh
             GuestNetworkService/*.service
             GuestNetworkService/README.md
