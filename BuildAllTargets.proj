@@ -65,6 +65,10 @@
       <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestTool\nanabox-guest-tool" Condition="Exists('$(MSBuildThisFileDirectory)GuestTool\nanabox-guest-tool')" />
     </ItemGroup>
     <Copy SourceFiles="@(GuestToolsFiles)" DestinationFolder="$(OutputBinariesPath)GuestTools" />
+    <ItemGroup>
+      <GuestToolsArm64Files Include="$(MSBuildThisFileDirectory)GuestTool\arm64\*.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GuestToolsArm64Files)" DestinationFolder="$(OutputBinariesPath)GuestTools\arm64" Condition="'@(GuestToolsArm64Files)' != ''" />
 
     <Copy SourceFiles="$(MSBuildThisFileDirectory)License.md" DestinationFiles="$(OutputSymbolsPath)License.txt" />
     <Copy SourceFiles="$(InputBinariesPath)arm64\NanaBox.pdb" DestinationFiles="$(OutputSymbolsPath)arm64\NanaBox.pdb" />

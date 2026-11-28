@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 if [ "$(id -u)" -ne 0 ]; then echo 'Run as root.' >&2; exit 1; fi
+if systemctl cat nanabox-gns.service >/dev/null 2>&1; then
+    systemctl disable --now nanabox-gns.service
+fi
 if systemctl cat nanabox-guest-tool.service >/dev/null 2>&1; then
     systemctl disable --now nanabox-guest-tool.service
 fi
@@ -18,9 +21,6 @@ case "$(readlink /usr/local/bin/nanabox-plan9 || true)" in
     /opt/nanabox-gns/plan9.py|/opt/nanabox-gns/nanabox-plan9) rm -f /usr/local/bin/nanabox-plan9 ;;
 esac
 rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py /opt/nanabox-gns/nanabox-plan9
-if systemctl cat nanabox-gns.service >/dev/null 2>&1; then
-    systemctl disable --now nanabox-gns.service
-fi
 rm -f /etc/systemd/system/nanabox-gns.service /etc/systemd/system/nanabox-gns.service.d/50-options.conf
 if [ "$(readlink /usr/local/bin/nanabox-bind || true)" = /opt/nanabox-gns/nanabox-bind ]; then rm -f /usr/local/bin/nanabox-bind; fi
 rm -f /opt/nanabox-gns/gns.py /opt/nanabox-gns/libnanabox-bind.so /opt/nanabox-gns/nanabox-bind

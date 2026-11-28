@@ -148,3 +148,7 @@ The Windows filesystem client requires the matching Dokany kernel driver, and GP
 ## Native integration service
 
 The native C++ GuestTool service handles heartbeat, system information, clock queries and optional synchronization, and protected file exchange on Hyper-V socket port 27457. Installers start it alongside the native network service. DNS tunneling uses the native service on both systems. Linux GELNIC routing also uses the native service. Linux bind coordination uses the native network service with the optional libc interposer. File exchange and clock synchronization permissions are assigned only to the native service. The host selects the native transport before starting a file transaction; diagnostics continue to use the networking component. The Linux source build requires C++17, nlohmann-json and OpenSSL development headers. The Windows installer uses the prebuilt `nanabox-guest-tool.exe` from the matching GuestTool artifact. The guest service rejects requests exceeding 256 KiB, limits concurrent transfers to 16, and expires incomplete transfers after 15 minutes.
+
+### Windows architecture selection
+
+The Windows distribution contains native x64 executables at the GuestTool directory root and native ARM64 executables in `arm64/`. The installers select the Windows guest's native architecture. ARM64 binaries are cross-compiled in the x64 Windows CI job; execution on ARM64 requires an ARM64 guest or runner.

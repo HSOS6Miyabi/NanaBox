@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
+      fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -49,7 +50,9 @@ jobs:
       - name: Build and test Windows GuestTool
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
+        run: |
+          .\GuestTool\BuildWindowsGuestTool.ps1 -RunTests
+          .\GuestTool\BuildWindowsGuestTool.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
       - name: Build and test native Linux GuestTool
         if: runner.os == 'Linux'
         shell: bash
@@ -78,6 +81,7 @@ jobs:
             GuestTool/WddmGuest.cpp
             GuestTool/WddmMapping.h
             GuestTool/nanabox-gpu.exe
+            GuestTool/arm64/*.exe
             GuestTool/*.ps1
             GuestTool/*.sh
             GuestTool/*.service

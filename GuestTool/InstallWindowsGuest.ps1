@@ -3,9 +3,17 @@ param(
     [switch]$EnableFileExchange,
     [switch]$AllowClockSet,
     [switch]$EnableDnsTunnel,
-    [string]$NativeExecutable = (Join-Path $PSScriptRoot 'nanabox-guest-tool.exe')
+    [string]$NativeExecutable
 )
 $ErrorActionPreference = 'Stop'
+if (-not $NativeExecutable) {
+    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+    $NativeExecutable = if ($architecture -eq 'Arm64') {
+        Join-Path $PSScriptRoot 'arm64\nanabox-guest-tool.exe'
+    } elseif ($architecture -eq 'X64') {
+        Join-Path $PSScriptRoot 'nanabox-guest-tool.exe'
+    } else { throw "Unsupported Windows guest architecture: $architecture" }
+}
 $NativeExecutable = (Resolve-Path -LiteralPath $NativeExecutable).Path
 & $NativeExecutable --self-test
 if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool self-test failed.' }
