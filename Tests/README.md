@@ -33,3 +33,7 @@ The Windows GuestTool CI runs an isolated local Bind Filter integration test, in
 The Windows GPU GuestTool self-test covers initial disabled state, repeated disabled inventories, re-enabling GPU mapping, and retry after an injected cleanup failure. Driver file restoration and link ownership are tested using disposable files.
 
 Virtual SMB inventory tests reject invalid Windows directory components, case-insensitive duplicate names (including Unicode), malformed access flags and writable GPU shares before mounting. The host configuration self-test rejects names that cannot be mounted as Windows directories.
+
+### Linux GTK clipboard input integration
+
+The Linux GuestTool workflow compiles the shared C++ keyboard encoder, checks Unicode scalar conversion and balanced key press/release batches, and exercises a real GTK 3 text entry under Xvfb. The GTK test injects the generated keyboard events using XTest and compares the resulting UTF-8 text. Windows CI tests the host configuration, the keyboard encoder, and the settings control. Actual Hyper-V console transport requires a running VM.
