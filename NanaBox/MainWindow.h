@@ -133,6 +133,7 @@ namespace NanaBox
         NanaBox::VirtualMachineConfiguration m_Configuration;
         winrt::com_ptr<NanaBox::ComputeSystem> m_VirtualMachine;
         std::unique_ptr<NanaBox::MirroredNetworking> m_MirroredNetworking;
+        std::unique_ptr<NanaBox::Plan9MountManager> m_Plan9MountManager;
         std::string m_VirtualMachineGuid;
         bool m_VirtualMachineRunning = false;
         bool m_VirtualMachinePaused = false;

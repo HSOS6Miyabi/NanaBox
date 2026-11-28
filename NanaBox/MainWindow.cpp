@@ -713,6 +713,7 @@ void NanaBox::MainWindow::SetVirtualMachinePaused(bool Paused)
 void NanaBox::MainWindow::CleanupExitedVirtualMachine()
 {
     this->KillTimer(NanaBox::MainWindowTimerEvents::MirroredNetworkStatus);
+    this->m_Plan9MountManager.reset();
     if (this->m_MirroredNetworking) this->m_MirroredNetworking->VmExited();
     this->m_MirroredNetworking.reset();
     this->m_VirtualMachine = nullptr;
@@ -859,6 +860,7 @@ void NanaBox::MainWindow::OnDestroy()
     }
     if (!this->m_VirtualMachineRunning) this->CleanupExitedVirtualMachine();
     else this->m_MirroredNetworking.reset();
+    this->m_Plan9MountManager.reset();
     if (this->m_VmMutex) { ::ReleaseMutex(this->m_VmMutex.get()); this->m_VmMutex.close(); }
     ::SetEvent(this->m_RecordingStop.get());
     ::SetEvent(this->m_ScreenshotStop.get());
@@ -1000,6 +1002,7 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         {
             try { this->m_VirtualMachine->Terminate(); Stopped = true; } catch (...) {}
         }
+        this->m_Plan9MountManager.reset();
         if (Stopped && this->m_MirroredNetworking) this->m_MirroredNetworking->VmExited();
         this->m_MirroredNetworking.reset();
         this->m_VirtualMachine = nullptr;
@@ -1020,10 +1023,21 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
         }
     }
 
+    auto HcsConfiguration = NanaBox::MakeHcsConfiguration(this->m_Configuration);
+    auto HcsDocument = nlohmann::json::parse(HcsConfiguration);
+    auto const& Devices = HcsDocument.at("VirtualMachine").at("Devices");
+    if (Devices.contains("Plan9"))
+    {
+        for (auto const& Share : Devices.at("Plan9").at("Shares"))
+        {
+            auto Path = winrt::to_hstring(Share.at("Path").get<std::string>());
+            auto Attributes = ::GetFileAttributesW(Path.c_str());
+            if (Attributes == INVALID_FILE_ATTRIBUTES || !(Attributes & FILE_ATTRIBUTE_DIRECTORY))
+                throw winrt::hresult_invalid_argument(L"Each Plan 9 share must refer to an existing host directory.");
+        }
+    }
     this->m_VirtualMachine = winrt::make_self<NanaBox::ComputeSystem>(
-        HcsVmId,
-        winrt::to_hstring(
-            NanaBox::MakeHcsConfiguration(this->m_Configuration)));
+        HcsVmId, winrt::to_hstring(HcsConfiguration));
 
     UINT_PTR Generation = ++this->m_VirtualMachineGeneration;
     HWND WindowHandle = this->m_hWnd;
@@ -1043,6 +1057,10 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
     nlohmann::json Properties = nlohmann::json::parse(
         winrt::to_string(this->m_VirtualMachine->GetProperties()));
     this->m_VirtualMachineGuid = Properties["RuntimeId"];
+    if (this->m_Configuration.GuestType == NanaBox::GuestType::Linux)
+        this->m_Plan9MountManager = std::make_unique<NanaBox::Plan9MountManager>(
+            winrt::guid(this->m_VirtualMachineGuid),
+            NanaBox::MakePlan9GuestManifest(this->m_Configuration, HcsDocument).dump());
     if (this->m_Configuration.MirroredNetworking)
     {
         this->m_MirroredNetworking = std::make_unique<NanaBox::MirroredNetworking>(

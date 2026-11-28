@@ -1659,7 +1659,7 @@ namespace winrt::NanaBox::implementation
     {
         this->m_GuestToolsRunning = Busy;
         for (auto const& Button : {this->GuestHeartbeatControl(), this->GuestInformationControl(),
-            this->GuestDiagnosticsControl(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
+            this->GuestDiagnosticsControl(), this->GuestPlan9Control(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
             this->GuestUploadControl(), this->GuestDownloadControl(), this->GuestBrowseUploadControl(),
             this->GuestBrowseDownloadControl()})
             Button.IsEnabled(!Busy);

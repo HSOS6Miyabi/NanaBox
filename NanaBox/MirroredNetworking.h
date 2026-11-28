@@ -14,6 +14,18 @@ namespace NanaBox
         std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
         std::shared_ptr<std::atomic<bool>> const& Cancellation = {});
     bool GuestToolsSelfTest();
+    class Plan9MountManager
+    {
+    public:
+        Plan9MountManager(winrt::guid const& RuntimeId, std::string Manifest);
+        ~Plan9MountManager();
+        Plan9MountManager(Plan9MountManager const&) = delete;
+        Plan9MountManager& operator=(Plan9MountManager const&) = delete;
+        void Update(std::string Manifest);
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_Impl;
+    };
     // Owns the HCN guest network service and the endpoints hot-added to one VM.
     class MirroredNetworking
     {

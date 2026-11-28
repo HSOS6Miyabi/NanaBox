@@ -2080,4 +2080,5 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="Plan9UnlimitedConnectionsHelp" xml:space="preserve"><value>Allow multiple concurrent connections where supported by the host.</value></data>
   <data name="Plan9AllowedFilesLabel" xml:space="preserve"><value>Allowed files (one per line)</value></data>
   <data name="Plan9AllowedFilesHelp" xml:space="preserve"><value>Restrict access to these file names. Leave empty to share the entire directory.</value></data>
+  <data name="GuestPlan9.Content" xml:space="preserve"><value>Plan 9 mounts</value></data>
 </root>

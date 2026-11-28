@@ -170,6 +170,10 @@ try {
     if (-not $HostIntegration) {
         Invoke-Control 'GuestHeartbeatButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Heartbeat' -and $v.Data.Alive}
+        Invoke-Control 'GuestPlan9Button'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Shares'}
+        Assert-Equal $result.Data.Shares[0].MountPoint '/media/Projects' 'Plan9 guest mount point'
+        Assert-Equal $result.Data.Shares[0].Mounted $true 'Plan9 mount status'
         Invoke-Control 'GuestInformationButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
         Invoke-Control 'GuestDiagnosticsButton'

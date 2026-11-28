@@ -39,6 +39,7 @@ namespace
     constexpr GUID GnsServiceId{27453, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID DnsServiceId{27454, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr GUID BindServiceId{27455, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
+    constexpr GUID Plan9ServiceId{27456, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr std::uint32_t MaxMessage = 256 * 1024;
 
     std::string GuidString(GUID const& Value)
@@ -177,12 +178,12 @@ namespace
     }
 
     Json GuestRequest(winrt::guid const& RuntimeId, Json const& Request, std::atomic<bool> const& Stop,
-        unsigned TimeoutSeconds = 90)
+        unsigned TimeoutSeconds = 90, GUID const& ServiceId = GnsServiceId)
     {
         auto Body = Request.dump();
         if (Body.empty() || Body.size() > MaxMessage) throw winrt::hresult_invalid_argument();
         Socket Connection;
-        ConnectGuest(Connection, RuntimeId, GnsServiceId, Stop);
+        ConnectGuest(Connection, RuntimeId, ServiceId, Stop);
         auto End = std::chrono::steady_clock::now() + std::chrono::seconds(TimeoutSeconds);
         auto Length = ::htonl(static_cast<u_long>(Body.size()));
         Transfer(Connection.Value, reinterpret_cast<char*>(&Length), sizeof(Length), true, End, Stop);
@@ -343,14 +344,16 @@ namespace
         return Result;
     }
 
-    void RegisterGuestSocket(bool Dns = false, bool Bind = false)
+    void RegisterGuestSocket(bool Dns = false, bool Bind = false, bool Plan9 = false)
     {
-        auto Path = Bind
+        auto Path = Plan9
+            ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b40-facb-11e6-bd58-64006a7986d3}"
+            : Bind
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3f-facb-11e6-bd58-64006a7986d3}"
             : Dns
             ? L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3e-facb-11e6-bd58-64006a7986d3}"
             : L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Virtualization\\GuestCommunicationServices\\{00006b3d-facb-11e6-bd58-64006a7986d3}";
-        auto Name = Bind ? L"NanaBox Bind Coordination" : Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
+        auto Name = Plan9 ? L"NanaBox Plan 9 Shares" : Bind ? L"NanaBox Bind Coordination" : Dns ? L"NanaBox DNS Tunnel" : L"NanaBox Guest Network Service";
         HKEY Key = nullptr;
         DWORD Disposition = 0;
         winrt::check_win32(::RegCreateKeyExW(HKEY_LOCAL_MACHINE, Path, 0, nullptr, 0,
@@ -1639,6 +1642,68 @@ namespace
     }
 }
 
+struct NanaBox::Plan9MountManager::Impl
+{
+    winrt::guid RuntimeId;
+    std::mutex Mutex;
+    std::condition_variable Wake;
+    std::atomic<bool> Stop{false};
+    std::string Manifest;
+    std::uint64_t Revision = 0;
+    std::thread Worker;
+
+    Impl(winrt::guid const& Id, std::string Shares) : RuntimeId(Id), Manifest(std::move(Shares))
+    {
+        Worker = std::thread([this]() { Run(); });
+    }
+
+    ~Impl()
+    {
+        Stop = true;
+        Wake.notify_all();
+        if (Worker.joinable()) Worker.join();
+    }
+
+    void Run() noexcept
+    {
+        WSADATA Data{};
+        if (::WSAStartup(MAKEWORD(2, 2), &Data)) return;
+        auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
+        while (!Stop)
+        {
+            std::string Shares;
+            std::uint64_t Current = 0;
+            {
+                std::lock_guard Lock(Mutex);
+                Shares = Manifest;
+                Current = Revision;
+            }
+            try
+            {
+                RegisterGuestSocket(false, false, true);
+                (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
+                    {"RequestType", "Update"}, {"Settings", {{"Shares", Json::parse(Shares)}}}}, Stop, 15, Plan9ServiceId);
+            }
+            catch (...) {}
+            std::unique_lock Lock(Mutex);
+            Wake.wait_for(Lock, std::chrono::seconds(5), [&]() { return Stop.load() || Revision != Current; });
+        }
+    }
+};
+
+NanaBox::Plan9MountManager::Plan9MountManager(winrt::guid const& RuntimeId, std::string Manifest) :
+    m_Impl(std::make_unique<Impl>(RuntimeId, std::move(Manifest))) {}
+NanaBox::Plan9MountManager::~Plan9MountManager() = default;
+void NanaBox::Plan9MountManager::Update(std::string Manifest)
+{
+    {
+        std::lock_guard Lock(m_Impl->Mutex);
+        m_Impl->Manifest = std::move(Manifest);
+        ++m_Impl->Revision;
+    }
+    m_Impl->Wake.notify_all();
+}
+
 std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::string const& Action,
     std::wstring const& LocalPath, std::string const& GuestName, bool Overwrite,
     std::shared_ptr<std::atomic<bool>> const& Cancellation)
@@ -1650,6 +1715,13 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
     std::atomic<bool> LocalStop{false};
     auto const& Stop = Cancellation ? *Cancellation : LocalStop;
+    if (Action == "Plan9Shares")
+    {
+        RegisterGuestSocket(false, false, true);
+        auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
+            {"RequestType", "Query"}, {"Settings", Json::object()}}, Stop, 15, Plan9ServiceId);
+        return Json{{"Success", true}, {"ResourceType", Action}, {"Data", Reply}}.dump(2);
+    }
     auto Reply = ExecuteGuestTools(Action, LocalPath, GuestName, Overwrite,
         [&](std::string const& Kind, std::string const& Verb, Json const& Settings)
         {

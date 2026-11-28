@@ -1642,6 +1642,7 @@
               <Button x:Name="GuestHeartbeatControl" x:Uid="/VirtualMachineSettingsPage/GuestHeartbeat" Content="Check heartbeat" Tag="Heartbeat" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestHeartbeatButton" />
               <Button x:Name="GuestInformationControl" x:Uid="/VirtualMachineSettingsPage/GuestInformation" Content="System information" Tag="GuestInformation" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestInformationButton" />
               <Button x:Name="GuestDiagnosticsControl" x:Uid="/VirtualMachineSettingsPage/GuestDiagnostics" Content="Network diagnostics" Tag="Diagnostics" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDiagnosticsButton" />
+              <Button x:Name="GuestPlan9Control" x:Uid="/VirtualMachineSettingsPage/GuestPlan9" Content="Plan 9 mounts" Tag="Plan9Shares" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9Button" />
             </StackPanel>
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestClockTitle" Text="Guest clock" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestClockNote" Text="Changing the guest clock requires explicit permission in the guest service." TextWrapping="Wrap" Opacity="0.75" />

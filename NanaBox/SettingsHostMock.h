@@ -56,7 +56,9 @@ namespace NanaBox
             }
             std::lock_guard Lock(Data->Mutex);
             Json Result = Json::object();
-            if (Action == "TimeQuery" || Action == "TimeSync")
+            if (Action == "Plan9Shares")
+                Result = {{"Shares", Json::array({Json{{"Name", "Projects"}, {"MountPoint", "/media/Projects"}, {"Mounted", true}}})}};
+            else if (Action == "TimeQuery" || Action == "TimeSync")
             {
                 if (Action == "TimeSync") Data->GuestClock = 1800000000123ll;
                 Result = {{"UnixMilliseconds", Data->GuestClock}, {"ClockSetEnabled", true},
