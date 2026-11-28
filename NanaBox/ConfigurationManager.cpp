@@ -202,7 +202,8 @@ void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configurati
             throw std::invalid_argument("Plan9 share requires a valid host path");
         if (!Share.Port || Share.Port == UINT32_MAX || (Share.Port >= 27453 && Share.Port <= 27456))
             throw std::invalid_argument("Invalid or reserved Plan9 port");
-        if (std::any_of(Names.begin(), Names.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))
+        if (::_strnicmp(Share.Name.c_str(), "NanaBox.GpuExtra.", 17) == 0 ||
+            std::any_of(Names.begin(), Names.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))
             throw std::invalid_argument("Duplicate or reserved Plan9 share name: " + Share.Name);
         Names.push_back(Share.Name);
         std::vector<std::string> Allowed;
@@ -292,6 +293,8 @@ std::string NanaBox::MakeHcsConfiguration(
     auto Minor = Configuration.HcsSchemaMinor;
     for (auto const& Share : Configuration.Plan9Shares)
         if (!Share.AllowedFiles.empty()) Minor = (std::max)(Minor, 2u);
+    if (Configuration.GuestType == NanaBox::GuestType::Windows && Configuration.Gpu.EnableHostDriverStore)
+        Minor = (std::max)(Minor, 2u);
     Result["SchemaVersion"]["Minor"] = Minor;
 
     Result["Owner"] = Configuration.Name;

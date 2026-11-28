@@ -17,6 +17,14 @@
 #include <Mile.Json.h>
 #include "../GuestTool/WddmMapping.h"
 #include <functional>
+#include <wbemidl.h>
+#include <oleauto.h>
+#include <map>
+#include <sstream>
+#include <iomanip>
+#pragma comment(lib, "wbemuuid.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
 #include <SetupAPI.h>
 #include <wincrypt.h>
 #include <cwchar>
@@ -601,6 +609,158 @@ namespace
         return NanaBox::Wddm::SafeComponent(Package) ? Package : std::wstring();
     }
 
+
+    struct WmiString
+    {
+        BSTR Value;
+        explicit WmiString(wchar_t const* ValueText) : Value(::SysAllocString(ValueText))
+        { if (!Value) throw std::bad_alloc(); }
+        ~WmiString() { ::SysFreeString(Value); }
+        WmiString(WmiString const&) = delete;
+        WmiString& operator=(WmiString const&) = delete;
+    };
+
+    struct WmiApartment
+    {
+        HRESULT Status = ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        ~WmiApartment() { if (SUCCEEDED(Status)) ::CoUninitialize(); }
+        WmiApartment() { if (FAILED(Status) && Status != RPC_E_CHANGED_MODE) winrt::throw_hresult(Status); }
+        WmiApartment(WmiApartment const&) = delete;
+        WmiApartment& operator=(WmiApartment const&) = delete;
+    };
+
+    std::wstring DriverDeviceId(HDEVINFO Set, SP_DEVINFO_DATA& Device)
+    {
+        wchar_t Id[4096]{};
+        if (!::SetupDiGetDeviceInstanceIdW(Set, &Device, Id, ARRAYSIZE(Id), nullptr)) return {};
+        return Id;
+    }
+
+    std::vector<std::wstring> AssociatedDriverFiles(IWbemServices* Services, std::wstring const& Id)
+    {
+        std::wstring Escaped;
+        for (auto Ch : Id)
+        {
+            if (Ch == L'\\' || Ch == L'"') Escaped += L'\\';
+            Escaped += Ch;
+        }
+        std::wstring Query = L"ASSOCIATORS OF {Win32_PNPSignedDriver.DeviceID=\"" + Escaped +
+            L"\"} WHERE AssocClass=Win32_PNPSignedDriverCIMDataFile ResultClass=CIM_DataFile";
+        WmiString Language(L"WQL"), QueryText(Query.c_str());
+        winrt::com_ptr<IEnumWbemClassObject> Items;
+        winrt::check_hresult(Services->ExecQuery(Language.Value, QueryText.Value,
+            WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, Items.put()));
+        std::vector<std::wstring> Result;
+        while (Result.size() < 4096)
+        {
+            winrt::com_ptr<IWbemClassObject> Item;
+            ULONG Count = 0;
+            HRESULT Status = Items->Next(2000, 1, Item.put(), &Count);
+            if (Status == WBEM_S_TIMEDOUT) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT));
+            winrt::check_hresult(Status);
+            if (!Count) break;
+            VARIANT Value;
+            ::VariantInit(&Value);
+            auto Clear = Mile::ScopeExitTaskHandler([&]() { ::VariantClear(&Value); });
+            if (SUCCEEDED(Item->Get(L"Name", 0, &Value, nullptr, nullptr)) &&
+                Value.vt == VT_BSTR && Value.bstrVal) Result.emplace_back(Value.bstrVal);
+        }
+        if (Result.size() == 4096) throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW));
+        return Result;
+    }
+
+    winrt::com_ptr<IWbemServices> ConnectDriverWmi()
+    {
+        winrt::com_ptr<IWbemLocator> Locator;
+        winrt::check_hresult(::CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER,
+            __uuidof(IWbemLocator), Locator.put_void()));
+        WmiString Namespace(L"ROOT\\CIMV2");
+        winrt::com_ptr<IWbemServices> Services;
+        winrt::check_hresult(Locator->ConnectServer(Namespace.Value, nullptr, nullptr, nullptr,
+            WBEM_FLAG_CONNECT_USE_MAX_WAIT, nullptr, nullptr, Services.put()));
+        winrt::check_hresult(::CoSetProxyBlanket(Services.get(), RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
+            nullptr, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE));
+        return Services;
+    }
+
+    std::string ExtraShareName(std::wstring const& Path, std::set<std::wstring> const& Files)
+    {
+        std::uint64_t Hash = 14695981039346656037ull;
+        auto Add = [&](std::wstring const& Value)
+        {
+            for (auto Ch : NanaBox::Wddm::Fold(Value))
+            {
+                Hash ^= static_cast<std::uint16_t>(Ch);
+                Hash *= 1099511628211ull;
+            }
+            Hash ^= 0;
+            Hash *= 1099511628211ull;
+        };
+        Add(Path);
+        for (auto const& File : Files) Add(File);
+        std::ostringstream Name;
+        Name << "NanaBox.GpuExtra." << std::hex << std::setfill('0') << std::setw(16) << Hash;
+        return Name.str();
+    }
+
+    void AddAssociatedFiles(std::vector<std::wstring> const& Files, std::set<std::wstring>& Packages,
+        std::map<std::wstring, std::set<std::wstring>>& Extras, nlohmann::json& Result)
+    {
+        wchar_t RootBuffer[MAX_PATH]{};
+        auto Length = ::GetWindowsDirectoryW(RootBuffer, ARRAYSIZE(RootBuffer));
+        if (!Length || Length >= ARRAYSIZE(RootBuffer)) winrt::throw_last_error();
+        std::wstring Root = std::wstring(RootBuffer) + L"\\";
+        for (auto const& Full : Files)
+        {
+            if (Full.size() <= Root.size() || ::_wcsnicmp(Full.c_str(), Root.c_str(), Root.size()) != 0)
+                continue;
+            auto Relative = Full.substr(Root.size());
+            if (!NanaBox::Wddm::SafeRelativePath(Relative)) continue;
+            auto Lower = NanaBox::Wddm::Fold(Relative);
+            std::wstring const Repository = L"system32\\driverstore\\filerepository\\";
+            if (Lower.rfind(Repository, 0) == 0)
+            {
+                auto End = Relative.find(L'\\', Repository.size());
+                if (End == std::wstring::npos) continue;
+                auto Package = Relative.substr(Repository.size(), End - Repository.size());
+                if (NanaBox::Wddm::SafeComponent(Package) && Packages.insert(NanaBox::Wddm::Fold(Package)).second)
+                    Result["Packages"].push_back(winrt::to_string(Package));
+                continue;
+            }
+            if (Lower.rfind(L"system32\\", 0) != 0 && Lower.rfind(L"syswow64\\", 0) != 0) continue;
+            if (Lower.rfind(L"system32\\driverstore\\", 0) == 0) continue;
+            auto Dot = Lower.find_last_of(L'.');
+            auto Extension = Dot == std::wstring::npos ? std::wstring() : Lower.substr(Dot);
+            // Guest WDDM supplies its own kernel-mode graphics stack.
+            if (Extension == L".sys" || Extension == L".inf" || Extension == L".cat" || Extension == L".pnf")
+                continue;
+            auto Slash = Relative.find_last_of(L'\\');
+            auto Directory = Relative.substr(0, Slash);
+            auto Name = Relative.substr(Slash + 1);
+            DWORD Attributes = ::GetFileAttributesW(Full.c_str());
+            if (Attributes == INVALID_FILE_ATTRIBUTES || (Attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
+                continue;
+            bool Safe = true;
+            for (size_t End = 0; ; )
+            {
+                End = Directory.find(L'\\', End);
+                auto Part = Directory.substr(0, End);
+                auto Attr = ::GetFileAttributesW((Root + Part).c_str());
+                if (Attr == INVALID_FILE_ATTRIBUTES || !(Attr & FILE_ATTRIBUTE_DIRECTORY) ||
+                    (Attr & FILE_ATTRIBUTE_REPARSE_POINT)) { Safe = false; break; }
+                if (End == std::wstring::npos) break;
+                ++End;
+            }
+            if (!Safe) continue;
+            Extras[NanaBox::Wddm::Fold(Directory)].insert(Name);
+        }
+        for (auto const& Entry : Extras)
+        {
+            if (Entry.second.size() > 1024)
+                throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW));
+        }
+    }
+
     void ReadCopyRules(HKEY Key, std::wstring const& Package, nlohmann::json& Result)
     {
         struct Rule { wchar_t const* Name; bool Wow64; bool Newer; };
@@ -673,9 +833,15 @@ namespace
 winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> const& Selected, bool All)
 {
     using Json = nlohmann::json;
-    Json Result = {{"Packages", Json::array()}, {"Files", Json::array()}, {"Errors", Json::array()}};
+    Json Result = {{"Packages", Json::array()}, {"Files", Json::array()}, {"Errors", Json::array()},
+        {"ExtraShares", Json::array()}};
     if (!All && Selected.empty()) return winrt::to_hstring(Result.dump());
     std::set<std::wstring> Packages;
+    std::map<std::wstring, std::set<std::wstring>> Extras;
+    WmiApartment Apartment;
+    winrt::com_ptr<IWbemServices> Wmi;
+    try { Wmi = ConnectDriverWmi(); }
+    catch (...) { Result["Errors"].push_back("Cannot connect to installed GPU driver file inventory"); }
     VisitPartitionableGpus([&](HDEVINFO Set, SP_DEVINFO_DATA& Device, std::wstring const& Path)
     {
         if (!All && std::none_of(Selected.begin(), Selected.end(), [&](std::string const& Id)
@@ -696,12 +862,39 @@ winrt::hstring NanaBox::EnumerateGpuDriverMappings(std::vector<std::string> cons
         if (Packages.insert(Wddm::Fold(Package)).second)
             Result["Packages"].push_back(winrt::to_string(Package));
         ReadCopyRules(Key.Value, Package, Result);
+        if (Wmi)
+        {
+            auto Id = DriverDeviceId(Set, Device);
+            if (!Id.empty())
+            {
+                try { AddAssociatedFiles(AssociatedDriverFiles(Wmi.get(), Id), Packages, Extras, Result); }
+                catch (...) { Result["Errors"].push_back("Cannot enumerate associated GPU driver files"); }
+            }
+            else Result["Errors"].push_back("Cannot resolve GPU device instance ID");
+        }
         auto Service = AdapterService(Set, Device);
         if (!Wddm::SafeComponent(Service)) return;
         DriverRegistryKey ServiceKey;
         if (::RegOpenKeyExW(Key.Value, Service.c_str(), 0, KEY_READ, &ServiceKey.Value) == ERROR_SUCCESS)
             ReadCopyRules(ServiceKey.Value, Package, Result);
     });
+    wchar_t Windows[MAX_PATH]{};
+    auto Length = ::GetWindowsDirectoryW(Windows, ARRAYSIZE(Windows));
+    if (!Length || Length >= ARRAYSIZE(Windows)) winrt::throw_last_error();
+    if (Extras.size() > 64)
+    {
+        Result["Errors"].push_back("Too many supplemental GPU directories");
+        return winrt::to_hstring(Result.dump());
+    }
+    for (auto const& Extra : Extras)
+    {
+        auto Path = std::wstring(Windows) + L"\\" + Extra.first;
+        Json Files = Json::array();
+        for (auto const& File : Extra.second) Files.push_back(winrt::to_string(File));
+        Result["ExtraShares"].push_back({{"Name", ExtraShareName(Path, Extra.second)},
+            {"Path", winrt::to_string(Path)}, {"Directory", winrt::to_string(Extra.first)},
+            {"AllowedFiles", Files}});
+    }
     return winrt::to_hstring(Result.dump());
 }
 

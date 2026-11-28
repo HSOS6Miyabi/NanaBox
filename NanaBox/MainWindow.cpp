@@ -1160,7 +1160,7 @@ void NanaBox::MainWindow::PublishPlan9Inventory()
         std::vector<std::string> Selected;
         if (Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List)
             for (auto const& Device : Gpu.SelectedDevices) Selected.push_back(Device.first);
-        Manifest = {{"Shares", Manifest}, {"GpuDevices", Selected},
+        Manifest = {{"Shares", Manifest}, {"GpuDevices", Selected}, {"HcsId", this->m_Configuration.Name},
             {"AllGpuDevices", Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Mirror ||
                 Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Default}};
     }

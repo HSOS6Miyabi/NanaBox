@@ -1651,6 +1651,32 @@ struct NanaBox::Plan9MountManager::Impl
     std::string Manifest;
     std::uint64_t Revision = 0;
     std::thread Worker;
+    std::set<std::string> PublishedGpuShares;
+    Json GpuInventory;
+    std::uint64_t GpuRevision = UINT64_MAX;
+    std::chrono::steady_clock::time_point LastGpuInventory{};
+
+    void AddGpuShare(std::string const& HcsId, Json const& Extra)
+    {
+        auto Name = Extra.at("Name").get<std::string>();
+        if (PublishedGpuShares.count(Name)) return;
+        if (PublishedGpuShares.size() >= 96)
+            throw winrt::hresult_error(E_BOUNDS, L"Too many GPU driver share generations; restart the virtual machine.");
+        HcsSystem System;
+        HcsOperation Operation;
+        winrt::check_hresult(::HcsOpenComputeSystem(winrt::to_hstring(HcsId).c_str(), GENERIC_ALL, System.put()));
+        Operation.attach(::HcsCreateOperation(nullptr, nullptr));
+        winrt::check_pointer(Operation.get());
+        Json Request = {{"ResourcePath", "VirtualMachine/Devices/Plan9/Shares"}, {"RequestType", "Add"},
+            {"Settings", {{"Name", Name}, {"AccessName", Name}, {"Path", Extra.at("Path")}, {"Port", 50001},
+                {"Flags", static_cast<std::uint32_t>(Plan9ShareFlags::ReadOnly | Plan9ShareFlags::RestrictFileAccess)},
+                {"AllowedFiles", Extra.at("AllowedFiles")}}}};
+        winrt::check_hresult(::HcsModifyComputeSystem(System.get(), Operation.get(),
+            winrt::to_hstring(Request.dump()).c_str(), nullptr));
+        HcnText Error;
+        winrt::check_hresult(::HcsWaitForOperationResult(Operation.get(), 5000, &Error.Value));
+        PublishedGpuShares.insert(Name);
+    }
 
     Impl(winrt::guid const& Id, std::string Shares) : RuntimeId(Id), Manifest(std::move(Shares))
     {
@@ -1685,10 +1711,35 @@ struct NanaBox::Plan9MountManager::Impl
                 Json Settings = {{"Shares", Inventory}};
                 if (Inventory.is_object())
                 {
-                    Settings = {{"Shares", Inventory.at("Shares")},
-                        {"Wddm", Json::parse(winrt::to_string(EnumerateGpuDriverMappings(
+                    auto Now = std::chrono::steady_clock::now();
+                    if (GpuRevision != Current || Now - LastGpuInventory >= std::chrono::seconds(30))
+                    {
+                        GpuInventory = Json::parse(winrt::to_string(EnumerateGpuDriverMappings(
                             Inventory.at("GpuDevices").get<std::vector<std::string>>(),
-                            Inventory.at("AllGpuDevices").get<bool>())))}};
+                            Inventory.at("AllGpuDevices").get<bool>())));
+                        GpuRevision = Current;
+                        LastGpuInventory = Now;
+                    }
+                    auto Manifest = Inventory.at("Shares");
+                    auto Wddm = GpuInventory;
+                    auto ExtraShares = Wddm.at("ExtraShares");
+                    Wddm.erase("ExtraShares");
+                    Wddm["ExtraFiles"] = Json::array();
+                    for (auto const& Extra : ExtraShares)
+                    {
+                        if (Stop) break;
+                        try
+                        {
+                            AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra);
+                            Manifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
+                                {"ReadOnly", true}, {"AutoMount", true}});
+                            for (auto const& File : Extra.at("AllowedFiles"))
+                                Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
+                                    {"Directory", Extra.at("Directory")}, {"Source", File}, {"Destination", File}});
+                        }
+                        catch (...) { Wddm["Errors"].push_back("Cannot share supplemental GPU driver files"); }
+                    }
+                    Settings = {{"Shares", Manifest}, {"Wddm", Wddm}};
                 }
                 (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
                     {"RequestType", "Update"}, {"Settings", Settings}}, Stop, 15, Plan9ServiceId);
