@@ -196,17 +196,20 @@ kernel=ctypes.WinDLL("kernel32",use_last_error=True)
 kernel.CreateEventW.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_wchar_p]
 kernel.CreateEventW.restype=ctypes.c_void_p
 kernel.SetEvent.argtypes=[ctypes.c_void_p]
+kernel.WaitForSingleObject.argtypes=[ctypes.c_void_p,ctypes.c_uint32]
+kernel.WaitForSingleObject.restype=ctypes.c_uint32
 kernel.CloseHandle.argtypes=[ctypes.c_void_p]
 
 def run(exe, readonly):
     server=Server()
     event_name="Local\\NanaBox.Plan9.Test."+uuid.uuid4().hex
-    event=kernel.CreateEventW(None,1,0,event_name)
-    assert event
+    event=kernel.CreateEventW(None,0,0,event_name)
+    busy=kernel.CreateEventW(None,0,0,event_name+".Busy")
+    assert event and busy
     with tempfile.TemporaryDirectory(prefix="NanaBox9P-") as temp:
         mount=pathlib.Path(temp)/"mount"
         log=pathlib.Path(temp)/"client.log"
-        command=[exe,"--test-loopback",str(server.port),"TestShare",str(mount),"--stop-event",event_name]
+        command=[exe,"--test-loopback",str(server.port),"TestShare",str(mount),"--stop-event",event_name,"--busy-event",event_name+".Busy"]
         if readonly:command.append("--read-only")
         with log.open("wb") as output:
             process=subprocess.Popen(command,stdout=output,stderr=subprocess.STDOUT)
@@ -241,6 +244,10 @@ def run(exe, readonly):
                     assert renamed.read_bytes()==expected
                     renamed.unlink();child.rmdir()
                     assert not renamed.exists() and not child.exists()
+                with (mount/"hello.txt").open("rb") as held:
+                    assert kernel.SetEvent(event)
+                    assert kernel.WaitForSingleObject(busy,5000)==0, "Busy mount was not protected"
+                    assert process.poll() is None and held.read()==b"Hello 9P"
                 assert kernel.SetEvent(event)
                 assert process.wait(timeout=20)==0
                 server.thread.join(10)
@@ -256,6 +263,7 @@ def run(exe, readonly):
                     try:process.wait(timeout=10)
                     except subprocess.TimeoutExpired:process.kill();process.wait()
                 kernel.CloseHandle(event)
+                kernel.CloseHandle(busy)
                 output.flush()
                 print(log.read_text(encoding="utf-8",errors="replace"))
     print("WinFsp 9P mount passed:", "read-only" if readonly else "read-write")

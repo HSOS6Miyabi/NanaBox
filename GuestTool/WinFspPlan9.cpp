@@ -7,6 +7,8 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <winternl.h>
+// Some Windows SDK versions expose NTSTATUS but omit its pointer alias.
+typedef NTSTATUS* PNTSTATUS;
 #include <hvsocket.h>
 #include <winfsp/winfsp.h>
 #include <fuse.h>
@@ -17,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <shared_mutex>
 #include <thread>
 #include "Plan9Client.h"
 #include "WddmMapping.h"
@@ -155,16 +158,21 @@ namespace
         Client P9;
         bool ReadOnly;
         std::uint32_t Gid=0;
-        Handle Stop,Done;
+        Handle Stop,Busy,Done;
+        std::shared_mutex Lifecycle;
+        std::atomic<unsigned> OpenHandles{0};
+        bool Closing=false;
         std::thread Watch;
         std::atomic<bool> StartFailed{false};
-        Context(unsigned port,bool loopback,bool readOnly,std::wstring const& event):
+        Context(unsigned port,bool loopback,bool readOnly,std::wstring const& event,std::wstring const& busy):
             Wire(port,loopback),
             P9([this](Bytes const& bytes,std::uint32_t max){return Wire.Exchange(bytes,max);},!loopback),
             ReadOnly(readOnly),Stop(event.empty()?nullptr:OpenEventW(SYNCHRONIZE,FALSE,event.c_str())),
+            Busy(busy.empty()?nullptr:OpenEventW(EVENT_MODIFY_STATE,FALSE,busy.c_str())),
             Done(CreateEventW(nullptr,TRUE,FALSE,nullptr))
         {
-            if(!Done.Value||(!event.empty()&&!Stop.Value))throw ProtocolError("Cannot open mount stop event");
+            if(!Done.Value||(!event.empty()&&(!Stop.Value||!Busy.Value)))
+                throw ProtocolError("Cannot open mount control events");
         }
         ~Context(){StopWatch();}
         void StopWatch(){if(Watch.joinable()){SetEvent(Done.Value);Watch.join();}}
@@ -186,6 +194,7 @@ namespace
     {
         auto file=std::make_unique<OpenFile>(std::move(fid),writable,directory);
         fi->fh=reinterpret_cast<std::uintptr_t>(file.release());
+        ++Ctx().OpenHandles;
     }
     int ErrorNumber(std::uint32_t linux)
     {
@@ -205,7 +214,13 @@ namespace
     }
     template<class F> int Guard(F&& f) noexcept
     {
-        try{return f();}
+        try
+        {
+            auto& ctx=Ctx();
+            std::shared_lock<std::shared_mutex> lock(ctx.Lifecycle);
+            if(ctx.Closing)return -EBUSY;
+            return f();
+        }
         catch(RemoteError const& e){return -ErrorNumber(e.Number);}
         catch(std::bad_alloc const&){return -ENOMEM;}
         catch(std::exception const& e){std::cerr<<"9P: "<<e.what()<<'\n';return -EIO;}
@@ -290,7 +305,12 @@ namespace
     }
     int Release(char const*,fuse_file_info* fi)
     {
-        if(fi&&fi->fh){delete reinterpret_cast<OpenFile*>(static_cast<std::uintptr_t>(fi->fh));fi->fh=0;}
+        if(fi&&fi->fh)
+        {
+            std::shared_lock<std::shared_mutex> lock(Ctx().Lifecycle);
+            delete reinterpret_cast<OpenFile*>(static_cast<std::uintptr_t>(fi->fh));
+            fi->fh=0;--Ctx().OpenHandles;
+        }
         return 0;
     }
     int Read(char const*,char* buffer,std::size_t size,fuse_off_t offset,fuse_file_info* fi)
@@ -317,9 +337,9 @@ namespace
             return 0;
         });
     }
-    int Flush(char const* path,fuse_file_info* fi)
+    int Flush(char const*,fuse_file_info* fi)
     {
-        return Guard([&]{if(File(fi).Writable)return Fsync(path,0,fi);return 0;});
+        return Guard([&]{auto& f=File(fi);if(f.Writable)Ctx().P9.Fsync(f.Id);return 0;});
     }
     int Readdir(char const*,void* buffer,fuse_fill_dir_t fill,fuse_off_t offset,fuse_file_info* fi)
     {
@@ -424,7 +444,19 @@ namespace
             {
                 ctx.Watch=std::thread([&ctx,fs]{
                     HANDLE events[]={ctx.Done.Value,ctx.Stop.Value};
-                    if(WaitForMultipleObjects(2,events,FALSE,INFINITE)==WAIT_OBJECT_0+1)fuse_exit(fs);
+                    while(WaitForMultipleObjects(2,events,FALSE,INFINITE)==WAIT_OBJECT_0+1)
+                    {
+                        std::unique_lock<std::shared_mutex> lock(ctx.Lifecycle);
+                        if(ctx.OpenHandles)
+                        {
+                            SetEvent(ctx.Busy.Value);
+                            continue;
+                        }
+                        ctx.Closing=true;
+                        lock.unlock();
+                        fuse_exit(fs);
+                        break;
+                    }
                 });
             }
             catch(...){ctx.StartFailed=true;fuse_exit(fs);}
@@ -452,7 +484,7 @@ int wmain(int argc,wchar_t** argv)
         std::cout<<"NanaBox 9P2000.L filesystem\nWinFsp - Windows File System Proxy, Copyright (C) Bill Zissimopoulos\nhttps://github.com/winfsp/winfsp\n";
         if(argc==2&&std::wstring_view(argv[1])==L"--help")
         {
-            std::cout<<"Usage: nanabox-plan9-winfsp --hvsocket PORT SHARE MOUNTPOINT [--read-only] [--all-users] [--stop-event NAME]\n";
+            std::cout<<"Usage: nanabox-plan9-winfsp --hvsocket PORT SHARE MOUNTPOINT [--read-only] [--all-users] [--stop-event NAME --busy-event NAME]\n";
             return 0;
         }
         if(argc<5)throw ProtocolError("Specify transport, port, share and mountpoint (see --help)");
@@ -465,21 +497,23 @@ int wmain(int argc,wchar_t** argv)
         if(!port||port>=NoFid||(loopback&&port>65535))throw ProtocolError("Invalid 9P port");
         auto share=Utf8(argv[3]);if(!ValidName(share)||share.size()>200||share.find_first_of(",;")!=std::string::npos)throw ProtocolError("Invalid 9P share name");
         auto mount=Utf8(argv[4]);
-        bool readOnly=false,allUsers=false;std::wstring stopEvent;
+        bool readOnly=false,allUsers=false;std::wstring stopEvent,busyEvent;
         for(int i=5;i<argc;++i)
         {
             auto arg=std::wstring_view(argv[i]);
             if(arg==L"--read-only")readOnly=true;
             else if(arg==L"--all-users")allUsers=true;
             else if(arg==L"--stop-event"&&i+1<argc)stopEvent=argv[++i];
+            else if(arg==L"--busy-event"&&i+1<argc)busyEvent=argv[++i];
             else throw ProtocolError("Unknown 9P option");
         }
+        if(stopEvent.empty()!=busyEvent.empty())throw ProtocolError("Both mount control events are required");
         // Resolve only the registered WinFsp installation, without searching the
         // working directory for DLLs in a privileged guest service process.
         if(!SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32|LOAD_LIBRARY_SEARCH_APPLICATION_DIR))
             throw ProtocolError("Cannot configure safe WinFsp DLL loading");
         if(FspLoad(nullptr)<0)throw ProtocolError("Install WinFsp before mounting a 9P share");
-        Context ctx(static_cast<unsigned>(port),loopback,readOnly,stopEvent);
+        Context ctx(static_cast<unsigned>(port),loopback,readOnly,stopEvent,busyEvent);
         ctx.P9.Connect(share);
         {auto root=ctx.P9.Walk("/");auto a=ctx.P9.Getattr(root);if(!Directory(a))throw ProtocolError("9P root is not a directory");ctx.Gid=a.Gid;}
         auto options=std::string("uid=-1,gid=-1,FileInfoTimeout=0,DirInfoTimeout=0,FileSystemName=NanaBox9P,volname=NanaBox9P-")+std::to_string(GetCurrentProcessId());
