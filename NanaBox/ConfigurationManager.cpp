@@ -12,6 +12,7 @@
 
 #include "Utils.h"
 #include "KeyboardText.h"
+#include "../GuestTool/WddmMapping.h"
 
 #include <Mile.Helpers.Base.h>
 
@@ -223,6 +224,8 @@ void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configurati
     for (auto const& Share : Configuration.VirtualSmbShares)
     {
         CheckShareComponent(Share.Name);
+        if (!NanaBox::Wddm::SafeComponent(winrt::to_hstring(Share.Name).c_str()))
+            throw std::invalid_argument("Invalid Windows Virtual SMB share name: " + Share.Name);
         if (Share.Path.empty() || Share.Path.find('\0') != std::string::npos ||
             ::_strnicmp(Share.Name.c_str(), "NanaBox.GpuExtra.", 17) == 0 ||
             std::any_of(SmbNames.begin(), SmbNames.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))

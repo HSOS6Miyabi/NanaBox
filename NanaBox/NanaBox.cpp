@@ -224,6 +224,14 @@ int WINAPI wWinMain(
                 SmbRejected = false;
                 try { NanaBox::ValidatePlan9Shares(DuplicateSmb); } catch (...) { SmbRejected = true; }
                 if (!SmbRejected) return 53;
+                for (auto const& Bad : {"CON.txt", "AUX", "LPT1.log", "share.", "bad*name", "bad?name", "bad|name", "bad;name"})
+                {
+                    auto InvalidSmb = Shared;
+                    InvalidSmb.VirtualSmbShares[0].Name = Bad;
+                    SmbRejected = false;
+                    try { NanaBox::ValidatePlan9Shares(InvalidSmb); } catch (...) { SmbRejected = true; }
+                    if (!SmbRejected) return 53;
+                }
                 auto Guest = NanaBox::MakePlan9GuestManifest(RoundTrip, Hcs);
                 if (Hcs["SchemaVersion"]["Minor"] != 2 || Device["Flags"] != 133 ||
                     Device["AccessName"] != "Projects" || Device["AllowedFiles"][0] != "file.txt" ||

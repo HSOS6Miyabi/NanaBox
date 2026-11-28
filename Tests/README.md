@@ -31,3 +31,5 @@ The native configuration self-test validates Plan 9 flags, allowed files, manife
 The Windows GuestTool CI runs an isolated local Bind Filter integration test, including read-only protection, writable mappings, executable image sections, DOS filename reporting, and mapping removal. The hardware workflow additionally requires both guests to enable host GPU driver sharing. It checks the native Windows VSMB mount, all configured Windows share names, GPU restart status and driver inventory, and the Linux read-only WSL driver and library mounts before testing connectivity. The checks run again after restart and restore.
 
 The Windows GPU GuestTool self-test covers initial disabled state, repeated disabled inventories, re-enabling GPU mapping, and retry after an injected cleanup failure. Driver file restoration and link ownership are tested using disposable files.
+
+Virtual SMB inventory tests reject invalid Windows directory components, case-insensitive duplicate names (including Unicode), malformed access flags and writable GPU shares before mounting. The host configuration self-test rejects names that cannot be mounted as Windows directories.

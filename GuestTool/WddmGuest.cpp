@@ -139,6 +139,45 @@ namespace
         return CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_EQUAL;
     }
 
+    struct VirtualSmbDescriptor
+    {
+        std::string Name;
+        std::wstring WideName;
+        bool ReadOnly;
+        bool Internal;
+    };
+
+    std::vector<VirtualSmbDescriptor> ParseVirtualSmbInventory(Json const& shares)
+    {
+        if (!shares.is_array() || shares.size() > 224)
+            throw std::runtime_error("Invalid Virtual SMB inventory");
+        std::vector<VirtualSmbDescriptor> result;
+        for (auto const& share : shares)
+        {
+            auto name = share.at("Name").get<std::string>();
+            auto wide = Wide(name);
+            auto readOnly = share.at("ReadOnly").get<bool>();
+            if (name.size() > 200 || !Wddm::SafeComponent(wide) || wide.front() == L' ' ||
+                wide.find(L',') != std::wstring::npos ||
+                std::any_of(result.begin(), result.end(), [&](auto const& entry) { return Equal(entry.WideName, wide); }))
+                throw std::runtime_error("Invalid or duplicate Virtual SMB share name");
+            bool internal = Wddm::ExtraShareName(name);
+            for (auto const& reserved : {L"NanaBox.HostDrivers", L"HostDriverStore", L"NanaBox.HostLxssLib"})
+            {
+                if (!Equal(wide, reserved)) continue;
+                if (wide != reserved) throw std::runtime_error("Invalid reserved Virtual SMB share name");
+                internal = true;
+            }
+            constexpr std::wstring_view prefix = L"NanaBox.GpuExtra.";
+            if (wide.size() >= prefix.size() &&
+                Equal(wide.substr(0, prefix.size()), std::wstring(prefix)) && !internal)
+                throw std::runtime_error("Invalid supplemental GPU share name");
+            if (internal && !readOnly) throw std::runtime_error("GPU share must be read-only");
+            result.push_back({std::move(name), std::move(wide), readOnly, internal});
+        }
+        return result;
+    }
+
     bool Mounted(fs::path const& mount, wchar_t const* label)
     {
         auto root = mount.wstring() + L"\\";
@@ -724,6 +763,10 @@ namespace
             result["Mounted"] = Lifecycle.Active() && Mount.Ready();
             result["Backend"] = NativeMode ? "VirtualSmb" : "Plan9";
             result["NativeTransportActive"] = NativeActive.load();
+            if (NativeMode && result.contains("VirtualSmbShares"))
+                for (auto& share : result["VirtualSmbShares"])
+                    share["Mounted"] = VsmbClient.Ready(fs::path(Wide(share.at("Target").get<std::string>())),
+                        Wide(share.at("Name").get<std::string>()), share.at("ReadOnly").get<bool>());
             return result;
         }
         Json Update(Json const& settings)
@@ -731,7 +774,7 @@ namespace
             auto const& shares = settings.at("Shares");
             auto smbShares = settings.value("VirtualSmbShares", Json::array());
             bool gpuEnabled = settings.value("GpuEnabled", true);
-            if (!smbShares.is_array() || smbShares.size() > 224) throw std::runtime_error("Invalid Virtual SMB inventory");
+            auto descriptors = ParseVirtualSmbInventory(smbShares);
             Json mounted = Json::array();
             Json mountErrors = Json::array();
             if (NativeMode)
@@ -743,36 +786,31 @@ namespace
                 // The installer creates and protects the shared-folder mount root.
                 if (!fs::is_directory(root) || (GetFileAttributesW(root.c_str()) & FILE_ATTRIBUTE_REPARSE_POINT))
                     throw std::runtime_error("The protected Virtual SMB mount directory is missing");
-                std::set<std::wstring> names;
-                for (auto const& share : smbShares)
+                for (auto const& share : descriptors)
                 {
-                    auto name = share.at("Name").get<std::string>();
-                    auto wide = Wide(name);
-                    if (!Wddm::SafeComponent(wide) || !names.insert(Wddm::Fold(wide)).second)
-                        throw std::runtime_error("Invalid or duplicate Virtual SMB share name");
-                    if (name=="NanaBox.HostDrivers" || name=="HostDriverStore" ||
-                        name=="NanaBox.HostLxssLib" || Wddm::ExtraShareName(name)) continue;
-                    auto path=root/wide;
-                    auto readOnly=share.at("ReadOnly").get<bool>();
+                    if (share.Internal) continue;
+                    auto path = root / share.WideName;
+                    Json row = {{"Name",share.Name},{"Target",Utf8(path.wstring())},
+                        {"ReadOnly",share.ReadOnly},{"Mounted",false}};
                     try
                     {
-                        VsmbClient.Ensure(path,wide,readOnly);
-                        mounted.push_back({{"Name",name},{"Target",Utf8(path.wstring())},{"ReadOnly",readOnly},{"Mounted",true}});
+                        VsmbClient.Ensure(path,share.WideName,share.ReadOnly);
+                        row["Mounted"] = true;
                     }
                     catch (std::exception const& error)
                     {
-                        mountErrors.push_back(name+": "+error.what());
+                        row["Error"] = error.what();
+                        mountErrors.push_back(share.Name+": "+error.what());
                     }
+                    mounted.push_back(std::move(row));
                 }
             }
             else
             {
-                for (auto const& share : smbShares)
+                for (auto const& share : descriptors)
                 {
-                    auto name = share.at("Name").get<std::string>();
-                    if (name=="NanaBox.HostDrivers" || name=="HostDriverStore" ||
-                        name=="NanaBox.HostLxssLib" || Wddm::ExtraShareName(name)) continue;
-                    mountErrors.push_back(name+": Virtual SMB shares require the native Windows backend");
+                    if (share.Internal) continue;
+                    mountErrors.push_back(share.Name+": Virtual SMB shares require the native Windows backend");
                 }
             }
             if (!gpuEnabled)
@@ -1184,6 +1222,33 @@ namespace
 
     int SelfTest()
     {
+        {
+            auto share = [](std::string name, bool readOnly) -> Json
+            { return {{"Name",std::move(name)},{"ReadOnly",readOnly}}; };
+            auto valid = ParseVirtualSmbInventory(Json::array({
+                share("Projects", false), share("NanaBox.HostDrivers", true),
+                share("NanaBox.GpuExtra.0123456789abcdef", true)}));
+            if (valid.size()!=3 || valid[0].Internal || !valid[1].Internal ||
+                !valid[2].Internal || valid[0].ReadOnly) return 39;
+            std::vector<Json> invalid = {
+                Json::array({share("CON.txt", true)}),
+                Json::array({share("name.", false)}),
+                Json::array({share("name", true), share("NAME", false)}),
+                Json::array({share("\xc3\x84", true), share("\xc3\xa4", true)}),
+                Json::array({share("NanaBox.HostDrivers", false)}),
+                Json::array({share("nanabox.hostdrivers", true)}),
+                Json::array({share("NanaBox.GpuExtra.invalid", true)}),
+                Json::array({Json{{"Name","Projects"},{"ReadOnly","false"}}}),
+                Json::object()
+            };
+            for (auto const& value : invalid)
+            {
+                bool rejected = false;
+                try { (void)ParseVirtualSmbInventory(value); }
+                catch (std::exception const&) { rejected = true; }
+                if (!rejected) return 40;
+            }
+        }
         {
             GpuMappingLifecycle lifecycle;
             unsigned calls = 0;
