@@ -25,25 +25,33 @@ function Invoke-Control([string]$Id) {
     Write-Host "Invoke: $Id"
     (Find-Control $Id).GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
 }
-function Wait-Closed([string]$Id) {
-    $until = [DateTime]::UtcNow.AddSeconds(30)
+function Find-OwnedWindowContaining([string]$Id) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$Id)
     do {
-        if ($null -eq (Find-Control $Id -Optional)) { return }
-        Start-Sleep -Milliseconds 200
-    } while ([DateTime]::UtcNow -lt $until)
-    throw "Dialog did not close: $Id"
+        foreach ($handle in [NanaBoxNativeDialogs]::Windows($process.Id,$true)) {
+            if (-not [NanaBoxNativeDialogs]::IsWindowEnabled($handle)) { continue }
+            try {
+                $window = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+                $element = $window.FindFirst($desc,$condition)
+                if ($null -ne $element) { return $handle }
+            } catch [System.Windows.Automation.ElementNotAvailableException] {}
+        }
+        Start-Sleep -Milliseconds 150
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "Owned window not found: $Id"
+}
+function Wait-NativeWindowClosed([IntPtr]$handle,[string]$Id) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    while ([NanaBoxNativeDialogs]::IsWindow($handle)) {
+        if ([DateTime]::UtcNow -ge $deadline) { throw "Dialog did not close: $Id ($handle)" }
+        Start-Sleep -Milliseconds 100
+    }
 }
 function Close-WindowContaining([string]$Id) {
-    $null = Find-Control $Id
-    $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$Id)
-    foreach ($w in $root.FindAll($children,$pidCondition)) {
-        if ($null -ne $w.FindFirst($desc,$condition)) {
-            $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
-            Wait-Closed $Id
-            return
-        }
-    }
-    throw "Window not found: $Id"
+    $handle = Find-OwnedWindowContaining $Id
+    if (-not [NanaBoxNativeDialogs]::RequestClose($handle)) { throw "Cannot close owned window: $Id" }
+    Wait-NativeWindowClosed $handle $Id
 }
 try {
     Invoke-ModalAction $process.Id 'QuickStartLaunchVirtualMachineButton' { Invoke-NativeDialogButton $process.Id 2 }
@@ -54,19 +62,22 @@ try {
     $null = Find-Control 'CreateButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
     Invoke-ModalAction $process.Id 'CreateButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
+    $diskWindow = Find-OwnedWindowContaining 'CreateButton'
     Invoke-Control 'CancelButton'
-    Wait-Closed 'CreateButton'
+    Wait-NativeWindowClosed $diskWindow 'CreateButton'
     Invoke-Control 'QuickStartResizeVirtualHardDiskButton'
     $null = Find-Control 'ResizeButton'
     Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
     Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
+    $diskWindow = Find-OwnedWindowContaining 'ResizeButton'
     Invoke-Control 'CancelButton'
-    Wait-Closed 'ResizeButton'
+    Wait-NativeWindowClosed $diskWindow 'ResizeButton'
     Invoke-ModalAction $process.Id 'QuickStartCompactVirtualHardDiskButton' { Invoke-NativeDialogButton $process.Id 2 }
     Invoke-Control 'QuickStartAboutButton'
     $null = Find-Control 'AboutGitHubButton'
+    $aboutWindow = Find-OwnedWindowContaining 'AboutCancelButton'
     Invoke-Control 'AboutCancelButton'
-    Wait-Closed 'AboutCancelButton'
+    Wait-NativeWindowClosed $aboutWindow 'AboutCancelButton'
     Write-Host 'Verified all seven quick start actions, file picker cancellation and invalid disk input.'
 } finally {
     if (-not $process.HasExited) {

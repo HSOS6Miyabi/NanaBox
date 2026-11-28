@@ -460,12 +460,15 @@ HWND CreateXamlWindow(
         switch (uMsg)
         {
         case WM_CLOSE:
+        case WM_NCDESTROY:
         {
             HWND ParentWindow = ::GetWindow(hWnd, GW_OWNER);
-            if (ParentWindow)
+            if (ParentWindow && ::IsWindow(ParentWindow) && !::IsWindowEnabled(ParentWindow))
             {
-                ::SetForegroundWindowSimple(ParentWindow);
                 ::EnableWindow(ParentWindow, TRUE);
+                // Activation is best effort; attaching input queues across the two UI
+                // threads while a modal window is closing can block both threads.
+                ::SetForegroundWindow(ParentWindow);
             }
             break;
         }

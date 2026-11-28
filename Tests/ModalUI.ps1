@@ -14,7 +14,7 @@ public static class NanaBoxNativeDialogs {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder name, int count);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr window);
-    [DllImport("user32.dll")] private static extern bool IsWindowEnabled(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr window);
     [DllImport("user32.dll")] private static extern int GetDlgCtrlID(IntPtr window);
     [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll", SetLastError=true)] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
@@ -34,6 +34,9 @@ public static class NanaBoxNativeDialogs {
             return true;
         }, IntPtr.Zero);
         return windows.ToArray();
+    }
+    public static bool RequestClose(IntPtr window) {
+        return IsWindow(window) && PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero);
     }
     public static IntPtr ClickDialogButton(int pid, int id) {
         foreach (var window in Windows(pid, true)) {
@@ -75,6 +78,7 @@ function Invoke-OwnedDialogControl([int]$processId,[string]$id) {
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$id)
     do {
         foreach ($handle in [NanaBoxNativeDialogs]::Windows($processId,$true)) {
+            if (-not [NanaBoxNativeDialogs]::IsWindowEnabled($handle)) { continue }
             try {
                 $window = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
                 $element = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
