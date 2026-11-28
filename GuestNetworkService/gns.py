@@ -28,6 +28,12 @@ FILE_CHUNK = 64 * 1024
 MAX_FILE_SIZE = (1 << 63) - 1
 SESSION_TTL = 900
 MAX_SESSIONS = 16
+# Reserved routing tables: 0x40000001 through 0xbfffffff, indexed by ifindex.
+# Protocol 242 marks only routes and rules installed by NanaBox.
+POLICY_TABLE_BASE = 0x40000000
+POLICY_PROTOCOL = '242'
+POLICY_DEVICE_PRIORITY = 20000
+POLICY_SOURCE_PRIORITY = 21000
 
 
 def read_exact(sock, length):
@@ -305,14 +311,121 @@ class LinuxBackend:
                     result[route_key(entry)] = entry
         return result
 
-    def _route_change(self, dev, verb, entry):
+    def _route_change(self, dev, verb, entry, table=None):
         # Append instead of replace: equal-cost routes on another interface
         # must remain intact.
         cmd = ['ip', f"-{entry['Family']}", 'route', 'append' if verb == 'add' else verb, entry['Destination']]
         if not ipaddress.ip_address(entry['NextHop']).is_unspecified:
             cmd += ['via', entry['NextHop']]
-        cmd += ['dev', dev, 'metric', str(entry['Metric']), 'proto', '242']
+        cmd += ['dev', dev, 'metric', str(entry['Metric']), 'proto', POLICY_PROTOCOL]
+        if table is not None:
+            cmd += ['table', str(table)]
+            # A host IPv6 link-local gateway need not have an explicit
+            # link-local prefix route in the guest's interface table.
+            if verb == 'add' and not ipaddress.ip_address(entry['NextHop']).is_unspecified:
+                cmd += ['onlink']
         self.execute(cmd)
+
+    def _policy_table(self, ifindex):
+        if not 1 <= ifindex <= 0x7fffffff:
+            raise ValueError('Invalid interface index for policy routing')
+        return POLICY_TABLE_BASE + ifindex
+
+    def _policy_rules(self, family):
+        return json.loads(self.execute(['ip', '-N', f'-{family}', '-j', 'rule', 'show']))
+
+    def _policy_route_rows(self, family):
+        return json.loads(self.execute(['ip', '-N', f'-{family}', '-j', 'route', 'show', 'table', 'all']))
+
+    @staticmethod
+    def _policy_rule_key(row):
+        source = row.get('src', 'all')
+        if source != 'all':
+            source = str(ipaddress.ip_network(source, strict=False))
+        return int(row['priority']), source, row.get('oif', '')
+
+    def _policy_rule_change(self, family, verb, table, key):
+        priority, source, dev = key
+        command = ['ip', f'-{family}', 'rule', verb, 'pref', str(priority)]
+        if source != 'all':
+            command += ['from', source]
+        if dev:
+            command += ['oif', dev]
+        self.execute(command + ['lookup', str(table), 'protocol', POLICY_PROTOCOL])
+
+    def _policy_routes(self, dev, family, table):
+        result = {}
+        zero = '0.0.0.0' if family == 4 else '::'
+        for item in self._policy_route_rows(family):
+            if str(item.get('table', '254')) != str(table):
+                continue
+            if str(item.get('protocol')) != POLICY_PROTOCOL or str(item.get('type', '1')) not in ('1', 'unicast'):
+                raise RuntimeError(f'Policy routing table {table} contains an unmanaged route')
+            dest = item.get('dst', 'default')
+            if dest == 'default':
+                dest = zero + '/0'
+            for hop in item.get('nexthops') or [item]:
+                if hop.get('dev', item.get('dev')) != dev:
+                    raise RuntimeError(f'Policy routing table {table} belongs to another interface')
+                entry = {'Family': family, 'Destination': str(ipaddress.ip_network(dest, strict=False)),
+                         'NextHop': str(ipaddress.ip_address(hop.get('gateway', zero))),
+                         'Metric': item.get('metric', 0)}
+                result[route_key(entry)] = entry
+        return result
+
+    def _reconcile_policy(self, dev, link, interface, addresses, routes):
+        table = self._policy_table(link['ifindex'])
+        connected = interface['Connected']
+        for family in (4, 6):
+            desired_routes = {k: v for k, v in routes.items() if v['Family'] == family} if connected else {}
+            desired_rules = set()
+            if connected and desired_routes:
+                desired_rules.add((POLICY_DEVICE_PRIORITY, 'all', dev))
+                priority = POLICY_SOURCE_PRIORITY + min(interface.get(f'IPv{family}Metric', 0), 9999)
+                for entry in addresses.values():
+                    if entry['Family'] == family:
+                        ip = ipaddress.ip_address(entry['Address'])
+                        desired_rules.add((priority, f'{ip}/{ip.max_prefixlen}', ''))
+            rows = [row for row in self._policy_rules(family) if str(row.get('table')) == str(table)]
+            if any(str(row.get('protocol')) != POLICY_PROTOCOL for row in rows):
+                raise RuntimeError(f'Policy routing table {table} has an unmanaged rule')
+            current_routes = self._policy_routes(dev, family, table)
+            current_rules = set()
+            for row in rows:
+                key = self._policy_rule_key(row)
+                if key not in desired_rules or key in current_rules:
+                    self._policy_rule_change(family, 'del', table, key)
+                else:
+                    current_rules.add(key)
+            for entry in sorted((v for k, v in current_routes.items() if k not in desired_routes), key=route_order, reverse=True):
+                self._route_change(dev, 'del', entry, table)
+            for entry in sorted(desired_routes.values(), key=route_order):
+                if route_key(entry) not in current_routes:
+                    self._route_change(dev, 'add', entry, table)
+            for key in sorted(desired_rules - current_rules):
+                self._policy_rule_change(family, 'add', table, key)
+            actual_rules = [self._policy_rule_key(row) for row in self._policy_rules(family)
+                            if str(row.get('table')) == str(table) and str(row.get('protocol')) == POLICY_PROTOCOL]
+            if set(actual_rules) != desired_rules or len(actual_rules) != len(desired_rules):
+                raise RuntimeError('Guest policy rules did not converge')
+            if self._policy_routes(dev, family, table).keys() != desired_routes.keys():
+                raise RuntimeError('Guest policy routing table did not converge')
+        return table
+
+    def _reap_policy_rules(self):
+        # A removed virtual adapter loses its routes in the kernel. Rules
+        # referring to its former interface index may survive hot unplug.
+        active = {self._policy_table(link['ifindex'])
+                  for link in json.loads(self.execute(['ip', '-j', 'link', 'show']))}
+        for family in (4, 6):
+            for row in self._policy_rules(family):
+                try:
+                    table = int(row.get('table', 0))
+                except (ValueError, TypeError):
+                    continue
+                if (POLICY_TABLE_BASE < table <= POLICY_TABLE_BASE + 0x7fffffff and table not in active
+                        and str(row.get('protocol')) == POLICY_PROTOCOL):
+                    self._policy_rule_change(family, 'del', table, self._policy_rule_key(row))
 
     def _link(self, dev):
         rows = json.loads(self.execute(['ip', '-j', 'link', 'show', 'dev', dev]))
@@ -382,6 +495,8 @@ class LinuxBackend:
         for entry in sorted(routes.values(), key=route_order):
             if route_key(entry) not in actual_routes:
                 self._route_change(dev, 'add', entry)
+        policy_table = self._reconcile_policy(dev, link, interface, addresses, routes)
+        self._reap_policy_rules()
         if self._dns(dev) != dns:
             self.execute(['resolvectl', 'dns', dev, *(dns or [''])])
         suffix = snapshot['DNS'].get('Suffix')
@@ -410,7 +525,8 @@ class LinuxBackend:
         if suffix is not None and self._domain(dev) != domains:
             raise RuntimeError('Guest DNS search suffix did not converge')
         return {'ListeningPorts': linux_listening_ports('/proc/net', snapshot['Addresses'])
-                if snapshot['DiscoverPorts'] and interface['Connected'] else []}
+                if snapshot['DiscoverPorts'] and interface['Connected'] else [],
+                'PolicyRoutingTable': policy_table}
 
     def apply(self, target, resource, action, s):
         dev = self.adapter(target)
