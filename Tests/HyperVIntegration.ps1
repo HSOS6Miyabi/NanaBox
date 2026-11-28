@@ -175,7 +175,7 @@ function Test-Guest([string]$path,[string]$guestType,[string]$gpuPattern) {
         Wait-VMState $cfg.Name Present
         $null = Wait-ExactState $cfg.Name 'Running'
         Invoke-UI $process 'PowerMenu'
-        Invoke-ModalAction $process.Id 'PowerOffAction' { Invoke-UI $process '6' }
+        Invoke-ModalAction $process.Id 'PowerOffAction' { Invoke-NativeDialogButton $process.Id 6 }
         Wait-Exit $process $cfg.Name 'forced power off'
         Write-Host "$guestType GPU, networking and complete power lifecycle passed"
     } finally {

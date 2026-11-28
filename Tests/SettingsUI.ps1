@@ -115,7 +115,7 @@ function Select-ByName([string]$id,[string]$prefix,[switch]$Optional) {
     throw "ComboBox item unavailable: $id / $prefix"
 }
 function Confirm-Change([string]$id) {
-    Invoke-ModalAction $process.Id $id { Invoke-Control '6' }
+    Invoke-ModalAction $process.Id $id { Invoke-NativeDialogButton $process.Id 6 }
 }
 function Assert-Equal($actual,$expected,[string]$description) {
     if ($actual -ne $expected) { throw "$description : expected [$expected], got [$actual]" }
@@ -256,12 +256,12 @@ try {
     Assert-Equal $disk.VirtualSize (64MB) 'Inspected VHDX capacity'
     Remove-Item -LiteralPath $diskPath -Force
     $previousDiskPath = Get-Text 'DiskPathTextBox'
-    Invoke-ModalAction $process.Id 'DiskBrowse' { Invoke-Control '2' }
+    Invoke-ModalAction $process.Id 'DiskBrowse' { Invoke-NativeDialogButton $process.Id 2 }
     Assert-Equal (Get-Text 'DiskPathTextBox') $previousDiskPath 'Canceled disk selection'
     Invoke-Control 'AddScsiDeviceButton'
     Set-Text 'ScsiDevicePathLabel' 'test.vhdx'
     $null = Find-Control 'ScsiDeviceTypeLabel'
-    Invoke-ModalAction $process.Id 'ScsiBrowse' { Invoke-Control '2' }
+    Invoke-ModalAction $process.Id 'ScsiBrowse' { Invoke-NativeDialogButton $process.Id 2 }
     Assert-Equal (Get-Text 'ScsiDevicePathLabel') 'test.vhdx' 'Canceled SCSI selection'
     Set-Text 'GuestStateFileTextBox' 'test.vmgs'
     Set-Text 'RuntimeStateFileTextBox' 'test.vmrs'

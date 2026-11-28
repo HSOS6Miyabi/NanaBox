@@ -46,23 +46,23 @@ function Close-WindowContaining([string]$Id) {
     throw "Window not found: $Id"
 }
 try {
-    Invoke-ModalAction $process.Id 'QuickStartLaunchVirtualMachineButton' { Invoke-Control '2' }
-    Invoke-ModalAction $process.Id 'QuickStartVirtualMachineSettingsButton' { Invoke-Control '2' }
+    Invoke-ModalAction $process.Id 'QuickStartLaunchVirtualMachineButton' { Invoke-NativeDialogButton $process.Id 2 }
+    Invoke-ModalAction $process.Id 'QuickStartVirtualMachineSettingsButton' { Invoke-NativeDialogButton $process.Id 2 }
     Invoke-Control 'QuickStartCreateVirtualMachineButton'
     Close-WindowContaining 'NameTextBox'
     Invoke-Control 'QuickStartCreateVirtualHardDiskButton'
     $null = Find-Control 'CreateButton'
-    Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-Control '2' }
-    Invoke-ModalAction $process.Id 'CreateButton' { Invoke-Control 'MessageConfirmButton' }
+    Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
+    Invoke-ModalAction $process.Id 'CreateButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
     Invoke-Control 'CancelButton'
     Wait-Closed 'CreateButton'
     Invoke-Control 'QuickStartResizeVirtualHardDiskButton'
     $null = Find-Control 'ResizeButton'
-    Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-Control '2' }
-    Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-Control 'MessageConfirmButton' }
+    Invoke-ModalAction $process.Id 'FileNameBrowseButton' { Invoke-NativeDialogButton $process.Id 2 }
+    Invoke-ModalAction $process.Id 'ResizeButton' { Invoke-OwnedDialogControl $process.Id 'MessageConfirmButton' }
     Invoke-Control 'CancelButton'
     Wait-Closed 'ResizeButton'
-    Invoke-ModalAction $process.Id 'QuickStartCompactVirtualHardDiskButton' { Invoke-Control '2' }
+    Invoke-ModalAction $process.Id 'QuickStartCompactVirtualHardDiskButton' { Invoke-NativeDialogButton $process.Id 2 }
     Invoke-Control 'QuickStartAboutButton'
     $null = Find-Control 'AboutGitHubButton'
     Invoke-Control 'AboutCancelButton'

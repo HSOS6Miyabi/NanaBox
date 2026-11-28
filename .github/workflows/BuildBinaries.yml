@@ -28,6 +28,7 @@ jobs:
       shell: pwsh
       run: msbuild BuildAllTargets.proj /t:Restore
     - name: Build x64 Release for functional tests
+      id: functional_build
       shell: pwsh
       run: |
         msbuild NanaBox\NanaBox.vcxproj /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
@@ -38,12 +39,14 @@ jobs:
         Copy-Item Output\Binaries\Release\x64\NanaBox.pri (Join-Path $test 'resources.pri')
         Copy-Item Output\Binaries\Release\x64\Mile.Xaml.Styles.SunValley.xbf $test
     - name: Test configuration and HCS GPU requests
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: pwsh
       run: |
         $exe = Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe'
         $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "NanaBox self-test failed: $($process.ExitCode)" }
     - name: Virtual disk API integration test
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: pwsh
       timeout-minutes: 5
       run: |
@@ -51,16 +54,19 @@ jobs:
         $process = Start-Process -FilePath $exe -ArgumentList '--disk-self-test' -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "Virtual disk test failed: $($process.ExitCode)" }
     - name: Settings GUI round-trip
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell
       timeout-minutes: 12
       run: |
         & .\Tests\SettingsUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI"
     - name: Main window toolbar commands
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell
       timeout-minutes: 5
       run: |
         & .\Tests\ToolbarUI.ps1 -Executable (Join-Path $env:RUNNER_TEMP 'NanaBox-Test\NanaBox.exe') -OutputDirectory "$env:RUNNER_TEMP\NanaBox-UI\Toolbar"
     - name: Quick start and disk dialogs
+      if: ${{ !cancelled() && steps.functional_build.outcome == 'success' }}
       shell: powershell
       timeout-minutes: 5
       run: |
