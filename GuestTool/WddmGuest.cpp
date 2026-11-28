@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <system_error>
@@ -33,6 +34,7 @@ namespace
     constexpr wchar_t ServiceName[] = L"NanaBoxGuestGpu";
     constexpr wchar_t StateKey[] = L"SOFTWARE\\NanaBox\\GuestTool\\Gpu";
     constexpr wchar_t EnvironmentKey[] = L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment";
+    constexpr GUID ParentId{0xa42e7cda, 0xd03f, 0x480c, {0x9c, 0xc2, 0xa4, 0xde, 0x20, 0xab, 0xb8, 0x78}};
     constexpr GUID ServiceId{27456, 0xfacb, 0x11e6, {0xbd, 0x58, 0x64, 0x00, 0x6a, 0x79, 0x86, 0xd3}};
     constexpr std::uint32_t MaximumMessage = 256 * 1024;
     std::atomic<bool> Stop{false};
@@ -84,7 +86,7 @@ namespace
             DWORD size = 0, type = 0;
             auto status = RegQueryValueExW(Handle, name, nullptr, &type, nullptr, &size);
             if (status == ERROR_FILE_NOT_FOUND) return {};
-            if (status != ERROR_SUCCESS || size > 128 * 1024 || size % sizeof(wchar_t) ||
+            if (status != ERROR_SUCCESS || size > 2 * 1024 * 1024 || size % sizeof(wchar_t) ||
                 (type != REG_SZ && type != REG_EXPAND_SZ))
                 throw std::runtime_error("Invalid registry value");
             std::vector<wchar_t> data(size / sizeof(wchar_t) + 1);
@@ -136,16 +138,25 @@ namespace
     class DriverMount
     {
         HANDLE Process = nullptr;
-        fs::path Repository = fs::path(SystemDirectory()) / L"HostDriverStore" / L"FileRepository";
+        fs::path Repository;
+        std::wstring Share;
+        bool Legacy;
     public:
+        DriverMount() : Repository(fs::path(SystemDirectory()) / L"HostDriverStore" / L"FileRepository"),
+            Share(L"NanaBox.HostDrivers"), Legacy(true) {}
+        explicit DriverMount(std::wstring name) :
+            Repository(fs::path(SystemDirectory()) / L"HostDriverStoreExtras" / name),
+            Share(std::move(name)), Legacy(false) {}
+        DriverMount(DriverMount const&) = delete;
+        DriverMount& operator=(DriverMount const&) = delete;
         ~DriverMount() { if (Process) CloseHandle(Process); }
         fs::path const& Root() const { return Repository; }
         bool Ready() const
         {
-            return Mounted(Repository, L"NanaBox.HostDrivers") ||
-                (Mounted(Repository.parent_path(), L"HostDriverStore") && fs::is_directory(Repository));
+            return Mounted(Repository, Share.c_str()) ||
+                (Legacy && Mounted(Repository.parent_path(), L"HostDriverStore") && fs::is_directory(Repository));
         }
-        bool Ensure()
+        bool Ensure(unsigned attempts = 30)
         {
             if (Ready()) return true;
             if (Process && WaitForSingleObject(Process, 0) == WAIT_OBJECT_0)
@@ -167,7 +178,7 @@ namespace
                         throw std::runtime_error("HostDriverStore/FileRepository is not an empty directory");
                 }
                 else fs::create_directory(Repository);
-                std::wstring cmd = L"\"" + CirnoPath + L"\" Mount HvSocket 50001 NanaBox.HostDrivers \"" +
+                std::wstring cmd = L"\"" + CirnoPath + L"\" Mount HvSocket 50001 " + Share + L" \"" +
                     Repository.wstring() + L"\"";
                 STARTUPINFOW startup{};
                 startup.cb = sizeof(startup);
@@ -178,7 +189,7 @@ namespace
                 CloseHandle(process.hThread);
                 Process = process.hProcess;
             }
-            for (unsigned i = 0; i < 30 && !Stop; ++i)
+            for (unsigned i = 0; i < attempts && !Stop; ++i)
             {
                 if (Ready()) return true;
                 if (WaitForSingleObject(Process, 100) == WAIT_OBJECT_0) break;
@@ -196,12 +207,34 @@ namespace
 
     fs::path Destination(std::wstring const& id)
     {
-        auto slash = id.find(L'\\');
-        if (slash == std::wstring::npos || !Wddm::SafeComponent(id.substr(slash + 1)))
+        auto slash = id.find_last_of(L'\\');
+        if (slash == std::wstring::npos || !Wddm::SafeComponent(id.substr(slash + 1)) ||
+            !Wddm::SafeSystemDirectory(id.substr(0, slash)))
             throw std::runtime_error("Invalid GPU destination");
-        auto dir = Wddm::Fold(id.substr(0, slash));
-        if (dir != L"system32" && dir != L"syswow64") throw std::runtime_error("Invalid GPU directory");
-        return fs::path(WindowsDirectory()) / dir / id.substr(slash + 1);
+        return fs::path(WindowsDirectory()) / id;
+    }
+
+    void ValidateDestinationParent(fs::path const& target, bool create)
+    {
+        auto relative = target.parent_path().lexically_relative(fs::path(WindowsDirectory()));
+        if (!Wddm::SafeSystemDirectory(relative.wstring())) throw std::runtime_error("Invalid GPU directory");
+        auto path = fs::path(WindowsDirectory());
+        for (auto const& part : relative)
+        {
+            path /= part;
+            DWORD attr = GetFileAttributesW(path.c_str());
+            if (attr == INVALID_FILE_ATTRIBUTES)
+            {
+                auto error = GetLastError();
+                if (!create || (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND))
+                    throw std::runtime_error("Guest system directory is missing");
+                if (!CreateDirectoryW(path.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
+                    Error("Create GPU driver directory");
+                attr = GetFileAttributesW(path.c_str());
+            }
+            if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY) ||
+                (attr & FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error("Unsafe GPU destination directory");
+        }
     }
 
     std::wstring NormalizeLink(fs::path const& path)
@@ -332,6 +365,7 @@ namespace
     class Manager
     {
         DriverMount Mount;
+        std::map<std::string, std::unique_ptr<DriverMount>> ExtraMounts;
         Json Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", Json::array()}};
         Links ReadLinks(Key const& key)
         {
@@ -364,9 +398,14 @@ namespace
                 !wddm.at("Errors").is_array() || wddm.at("Packages").size() > 128 || wddm.at("Files").size() > 1024)
                 throw std::runtime_error("Invalid WDDM inventory");
             bool shared = false;
+            std::set<std::string> extraShares;
             for (auto const& share : shares)
-                if (share.value("Name", std::string()) == "NanaBox.HostDrivers" &&
-                    share.value("Port", 0) == 50001 && share.value("ReadOnly", false)) shared = true;
+            {
+                auto name = share.value("Name", std::string());
+                if (share.value("Port", 0) != 50001 || !share.value("ReadOnly", false)) continue;
+                if (name == "NanaBox.HostDrivers") shared = true;
+                else if (Wddm::ExtraShareName(name)) extraShares.insert(name);
+            }
             if (!shared) throw std::runtime_error("Read-only host GPU repository is unavailable");
             Last = {{"Mounted", false}, {"Files", Json::array()}, {"Errors", wddm.at("Errors")}};
             if (!Mount.Ensure())
@@ -405,6 +444,42 @@ namespace
                 if (!inserted.second && !Equal(inserted.first->second.Source.wstring(), source.wstring()))
                     collisions.insert(id);
             }
+            if (wddm.contains("ExtraFiles"))
+            {
+                auto const& extraFiles = wddm.at("ExtraFiles");
+                if (!extraFiles.is_array() || extraFiles.size() > 4096 || extraShares.size() > 64)
+                    throw std::runtime_error("Invalid supplemental GPU inventory");
+                for (auto const& file : extraFiles)
+                {
+                    auto name = file.at("Share").get<std::string>();
+                    auto source = Wide(file.at("Source").get<std::string>());
+                    auto destination = Wide(file.at("Destination").get<std::string>());
+                    auto directory = Wide(file.at("Directory").get<std::string>());
+                    if (!extraShares.count(name) || !Wddm::SafeComponent(source) ||
+                        !Wddm::SafeComponent(destination) || !Wddm::SafeSystemDirectory(directory) ||
+                        !Equal(source, destination))
+                        throw std::runtime_error("Invalid supplemental GPU file mapping");
+                    auto id = LinkId(directory, destination);
+                    // Explicit WDDM copy rules take precedence over the device inventory.
+                    if (desired.count(id)) continue;
+                    try
+                    {
+                        auto& mount = ExtraMounts[name];
+                        if (!mount) mount = std::make_unique<DriverMount>(Wide(name));
+                        if (ExtraMounts.size() > 96) throw std::runtime_error("Too many GPU mount generations");
+                        if (!mount->Ensure(0))
+                        {
+                            Last["Errors"].push_back("Supplemental GPU share is not mounted: " + name);
+                            continue;
+                        }
+                        desired.emplace(id, Item{mount->Root() / source, true});
+                    }
+                    catch (std::exception const& error)
+                    {
+                        Last["Errors"].push_back(name + ": " + error.what());
+                    }
+                }
+            }
             Key key(StateKey, KEY_READ | KEY_SET_VALUE);
             auto links = ReadLinks(key);
             for (auto const& entry : desired)
@@ -416,7 +491,7 @@ namespace
                 {
                     if (collisions.count(id)) throw std::runtime_error("Multiple GPU packages request the same file");
                     auto target = Destination(id);
-                    if (!fs::is_directory(target.parent_path())) throw std::runtime_error("Guest system directory is missing");
+                    ValidateDestinationParent(target, true);
                     if (!fs::is_regular_file(item.Source)) throw std::runtime_error("Driver file is unavailable");
                     auto existing = links.find(id);
                     if (existing != links.end() && !OwnedLink(target, existing->second))
@@ -455,6 +530,7 @@ namespace
                 {
                     if (desired.count(it->first)) { ++it; continue; }
                     auto target = Destination(it->first);
+                    ValidateDestinationParent(target, false);
                     if (OwnedLink(target, it->second) && !DeleteFileW(target.c_str()))
                     {
                         Last["Errors"].push_back("Cannot remove obsolete GPU link: " + Utf8(it->first));
@@ -477,6 +553,7 @@ namespace
             for (auto const& link : links)
             {
                 auto target = Destination(link.first);
+                ValidateDestinationParent(target, false);
                 if (OwnedLink(target, link.second) && !DeleteFileW(target.c_str()))
                     Error("Remove GPU link");
             }
@@ -537,7 +614,7 @@ namespace
         if (server.Handle == INVALID_SOCKET) throw std::runtime_error("Cannot open Hyper-V socket");
         SOCKADDR_HV address{};
         address.Family = AF_HYPERV;
-        address.VmId = HV_GUID_PARENT;
+        address.VmId = ParentId;
         address.ServiceId = ServiceId;
         if (bind(server.Handle, reinterpret_cast<sockaddr*>(&address), sizeof(address)) ||
             listen(server.Handle, 8)) throw std::runtime_error("Cannot bind GPU GuestTool socket");
@@ -622,6 +699,12 @@ namespace
         for (auto bad : {L"..\\x.dll", L"x:stream", L"COM1.dll", L"\\x.dll", L"x\\", L"x. "})
             if (Wddm::MakeMapping(L"gpu", {bad}, false, false)) return 2;
         if (Wddm::MakeMapping(L"gpu", {L"x.dll", L"\\test.dll"}, false, false)) return 3;
+        if (!Wddm::SafeSystemDirectory(L"System32\\drivers\\NVIDIA Corporation") ||
+            Wddm::SafeSystemDirectory(L"System32\\..\\Temp") ||
+            Wddm::SafeSystemDirectory(L"System32\\HostDriverStore\\FileRepository") ||
+            Wddm::SafeSystemDirectory(L"Program Files") ||
+            !Wddm::ExtraShareName("NanaBox.GpuExtra.0123456789abcdef") ||
+            Wddm::ExtraShareName("NanaBox.GpuExtra.0123456789abcde/")) return 10;
         if (JoinPath(SplitPath(L"C:\\first;;C:\\second;")) != L"C:\\first;;C:\\second;") return 4;
         auto root = fs::temp_directory_path() / (L"NanaBox-GpuTest-" + std::to_wstring(GetCurrentProcessId()));
         fs::create_directory(root);

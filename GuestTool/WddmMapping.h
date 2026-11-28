@@ -45,6 +45,28 @@ namespace NanaBox::Wddm
         }
     }
 
+    inline bool SafeSystemDirectory(std::wstring_view value)
+    {
+        if (!SafeRelativePath(value)) return false;
+        auto lower = Fold(value);
+        auto first = lower.substr(0, lower.find(L'\\'));
+        if (first != L"system32" && first != L"syswow64") return false;
+        // The mounted repositories must not be used as destinations.
+        for (auto const& blocked : {L"system32\\driverstore", L"system32\\hostdriverstore",
+            L"system32\\hostdriverstoreextras", L"syswow64\\driverstore"})
+            if (lower == blocked || lower.rfind(std::wstring(blocked) + L"\\", 0) == 0) return false;
+        return true;
+    }
+
+    inline bool ExtraShareName(std::string_view value)
+    {
+        constexpr std::string_view prefix = "NanaBox.GpuExtra.";
+        if (value.size() != prefix.size() + 16 || value.substr(0, prefix.size()) != prefix) return false;
+        for (auto ch : value.substr(prefix.size()))
+            if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'))) return false;
+        return true;
+    }
+
     struct Mapping
     {
         std::wstring Source;

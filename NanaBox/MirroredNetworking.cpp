@@ -1673,8 +1673,9 @@ struct NanaBox::Plan9MountManager::Impl
                 {"AllowedFiles", Extra.at("AllowedFiles")}}}};
         winrt::check_hresult(::HcsModifyComputeSystem(System.get(), Operation.get(),
             winrt::to_hstring(Request.dump()).c_str(), nullptr));
-        HcnText Error;
-        winrt::check_hresult(::HcsWaitForOperationResult(Operation.get(), 5000, &Error.Value));
+        PWSTR Result = nullptr;
+        auto Cleanup = Mile::ScopeExitTaskHandler([&]() { if (Result) ::LocalFree(Result); });
+        winrt::check_hresult(::HcsWaitForOperationResult(Operation.get(), 5000, &Result));
         PublishedGpuShares.insert(Name);
     }
 
