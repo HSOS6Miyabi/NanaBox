@@ -39,6 +39,11 @@ POLICY_TABLE_BASE = 0x40000000
 POLICY_PROTOCOL = '242'
 POLICY_DEVICE_PRIORITY = 20000
 POLICY_SOURCE_PRIORITY = 21000
+LOOPBACK_PROTOCOL = '243'
+LOOPBACK_TABLE = 0x3ffffffd
+HOST_ADDRESS_TABLE = 0x3ffffffe
+LOOPBACK_GATEWAY = '169.254.73.249'
+LOOPBACK_GATEWAY_MAC = '00:11:22:33:44:55'
 
 
 def read_exact(sock, length):
@@ -81,6 +86,44 @@ def normalize(request):
     if not isinstance(request, dict) or type(request.get('Version')) is not int or request['Version'] != 1:
         raise ValueError('Unsupported protocol version')
     resource = request.get('ResourceType')
+    if resource == 'LoopbackReconcile' and request.get('RequestType') == 'Update':
+        settings = request.get('Settings')
+        if not isinstance(settings, dict) or type(settings.get('Enabled')) is not bool:
+            raise ValueError('Invalid loopback settings')
+        if not settings['Enabled']:
+            if set(settings) != {'Enabled'}:
+                raise ValueError('Unexpected disabled loopback settings')
+            return '', resource, 'Update', {'Enabled': False}
+        adapter = mac(settings['AdapterMac'])
+        interfaces = settings['Interfaces']
+        if not isinstance(interfaces, list) or len(interfaces) > 128:
+            raise ValueError('Invalid mirrored interface list')
+        result = {}
+        addresses = set()
+        for entry in interfaces:
+            target = mac(entry['AdapterMac'])
+            if target in result or target == adapter:
+                raise ValueError('Duplicate loopback interface')
+            items = entry['Addresses']
+            if not isinstance(items, list) or len(items) > 256:
+                raise ValueError('Invalid loopback address list')
+            normalized = []
+            for item in items:
+                address = ipaddress.IPv4Address(item)
+                if address.is_loopback or address.is_multicast or address.is_unspecified or address.is_link_local:
+                    raise ValueError('Invalid mirrored host address')
+                value = str(address)
+                if value in addresses:
+                    raise ValueError('Duplicate mirrored host address')
+                addresses.add(value)
+                normalized.append(value)
+            result[target] = sorted(normalized)
+        ignored = settings.get('LocalPorts', [])
+        if not isinstance(ignored, list) or len(ignored) > 256:
+            raise ValueError('Too many local-only ports')
+        ignored = sorted({number(port, 1, 65535) for port in ignored})
+        return '', resource, 'Update', {'Enabled': True, 'AdapterMac': adapter,
+                                      'Interfaces': result, 'LocalPorts': ignored}
     if resource in ('FileExchange', 'TimeSync'):
         action = request.get('RequestType')
         settings = normalize_tools(resource, action, request.get('Settings'))
@@ -253,10 +296,241 @@ def run(args):
     return subprocess.run(args, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
+class LoopbackRouting:
+    """Dedicated GELNIC IPv4 policy routing. Only protocol 243 is managed."""
+    def __init__(self, execute, state_path):
+        self.execute = execute
+        self.path = pathlib.Path(state_path)
+
+    def _ip(self, *args):
+        return self.execute(['ip', '-N', '-4', *args])
+
+    def _rules(self):
+        return json.loads(self._ip('-j', 'rule', 'show'))
+
+    def _routes(self):
+        return [row for row in json.loads(self._ip('-j', 'route', 'show', 'table', 'all'))
+                if str(row.get('table')) in (str(LOOPBACK_TABLE), str(HOST_ADDRESS_TABLE))]
+
+    @staticmethod
+    def _table(row):
+        value = str(row.get('table', ''))
+        return '255' if value == 'local' else value
+
+    @staticmethod
+    def _protocol(row):
+        return str(row.get('protocol', ''))
+
+    @staticmethod
+    def _key(row):
+        proto = str(row.get('ipproto', ''))
+        proto = {'6': 'tcp', '17': 'udp'}.get(proto, proto)
+        dport = str(row.get('dport', ''))
+        if '-' in dport:
+            first, last = dport.split('-', 1)
+            if first == last:
+                dport = first
+        destination = row.get('dst', 'all')
+        if destination != 'all':
+            destination = str(ipaddress.ip_network(destination, strict=False))
+        return (int(row['priority']), LoopbackRouting._table(row), row.get('iif', ''),
+                proto, destination, dport)
+
+    @staticmethod
+    def _default_local(row):
+        return (LoopbackRouting._key(row) == (0, '255', '', '', 'all', '') and
+                row.get('src', 'all') == 'all' and not row.get('fwmark') and
+                LoopbackRouting._protocol(row) != LOOPBACK_PROTOCOL and
+                set(row) <= {'priority', 'src', 'dst', 'table', 'protocol', 'flags'})
+
+    def _rule(self, verb, key, owned=True):
+        priority, table, interface, proto, destination, port = key
+        args = ['rule', verb, 'pref', str(priority)]
+        if interface:
+            args += ['iif', interface]
+        if destination != 'all':
+            args += ['to', destination]
+        if proto:
+            args += ['ipproto', proto]
+        if port:
+            args += ['dport', port]
+        args += ['lookup', table]
+        if owned:
+            args += ['protocol', LOOPBACK_PROTOCOL]
+        self._ip(*args)
+
+    def _route(self, verb, table, destination, dev):
+        args = ['route', verb, destination, 'via', LOOPBACK_GATEWAY, 'dev', dev,
+                'table', str(table), 'proto', LOOPBACK_PROTOCOL]
+        if verb != 'del':
+            args += ['onlink']
+        self._ip(*args)
+
+    def _state(self):
+        if not self.path.exists():
+            return {'Sysctls': {}, 'Neighbors': {}}
+        if self.path.is_symlink():
+            raise RuntimeError('Unsafe loopback state file')
+        state = json.loads(self.path.read_text(encoding='utf-8'))
+        if not isinstance(state.get('Sysctls'), dict) or not isinstance(state.get('Neighbors'), dict):
+            raise RuntimeError('Invalid loopback state file')
+        return state
+
+    def _save(self, state):
+        self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        fd, name = tempfile.mkstemp(prefix='.loopback-', dir=self.path.parent)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as file:
+                json.dump(state, file)
+            os.replace(name, self.path)
+        finally:
+            if os.path.exists(name):
+                os.unlink(name)
+
+    def _sysctl(self, state, dev, name, value):
+        key = f'net/ipv4/conf/{dev}/{name}'
+        current = self.execute(['sysctl', '-n', key]).strip()
+        if key not in state['Sysctls']:
+            state['Sysctls'][key] = [current, value]
+            self._save(state)
+        if current != value:
+            self.execute(['sysctl', '-w', f'{key}={value}'])
+
+    def _neighbors(self, dev):
+        return json.loads(self._ip('-j', 'neigh', 'show', 'to', LOOPBACK_GATEWAY, 'dev', dev))
+
+    def _neighbor(self, state, dev):
+        rows = self._neighbors(dev)
+        if rows and (len(rows) != 1 or rows[0].get('lladdr', '').lower() != LOOPBACK_GATEWAY_MAC or
+                     'PERMANENT' not in rows[0].get('state', [])):
+            raise RuntimeError('Loopback gateway neighbor is managed by another application')
+        if not rows:
+            state['Neighbors'][dev] = True
+            self._save(state)
+            self._ip('neigh', 'replace', LOOPBACK_GATEWAY, 'lladdr', LOOPBACK_GATEWAY_MAC,
+                     'nud', 'permanent', 'dev', dev)
+
+    def _restore_unused(self, state, devices):
+        for dev in list(state['Neighbors']):
+            if dev in devices:
+                continue
+            if any(link['ifname'] == dev for link in json.loads(self._ip('-j', 'link', 'show'))):
+                rows = self._neighbors(dev)
+                if len(rows) == 1 and rows[0].get('lladdr', '').lower() == LOOPBACK_GATEWAY_MAC and 'PERMANENT' in rows[0].get('state', []):
+                    self._ip('neigh', 'del', LOOPBACK_GATEWAY, 'dev', dev)
+            del state['Neighbors'][dev]
+        for key, (original, managed) in list(state['Sysctls'].items()):
+            dev = key.split('/')[3]
+            if dev in devices or (dev == 'all' and devices):
+                continue
+            try:
+                current = self.execute(['sysctl', '-n', key]).strip()
+            except subprocess.CalledProcessError:
+                if dev == 'all' or any(link['ifname'] == dev for link in json.loads(self._ip('-j', 'link', 'show'))):
+                    raise
+                current = None
+            if current == managed and current != original:
+                self.execute(['sysctl', '-w', f'{key}={original}'])
+            del state['Sysctls'][key]
+        self._save(state)
+
+    def clear(self):
+        state = self._state()
+        rules = self._rules()
+        ours = [row for row in rules if self._protocol(row) == LOOPBACK_PROTOCOL]
+        # Install the ordinary local rule before removing the fallback rule.
+        if ours or self.path.exists():
+            if not any(self._default_local(row) for row in rules):
+                self._rule('add', (0, '255', '', '', 'all', ''), owned=False)
+            for row in ours:
+                self._rule('del', self._key(row))
+            for row in self._routes():
+                if self._protocol(row) == LOOPBACK_PROTOCOL:
+                    self._route('del', int(row['table']), row['dst'], row['dev'])
+            self._restore_unused(state, set())
+            self.path.unlink(missing_ok=True)
+
+    def reconcile(self, gelnic, interfaces, local_ports):
+        devices = set(interfaces) | {gelnic}
+        if gelnic in interfaces or 'lo' in devices:
+            raise ValueError('A dedicated host loopback adapter is required')
+        routes = {(LOOPBACK_TABLE, '127.0.0.1/32', gelnic)}
+        for dev, addresses in interfaces.items():
+            for address in addresses:
+                routes.add((HOST_ADDRESS_TABLE, address + '/32', dev))
+        wanted = {(2, '255', '', '', 'all', '')}
+        for proto in ('tcp', 'udp'):
+            for dev in devices:
+                wanted.add((0, '255', dev, proto, 'all', ''))
+            wanted.add((1, str(LOOPBACK_TABLE), '', proto, 'all', ''))
+            if any(interfaces.values()):
+                wanted.add((1, str(HOST_ADDRESS_TABLE), '', proto, 'all', ''))
+            for port in local_ports:
+                wanted.add((0, '255', '', proto, '127.0.0.1/32', str(port)))
+        rules = self._rules()
+        actual = [self._key(row) for row in rules if self._protocol(row) == LOOPBACK_PROTOCOL]
+        default = [row for row in rules if self._default_local(row)]
+        foreign = [row for row in rules if int(row['priority']) <= 2 and
+                   self._protocol(row) != LOOPBACK_PROTOCOL and not self._default_local(row)]
+        if foreign or len(default) > 1:
+            raise RuntimeError('Existing high-priority IPv4 rules conflict with mirrored loopback')
+        current = self._routes()
+        if any(self._protocol(row) != LOOPBACK_PROTOCOL for row in current):
+            raise RuntimeError('Loopback routing table contains an unmanaged route')
+        actual_routes = {(int(row['table']), str(ipaddress.ip_network(row['dst'], strict=False)), row['dev'])
+                         for row in current if row.get('gateway') == LOOPBACK_GATEWAY}
+        state = self._state()
+        # Keep the original settings across guest service restarts.
+        try:
+            for dev in sorted(devices):
+                self._sysctl(state, dev, 'accept_local', '1')
+                self._sysctl(state, dev, 'rp_filter', '0')
+                self._sysctl(state, dev, 'route_localnet', '1')
+                self._neighbor(state, dev)
+            self._sysctl(state, 'all', 'rp_filter', '0')
+            if 'UP' not in json.loads(self._ip('-j', 'link', 'show', 'dev', gelnic))[0]['flags']:
+                self._ip('link', 'set', 'dev', gelnic, 'up')
+            if (actual_routes != routes or len(current) != len(routes) or
+                    set(actual) != wanted or len(actual) != len(wanted) or default):
+                # Restore ordinary local delivery while updating the managed
+                # tables; keep all unrelated routes and rules untouched.
+                self.clear()
+                state = self._state()
+                for dev in sorted(devices):
+                    self._sysctl(state, dev, 'accept_local', '1')
+                    self._sysctl(state, dev, 'rp_filter', '0')
+                    self._sysctl(state, dev, 'route_localnet', '1')
+                    self._neighbor(state, dev)
+                self._sysctl(state, 'all', 'rp_filter', '0')
+                for table, destination, dev in sorted(routes):
+                    self._route('replace', table, destination, dev)
+                self._rule('add', (2, '255', '', '', 'all', ''))
+                # The fallback local rule now protects non-TCP/UDP traffic.
+                self._rule('del', (0, '255', '', '', 'all', ''), owned=False)
+                for key in sorted(wanted - {(2, '255', '', '', 'all', '')}):
+                    self._rule('add', key)
+            self._restore_unused(state, devices)
+            return {'Loopback': True, 'LoopbackDevice': gelnic, 'HostAddressRouteCount': len(routes) - 1}
+        except BaseException:
+            self.clear()
+            raise
+
+
 class LinuxBackend:
-    def __init__(self, execute=run, sysfs='/sys/class/net'):
+    def __init__(self, execute=run, sysfs='/sys/class/net', loopback_state=None):
         self.execute = execute
         self.sysfs = pathlib.Path(sysfs)
+        self.loopback = LoopbackRouting(execute, loopback_state) if loopback_state else None
+
+    def reconcile_loopback(self, settings):
+        if self.loopback is None:
+            raise RuntimeError('Install the Linux guest service with loopback routing enabled')
+        if not settings['Enabled']:
+            self.loopback.clear()
+            return {'Loopback': False}
+        gelnic = self.adapter(settings['AdapterMac'])
+        interfaces = {self.adapter(target): addresses for target, addresses in settings['Interfaces'].items()}
+        return self.loopback.reconcile(gelnic, interfaces, settings['LocalPorts'])
 
     def adapter(self, target):
         matches = []
@@ -1393,6 +1667,10 @@ def handle(sock, backend, tools=None, dns_tunnel=None):
         elif resource == 'Connectivity':
             with socket.create_connection((settings['Address'], settings['Port']), timeout=5) as connection:
                 response['Data'] = {'LocalAddress': connection.getsockname()[0], 'RemoteAddress': settings['Address'], 'Port': settings['Port']}
+        elif resource == 'LoopbackReconcile':
+            if platform.system() != 'Linux':
+                raise RuntimeError('GELNIC routing currently requires a Linux guest')
+            response['Data'] = backend.reconcile_loopback(settings)
         elif resource == 'Reconcile':
             snapshot = prepare_tunnel_snapshot(settings, dns_tunnel, platform.system() == 'Windows')
             response['Data'] = backend.reconcile(target, snapshot)
@@ -1412,11 +1690,11 @@ def handle(sock, backend, tools=None, dns_tunnel=None):
         send(sock, {'Version': 1, 'Success': False, 'Error': 'Guest response cannot be encoded or exceeds the message limit'})
 
 
-def serve(exchange_root=None, allow_clock_set=False, enable_dns_tunnel=False):
+def serve(exchange_root=None, allow_clock_set=False, enable_dns_tunnel=False, loopback_state=None):
     exchange = FileExchange(exchange_root) if exchange_root is not None else None
     tools = GuestTools(exchange, allow_clock_set)
     windows = platform.system() == 'Windows'
-    backend = WindowsBackend() if windows else LinuxBackend()
+    backend = WindowsBackend() if windows else LinuxBackend(loopback_state=loopback_state)
     tunnel = DnsTunnel() if enable_dns_tunnel else None
     try:
         if tunnel is not None:
@@ -1465,6 +1743,9 @@ def main():
     server.add_argument('--exchange-root', type=pathlib.Path, help='Enable file exchange in this protected directory')
     server.add_argument('--allow-clock-set', action='store_true', help='Allow the parent partition to synchronize the guest clock')
     server.add_argument('--dns-tunnel', action='store_true', help='Enable the loopback DNS proxy on port 53')
+    server.add_argument('--loopback-state', type=pathlib.Path, help='Enable Linux GELNIC routing and store its prior settings')
+    clear = commands.add_parser('clear-loopback', help='Restore ordinary Linux loopback routing')
+    clear.add_argument('state', type=pathlib.Path)
     host = commands.add_parser('send')
     host.add_argument('vm_id', help='HCS runtime VM ID')
     host.add_argument('request', type=pathlib.Path, help='JSON request')
@@ -1473,7 +1754,11 @@ def main():
     query.add_argument('resource', choices=QUERY_CAPABILITIES[:3])
     options = cli.parse_args()
     if options.command == 'serve':
-        serve(options.exchange_root, options.allow_clock_set, options.dns_tunnel)
+        serve(options.exchange_root, options.allow_clock_set, options.dns_tunnel, options.loopback_state)
+    elif options.command == 'clear-loopback':
+        if platform.system() != 'Linux':
+            raise RuntimeError('Linux is required')
+        LoopbackRouting(run, options.state).clear()
     else:
         import uuid
         request = ({'Version': 1, 'ResourceType': options.resource, 'RequestType': 'Query', 'Settings': {}}

@@ -2040,4 +2040,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsSecureBootTemplateComboBox.Header" xml:space="preserve"><value>安全启动模板</value></data>
   <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU、设备与集成服务</value></data>
   <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>查看所选虚拟机以加载其设备。断开硬盘不会删除磁盘文件。添加硬盘或 DVD 时请选择空闲控制器位置。新添加的网络适配器初始处于断开状态。</value></data>
+  <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 本地环回互通（GELNIC）</value></data>
+  <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>允许通过镜像宿主机 IPv4 地址进行环回通信</value></data>
+  <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>需要 HCN 专用环回网卡，并在安装 Linux 客户机服务时启用环回路由。忽略的端口仍在本地处理。IPv6 环回保持不变。</value></data>
 </root>

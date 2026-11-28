@@ -2040,4 +2040,7 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="VmmsSecureBootTemplateComboBox.Header" xml:space="preserve"><value>Secure Boot template</value></data>
   <data name="VmmsDeviceTitle.Text" xml:space="preserve"><value>CPU, devices and integration services</value></data>
   <data name="VmmsDeviceNote.Text" xml:space="preserve"><value>Inspect the selected VM to load its devices. Detaching a disk leaves its file intact. Choose a free controller slot for a new disk or DVD. Network adapters are added disconnected.</value></data>
+  <data name="MirroredLoopback.Content" xml:space="preserve"><value>Linux IPv4 localhost interoperability (GELNIC)</value></data>
+  <data name="MirroredHostAddressLoopback.Content" xml:space="preserve"><value>Allow loopback through mirrored host IPv4 addresses</value></data>
+  <data name="MirroredLoopbackNote.Text" xml:space="preserve"><value>Requires the dedicated HCN loopback adapter and Linux guest service installed with loopback routing enabled. Ignored ports stay local. IPv6 loopback is unchanged.</value></data>
 </root>

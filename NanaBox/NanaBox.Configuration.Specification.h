@@ -187,6 +187,8 @@ namespace NanaBox
         bool MirroredNetworking = false;
         bool MirroredAutoReservePorts = true;
         bool MirroredDnsTunneling = false;
+        bool MirroredLoopback = false;
+        bool MirroredHostAddressLoopback = false;
         std::string MirroredFirewallCreatorId;
         std::vector<std::string> MirroredTcpPorts;
         std::vector<std::string> MirroredUdpPorts;

@@ -969,6 +969,8 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     if (!Value.MirroredAutoReservePorts)
         Result["MirroredAutoReservePorts"] = false;
     if (Value.MirroredDnsTunneling) Result["MirroredDnsTunneling"] = true;
+    if (Value.MirroredLoopback) Result["MirroredLoopback"] = true;
+    if (Value.MirroredHostAddressLoopback) Result["MirroredHostAddressLoopback"] = true;
     if (Value.HcsSchemaMinor != 1) Result["HcsSchemaMinor"] = Value.HcsSchemaMinor;
     if (!Value.AdditionalHcsSettings.empty())
     {
@@ -1193,6 +1195,8 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
     Result.MirroredAutoReservePorts = Mile::Json::ToBoolean(
         Mile::Json::GetSubKey(Value, "MirroredAutoReservePorts"), Result.MirroredAutoReservePorts);
     Result.MirroredDnsTunneling = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredDnsTunneling"));
+    Result.MirroredLoopback = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredLoopback"));
+    Result.MirroredHostAddressLoopback = Mile::Json::ToBoolean(Mile::Json::GetSubKey(Value, "MirroredHostAddressLoopback"));
     if (Value.contains("HcsSchemaMinor"))
     {
         auto const& Minor = Value.at("HcsSchemaMinor");

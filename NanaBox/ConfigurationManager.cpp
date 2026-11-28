@@ -1339,6 +1339,10 @@ NanaBox::VirtualMachineConfiguration NanaBox::DeserializeConfiguration(
 
     if (Result.MirroredDnsTunneling && !Result.MirroredNetworking)
         throw std::exception("DNS tunneling requires mirrored networking");
+    if (Result.MirroredLoopback && (!Result.MirroredNetworking || Result.GuestType != NanaBox::GuestType::Linux))
+        throw std::exception("GELNIC loopback requires mirrored networking and a Linux guest");
+    if (Result.MirroredHostAddressLoopback && !Result.MirroredLoopback)
+        throw std::exception("Host address loopback requires GELNIC loopback");
 
     if (!Result.AdditionalHcsSettings.empty())
         (void)NanaBox::MakeHcsConfiguration(Result);

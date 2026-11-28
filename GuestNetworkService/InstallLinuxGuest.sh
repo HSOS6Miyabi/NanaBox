@@ -4,11 +4,13 @@ if [ "$(id -u)" -ne 0 ]; then echo 'Run as root.' >&2; exit 1; fi
 exchange=0
 clock=0
 dns=0
+loopback=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --enable-file-exchange) exchange=1 ;;
         --allow-clock-set) clock=1 ;;
         --enable-dns-tunnel) dns=1 ;;
+        --enable-loopback-routing) loopback=1 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -46,6 +48,9 @@ if [ "$dns" -eq 1 ]; then
     if ! systemctl is-active --quiet systemd-resolved.service; then echo 'DNS tunneling requires active systemd-resolved.' >&2; exit 1; fi
     options="$options --dns-tunnel"
     caps="$caps CAP_NET_BIND_SERVICE"
+fi
+if [ "$loopback" -eq 1 ]; then
+    options="$options --loopback-state /run/nanabox-gns/loopback.json"
 fi
 temporary=$(mktemp /etc/systemd/system/nanabox-gns.service.d/.options.XXXXXXXX)
 trap 'rm -f "$temporary"' EXIT HUP INT TERM

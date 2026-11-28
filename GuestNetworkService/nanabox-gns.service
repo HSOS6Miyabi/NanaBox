@@ -15,6 +15,10 @@ ProtectHome=true
 PrivateTmp=true
 StateDirectory=nanabox-gns
 StateDirectoryMode=0700
+RuntimeDirectory=nanabox-gns
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=restart
+ExecStopPost=/usr/bin/python3 -I /opt/nanabox-gns/gns.py clear-loopback /run/nanabox-gns/loopback.json
 CapabilityBoundingSet=CAP_NET_ADMIN
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_VSOCK
 

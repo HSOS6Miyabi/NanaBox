@@ -61,6 +61,15 @@ namespace
             throw winrt::hresult_error(Result, Error.Value ? winrt::hstring(Error.Value) : winrt::hstring(L"HCN operation failed"));
     }
 
+    bool IsGelnicConstraint(Json const& Constraint)
+    {
+        if (Constraint.contains("InterfaceIndex") && Constraint.at("InterfaceIndex").is_number_integer())
+            return Constraint.at("InterfaceIndex") == 0;
+        if (Constraint.contains("InterfaceGuid") && Constraint.at("InterfaceGuid").is_string())
+            return winrt::guid(Constraint.at("InterfaceGuid").get<std::string>()) == winrt::guid{};
+        return false;
+    }
+
     std::vector<winrt::guid> MirroredNetworks(bool Firewall)
     {
         unsigned Flags = HcnNetworkFlags::EnableNonPersistent | HcnNetworkFlags::EnableFlowSteering;
@@ -579,6 +588,7 @@ struct NanaBox::MirroredNetworking::Impl
         winrt::guid HostInterface{};
         std::string Mac;
         bool Attached = false;
+        bool Loopback = false;
     };
 
     winrt::guid RuntimeId;
@@ -1000,8 +1010,10 @@ struct NanaBox::MirroredNetworking::Impl
             auto Properties = Json::parse(winrt::to_string(NanaBox::HcnQueryEndpointProperties(Handle)));
             Entry.Mac = Properties.at("MacAddress").get<std::string>();
             auto Constraint = Properties.value("InterfaceConstraint", Json::object());
-            if (!Constraint.contains("InterfaceGuid")) Constraint = NetworkProperties.at("InterfaceConstraint");
-            Entry.HostInterface = winrt::guid(Constraint.at("InterfaceGuid").get<std::string>());
+            if (!Constraint.contains("InterfaceGuid") && !Constraint.contains("InterfaceIndex"))
+                Constraint = NetworkProperties.at("InterfaceConstraint");
+            Entry.Loopback = IsGelnicConstraint(Constraint);
+            if (!Entry.Loopback) Entry.HostInterface = winrt::guid(Constraint.at("InterfaceGuid").get<std::string>());
             ModifyVm(Vm.get(), "VirtualMachine/Devices/NetworkAdapters/" + GuidString(Entry.Id), "Add",
                 Json{{"EndpointId", GuidString(Entry.Id)}, {"MacAddress", Entry.Mac}});
             Entry.Attached = true;
@@ -1029,6 +1041,12 @@ struct NanaBox::MirroredNetworking::Impl
 
     std::set<PortKey> Synchronize(Endpoint& Entry, Json& Details)
     {
+        if (Entry.Loopback)
+        {
+            Details["Gelnic"] = true;
+            Details["GuestAcknowledged"] = !Configuration.MirroredLoopback;
+            return {};
+        }
         auto Desired = ReadHostSnapshot(Entry.HostInterface);
         Json Addresses = Json::array(), Routes = Json::array();
         for (auto const& Item : Desired.Items)
@@ -1172,6 +1190,46 @@ struct NanaBox::MirroredNetworking::Impl
                     }
                     if (Stop) break;
                     if (!Errors.empty()) throw winrt::hresult_error(E_FAIL, winrt::hstring(Errors));
+                    if (Configuration.MirroredLoopback)
+                    {
+                        std::string Adapter;
+                        Json Interfaces = Json::array();
+                        for (auto const& Entry : Endpoints)
+                        {
+                            if (Entry.second.Loopback)
+                            {
+                                if (!Adapter.empty()) throw winrt::hresult_error(E_UNEXPECTED, L"Multiple guest-exclusive loopback adapters");
+                                Adapter = Entry.second.Mac;
+                                continue;
+                            }
+                            Json Addresses = Json::array();
+                            if (Configuration.MirroredHostAddressLoopback)
+                            {
+                                auto Snapshot = ReadHostSnapshot(Entry.second.HostInterface);
+                                if (!Snapshot.Interface.value("Connected", false)) continue;
+                                for (auto const& Item : Snapshot.Items)
+                                    if (Item.second["ResourceType"] == "IPAddress")
+                                    {
+                                        auto Address = Item.second["Settings"]["Address"].get<std::string>();
+                                        IN_ADDR Parsed{};
+                                        if (::InetPtonA(AF_INET, Address.c_str(), &Parsed) == 1 &&
+                                            (::ntohl(Parsed.s_addr) >> 16) != 0xa9fe)
+                                            Addresses.push_back(Address);
+                                    }
+                            }
+                            Interfaces.push_back({{"AdapterMac", Entry.second.Mac}, {"Addresses", Addresses}});
+                        }
+                        if (Adapter.empty()) throw winrt::hresult_error(E_PENDING, L"Waiting for the HCN guest-exclusive loopback adapter");
+                        auto LocalPorts = IgnoredPorts;
+                        if (Configuration.MirroredDnsTunneling) LocalPorts.insert(53);
+                        auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "LoopbackReconcile"},
+                            {"RequestType", "Update"}, {"Settings", {{"Enabled", true}, {"AdapterMac", Adapter},
+                                {"Interfaces", Interfaces}, {"LocalPorts", LocalPorts}}}}, Stop);
+                        if (!Reply.value("Loopback", false)) throw winrt::hresult_error(E_FAIL, L"Guest loopback configuration failed");
+                        Report["Loopback"] = Reply;
+                        for (auto& Details : Report["Endpoints"])
+                            if (Details.value("Gelnic", false)) Details["GuestAcknowledged"] = true;
+                    }
                     auto Conflicts = ReconcileAutomaticPorts(Ports);
                     if (!Synchronized)
                     {

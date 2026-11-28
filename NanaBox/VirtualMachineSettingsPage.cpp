@@ -532,6 +532,8 @@ namespace winrt::NanaBox::implementation
             this->MirroredNetworkingCheckBox().IsChecked(this->m_Configuration.MirroredNetworking);
             this->MirroredAutoReservePortsCheckBox().IsChecked(this->m_Configuration.MirroredAutoReservePorts);
             this->MirroredDnsTunnelingCheckBox().IsChecked(this->m_Configuration.MirroredDnsTunneling);
+            this->MirroredLoopbackCheckBox().IsChecked(this->m_Configuration.MirroredLoopback);
+            this->MirroredHostAddressLoopbackCheckBox().IsChecked(this->m_Configuration.MirroredHostAddressLoopback);
             this->MirroredFirewallCreatorTextBox().Text(winrt::to_hstring(this->m_Configuration.MirroredFirewallCreatorId));
             this->MirroredTcpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredTcpPorts));
             this->MirroredUdpPortsTextBox().Text(::MakeSettingLines(this->m_Configuration.MirroredUdpPorts));
@@ -842,6 +844,8 @@ namespace winrt::NanaBox::implementation
                 Result.MirroredNetworking = this->MirroredNetworkingCheckBox().IsChecked().Value();
                 Result.MirroredAutoReservePorts = this->MirroredAutoReservePortsCheckBox().IsChecked().Value();
                 Result.MirroredDnsTunneling = this->MirroredDnsTunnelingCheckBox().IsChecked().Value();
+                Result.MirroredLoopback = this->MirroredLoopbackCheckBox().IsChecked().Value();
+                Result.MirroredHostAddressLoopback = this->MirroredHostAddressLoopbackCheckBox().IsChecked().Value();
                 if (Result.MirroredDnsTunneling && !Result.MirroredNetworking)
                     ::InvalidSetting(::GetSettingsString(L"MirroredDnsRequiresMirrored"));
                 Result.MirroredFirewallCreatorId = winrt::to_string(this->MirroredFirewallCreatorTextBox().Text());
