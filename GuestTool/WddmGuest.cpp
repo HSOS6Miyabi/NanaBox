@@ -147,6 +147,12 @@ namespace
         std::wstring WideName;
         bool ReadOnly;
         bool Internal;
+        bool AutoMount = true;
+        bool NoDirectmap = false;
+        Json Identity() const
+        {
+            return {{"Name",Name},{"ReadOnly",ReadOnly},{"AutoMount",AutoMount},{"NoDirectmap",NoDirectmap}};
+        }
     };
 
     std::vector<VirtualSmbDescriptor> ParseVirtualSmbInventory(Json const& shares)
@@ -175,7 +181,8 @@ namespace
                 Equal(wide.substr(0, prefix.size()), std::wstring(prefix)) && !internal)
                 throw std::runtime_error("Invalid supplemental GPU share name");
             if (internal && !readOnly) throw std::runtime_error("GPU share must be read-only");
-            result.push_back({std::move(name), std::move(wide), readOnly, internal});
+            result.push_back({std::move(name), std::move(wide), readOnly, internal,
+                share.value("AutoMount",true),share.value("NoDirectmap",false)});
         }
         return result;
     }
@@ -192,6 +199,7 @@ namespace
 
 #include "NativeVsmb.h"
 #include "WindowsPlan9Mounts.h"
+#include "WindowsVsmbMounts.h"
 
     class DriverMount
     {
@@ -663,6 +671,7 @@ namespace
     {
         GpuMappingLifecycle Lifecycle;
         WindowsPlan9Mounts UserPlan9;
+        WindowsVsmbMounts UserVsmb;
         DriverMount Mount;
         RestartTracker Restart;
         std::string VerifiedGeneration;
@@ -767,10 +776,7 @@ namespace
             result["Mounted"] = Lifecycle.Active() && Mount.Ready();
             result["Backend"] = NativeMode ? "VirtualSmb" : "Plan9";
             result["NativeTransportActive"] = NativeActive.load();
-            if (NativeMode && result.contains("VirtualSmbShares"))
-                for (auto& share : result["VirtualSmbShares"])
-                    share["Mounted"] = VsmbClient.Ready(fs::path(Wide(share.at("Target").get<std::string>())),
-                        Wide(share.at("Name").get<std::string>()), share.at("ReadOnly").get<bool>());
+            result.update(UserVsmb.Query());
             result.update(UserPlan9.Query());
             return result;
         }
@@ -781,6 +787,13 @@ namespace
             UserPlan9.Action(action,settings);
             return Query();
         }
+        Json VsmbAction(std::string const& action,Json const& settings)
+        {
+            if(!settings.is_object()||settings.size()!=1||!settings.contains("Name"))
+                throw std::runtime_error("Invalid Virtual SMB mount request");
+            UserVsmb.Action(action,settings.at("Name").get<std::string>());
+            return Query();
+        }
         Json Update(Json const& settings)
         {
             auto const& shares = settings.at("Shares");
@@ -788,44 +801,10 @@ namespace
             bool gpuEnabled = settings.value("GpuEnabled", true);
             auto descriptors = ParseVirtualSmbInventory(smbShares);
             UserPlan9.Update(shares);
-            Json mounted = Json::array();
-            Json mountErrors = Json::array();
-            if (NativeMode)
-            {
-                wchar_t programData[32768]{};
-                auto size = GetEnvironmentVariableW(L"ProgramData",programData,static_cast<DWORD>(std::size(programData)));
-                if (!size || size >= std::size(programData)) throw std::runtime_error("ProgramData is unavailable");
-                fs::path root = fs::path(programData) / L"NanaBox Guest Shares";
-                // The installer creates and protects the shared-folder mount root.
-                if (!fs::is_directory(root) || (GetFileAttributesW(root.c_str()) & FILE_ATTRIBUTE_REPARSE_POINT))
-                    throw std::runtime_error("The protected Virtual SMB mount directory is missing");
-                for (auto const& share : descriptors)
-                {
-                    if (share.Internal) continue;
-                    auto path = root / share.WideName;
-                    Json row = {{"Name",share.Name},{"Target",Utf8(path.wstring())},
-                        {"ReadOnly",share.ReadOnly},{"Mounted",false}};
-                    try
-                    {
-                        VsmbClient.Ensure(path,share.WideName,share.ReadOnly);
-                        row["Mounted"] = true;
-                    }
-                    catch (std::exception const& error)
-                    {
-                        row["Error"] = error.what();
-                        mountErrors.push_back(share.Name+": "+error.what());
-                    }
-                    mounted.push_back(std::move(row));
-                }
-            }
-            else
-            {
-                for (auto const& share : descriptors)
-                {
-                    if (share.Internal) continue;
-                    mountErrors.push_back(share.Name+": Virtual SMB shares require the native Windows backend");
-                }
-            }
+            UserVsmb.Update(descriptors);
+            auto report=UserVsmb.Query();
+            auto mounted=report.at("VirtualSmbShares");
+            auto mountErrors=report.at("ShareErrors");
             if (!gpuEnabled)
             {
                 Last={{"Mounted",false},{"Files",Json::array()},{"Errors",mountErrors},{"VirtualSmbShares",mounted},
@@ -1181,6 +1160,8 @@ namespace
                 else if (request.at("RequestType") == "Update") response = manager.Update(request.at("Settings"));
                 else if(request.at("RequestType")=="Mount" || request.at("RequestType")=="Unmount")
                     response=manager.Plan9Action(request.at("RequestType").get<std::string>(),request.at("Settings"));
+                else if(request.at("RequestType")=="VsmbMount" || request.at("RequestType")=="VsmbUnmount")
+                    response=manager.VsmbAction(request.at("RequestType").get<std::string>(),request.at("Settings"));
                 else throw std::runtime_error("Unsupported GPU mount operation");
                 Send(client.Handle, {{"Version", 1}, {"Success", true}, {"Data", response}});
             }
@@ -1240,6 +1221,7 @@ namespace
 
     int SelfTest()
     {
+        if(!WindowsVsmbMountStateTest())return 64;
         {
             auto share=[](std::string name,unsigned port,bool readOnly,bool automatic)
             {return Json{{"Name",name},{"Port",port},{"ReadOnly",readOnly},{"AutoMount",automatic}};};

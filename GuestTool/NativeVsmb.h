@@ -311,8 +311,28 @@ class NativeVsmb
         }
         if(!fs::is_empty(path))throw std::runtime_error("Virtual SMB mount directory is not empty");
     }
+    bool DetachTarget(fs::path const& path,std::wstring const& target,bool readOnly)
+    {
+        if(!ExistingTarget(path,target,readOnly)) return false;
+        auto status=Remove(nullptr,path.c_str());
+        if(FAILED(status))throw std::runtime_error("Remove Bind Filter mapping failed: "+std::to_string(static_cast<unsigned long>(status)));
+        if(ExistingTarget(path,target,readOnly))throw std::runtime_error("Bind Filter mapping is still present");
+        return true;
+    }
 public:
     ~NativeVsmb(){if(Module)FreeLibrary(Module);}
+    // This removes only the local directory mapping. It does not disconnect
+    // the redirector, close the transport keepalive, or remove the HCS share.
+    bool Detach(fs::path const& path,std::wstring const& name,bool readOnly)
+    {
+        auto result=DetachTarget(path,NtShare(name),readOnly);
+        Owned.erase(path.wstring());
+        return result;
+    }
+    bool Mapped(fs::path const& path,std::wstring const& name,bool readOnly)
+    {
+        return Existing(path,name,readOnly);
+    }
     // Exercise the same Bind Filter API and mapping validation on two
     // disposable directories without initializing the VMBus transport.
     int LocalMappingTest()
@@ -386,8 +406,17 @@ public:
                     OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
                 if(file.Valid())throw std::runtime_error("Read-only Bind Filter accepted a write handle");
             }
-            if(FAILED(Remove(nullptr,mount.c_str())))throw std::runtime_error("Remove test binding failed");
+            // A mismatched target or access mode must never remove a mapping.
+            bool wrongMode=false,wrongTarget=false;
+            try{(void)DetachTarget(mount,NtPath(source),false);}
+            catch(std::runtime_error const&){wrongMode=true;}
+            try{(void)DetachTarget(mount,NtPath(root/L"other"),true);}
+            catch(std::runtime_error const&){wrongTarget=true;}
+            if(!wrongMode||!wrongTarget||!ExistingTarget(mount,NtPath(source),true))
+                throw std::runtime_error("Unsafe Bind Filter detachment was accepted");
+            if(!DetachTarget(mount,NtPath(source),true))throw std::runtime_error("Remove test binding failed");
             bound=false;
+            if(DetachTarget(mount,NtPath(source),true))throw std::runtime_error("Repeated detachment was not idempotent");
             if(ExistingTarget(mount,NtPath(source),true)||!fs::is_empty(mount))
                 throw std::runtime_error("Test binding still exists");
             status=Setup(nullptr,0x60,mount.c_str(),source.c_str(),nullptr,0);
@@ -402,7 +431,7 @@ public:
                 if(!WriteFile(file.Get(),&byte,1,&count,nullptr)||count!=1)Error("Write bound file");
             }
             if(fs::file_size(source/L"created.txt")!=1)throw std::runtime_error("Writable mount did not update source");
-            if(FAILED(Remove(nullptr,mount.c_str())))throw std::runtime_error("Remove writable test binding failed");
+            if(!DetachTarget(mount,NtPath(source),false))throw std::runtime_error("Remove writable test binding failed");
             bound=false;
             if(ExistingTarget(mount,NtPath(source),false)||!fs::is_empty(mount))
                 throw std::runtime_error("Writable test binding still exists");
