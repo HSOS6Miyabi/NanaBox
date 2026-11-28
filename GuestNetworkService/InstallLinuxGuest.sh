@@ -6,6 +6,7 @@ clock=0
 dns=0
 loopback=0
 bind=0
+plan9=1
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --enable-file-exchange) exchange=1 ;;
@@ -13,6 +14,8 @@ while [ "$#" -gt 0 ]; do
         --enable-dns-tunnel) dns=1 ;;
         --enable-loopback-routing) loopback=1 ;;
         --enable-bind-coordination) bind=1 ;;
+        --disable-plan9) plan9=0 ;;
+        --enable-plan9) plan9=1 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -28,6 +31,12 @@ if [ "$bind" -eq 1 ]; then
     if [ -e /usr/local/bin/nanabox-bind ] || [ -L /usr/local/bin/nanabox-bind ]; then
         [ "$(readlink /usr/local/bin/nanabox-bind || true)" = /opt/nanabox-gns/nanabox-bind ] || { echo 'nanabox-bind already exists.' >&2; exit 1; }
     fi
+fi
+if [ -e /usr/local/bin/nanabox-plan9 ] || [ -L /usr/local/bin/nanabox-plan9 ]; then
+    [ "$(readlink /usr/local/bin/nanabox-plan9 || true)" = /opt/nanabox-gns/plan9.py ] || { echo 'nanabox-plan9 already exists.' >&2; exit 1; }
+fi
+if systemctl is-active --quiet nanabox-plan9.service; then
+    systemctl stop nanabox-plan9.service
 fi
 if systemctl is-active --quiet nanabox-gns.service; then
     systemctl stop nanabox-gns.service
@@ -87,8 +96,21 @@ trap 'rm -f "$temporary"' EXIT HUP INT TERM
 printf '[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\n' "$options" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"
 chmod 0644 "$temporary"
 mv -f "$temporary" /etc/systemd/system/nanabox-gns.service.d/50-options.conf
+if [ "$plan9" -eq 1 ]; then
+    install -o root -g root -m 0755 "$source_dir/plan9.py" /opt/nanabox-gns/plan9.py
+    install -o root -g root -m 0644 "$source_dir/nanabox-plan9.service" /etc/systemd/system/nanabox-plan9.service
+    ln -sfn /opt/nanabox-gns/plan9.py /usr/local/bin/nanabox-plan9
+else
+    if systemctl cat nanabox-plan9.service >/dev/null 2>&1; then systemctl disable --now nanabox-plan9.service; fi
+    if [ "$(readlink /usr/local/bin/nanabox-plan9 || true)" = /opt/nanabox-gns/plan9.py ]; then rm -f /usr/local/bin/nanabox-plan9; fi
+    rm -f /etc/systemd/system/nanabox-plan9.service /opt/nanabox-gns/plan9.py
+fi
 systemctl daemon-reload
 systemctl enable --now nanabox-gns.service
+if [ "$plan9" -eq 1 ]; then
+    systemctl enable --now nanabox-plan9.service
+    systemctl is-active --quiet nanabox-plan9.service
+fi
 systemctl is-active --quiet nanabox-gns.service
 if [ "$dns" -eq 1 ]; then
     install -d -o root -g root -m 0755 "$resolver_dir"

@@ -41,6 +41,7 @@ jobs:
           name: NanaBox-GuestNetworkService-${{ matrix.os }}
           path: |
             GuestNetworkService/gns.py
+            GuestNetworkService/plan9.py
             GuestNetworkService/*.ps1
             GuestNetworkService/*.sh
             GuestNetworkService/*.service

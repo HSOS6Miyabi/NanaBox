@@ -60,7 +60,7 @@
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.exe" DestinationFiles="$(OutputBinariesPath)x64\NanaBox.exe" />
     <Copy SourceFiles="$(InputBinariesPath)x64\NanaBox.pri" DestinationFiles="$(OutputBinariesPath)x64\resources.pri" />
     <ItemGroup>
-      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestNetworkService\gns.py;$(MSBuildThisFileDirectory)GuestNetworkService\*.ps1;$(MSBuildThisFileDirectory)GuestNetworkService\*.sh;$(MSBuildThisFileDirectory)GuestNetworkService\*.service;$(MSBuildThisFileDirectory)GuestNetworkService\README.md" />
+      <GuestToolsFiles Include="$(MSBuildThisFileDirectory)GuestNetworkService\gns.py;$(MSBuildThisFileDirectory)GuestNetworkService\plan9.py;$(MSBuildThisFileDirectory)GuestNetworkService\*.c;$(MSBuildThisFileDirectory)GuestNetworkService\*.ps1;$(MSBuildThisFileDirectory)GuestNetworkService\*.sh;$(MSBuildThisFileDirectory)GuestNetworkService\*.service;$(MSBuildThisFileDirectory)GuestNetworkService\README.md" />
     </ItemGroup>
     <Copy SourceFiles="@(GuestToolsFiles)" DestinationFolder="$(OutputBinariesPath)GuestTools" />
 

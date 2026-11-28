@@ -1,0 +1,23 @@
+[Unit]
+Description=NanaBox Plan 9 guest share mounts
+After=local-fs.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 -I /opt/nanabox-gns/plan9.py serve
+ExecStopPost=/usr/bin/python3 -I /opt/nanabox-gns/plan9.py cleanup
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=nanabox-plan9
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
+RestrictAddressFamilies=AF_UNIX AF_VSOCK
+# Mounts must be created in the system mount namespace. Do not enable
+# ProtectSystem, ProtectHome, PrivateTmp, PrivateMounts or path isolation.
+
+[Install]
+WantedBy=multi-user.target
