@@ -1718,4 +1718,17 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="NetworkCopy.Content" xml:space="preserve">
     <value>Copy</value>
   </data>
+  <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>Resource allocation</value></data>
+  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
+  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
+  <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
+  <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
+  <data name="MemoryOvercommitCheckBox.Content" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
+  <data name="MemoryOvercommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Allow pagefile-backed virtual machine memory</value></data>
+  <data name="DeferredCommitCheckBox.Content" xml:space="preserve"><value>Defer memory commit until first access</value></data>
+  <data name="DeferredCommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>Defer memory commit until first access</value></data>
+  <data name="StorageIopsMaximumTextBox.Header" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
+  <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage IOPS limit (0 = default)</value></data>
+  <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
+  <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>Storage bandwidth limit (bytes/s; 0 = default)</value></data>
 </root>

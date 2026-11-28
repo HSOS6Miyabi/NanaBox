@@ -439,6 +439,14 @@ namespace winrt::NanaBox::implementation
                 : winrt::Visibility::Visible);
             this->MemorySizeTextBox().Text(
                 winrt::to_hstring(this->m_Configuration.MemorySize));
+            this->ResourceAllocationPanel().Visibility(this->m_MainWindow
+                ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+            this->ProcessorLimitTextBox().Text(winrt::to_hstring(this->m_Configuration.ProcessorLimit));
+            this->ProcessorWeightTextBox().Text(winrt::to_hstring(this->m_Configuration.ProcessorWeight));
+            this->MemoryOvercommitCheckBox().IsChecked(this->m_Configuration.AllowMemoryOvercommit);
+            this->DeferredCommitCheckBox().IsChecked(this->m_Configuration.EnableDeferredCommit);
+            this->StorageIopsMaximumTextBox().Text(winrt::to_hstring(this->m_Configuration.StorageIopsMaximum));
+            this->StorageBandwidthMaximumTextBox().Text(winrt::to_hstring(this->m_Configuration.StorageBandwidthMaximum));
             this->SecureBootCheckBox().IsChecked(
                 this->m_Configuration.SecureBoot);
             this->SecureBootRow().Visibility(this->m_MainWindow
@@ -710,6 +718,18 @@ namespace winrt::NanaBox::implementation
                 Result.ProcessorCount =
                     ::ReadSettingInteger<std::uint32_t>(
                         this->ProcessorCountTextBox());
+                Result.ProcessorLimit = ::ReadSettingInteger<std::uint64_t>(this->ProcessorLimitTextBox());
+                Result.ProcessorWeight = ::ReadSettingInteger<std::uint64_t>(this->ProcessorWeightTextBox());
+                Result.AllowMemoryOvercommit = winrt::unbox_value<bool>(this->MemoryOvercommitCheckBox().IsChecked());
+                Result.EnableDeferredCommit = winrt::unbox_value<bool>(this->DeferredCommitCheckBox().IsChecked());
+                Result.StorageIopsMaximum = ::ReadSettingInteger<std::uint64_t>(this->StorageIopsMaximumTextBox());
+                Result.StorageBandwidthMaximum = ::ReadSettingInteger<std::uint64_t>(this->StorageBandwidthMaximumTextBox());
+                if (Result.ProcessorLimit > 100000)
+                    ::InvalidSetting(::GetSettingsString(L"ProcessorLimitTextBox.Header"));
+                if (Result.ProcessorWeight > 10000)
+                    ::InvalidSetting(::GetSettingsString(L"ProcessorWeightTextBox.Header"));
+                if (Result.EnableDeferredCommit && !Result.AllowMemoryOvercommit)
+                    ::InvalidSetting(::GetSettingsString(L"DeferredCommitCheckBox.Content"));
                 Result.SecureBoot =
                     winrt::unbox_value<bool>(
                         this->SecureBootCheckBox().IsChecked());

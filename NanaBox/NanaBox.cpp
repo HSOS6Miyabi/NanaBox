@@ -105,6 +105,15 @@ int WINAPI wWinMain(
             Config.GuestType = NanaBox::GuestType::Windows;
             Config.ProcessorCount = 2;
             Config.MemorySize = 2048;
+            auto DefaultResources = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Config));
+            if (!DefaultResources.AllowMemoryOvercommit || DefaultResources.EnableDeferredCommit ||
+                DefaultResources.ProcessorLimit || DefaultResources.ProcessorWeight ||
+                DefaultResources.StorageIopsMaximum || DefaultResources.StorageBandwidthMaximum) return 29;
+            Config.ProcessorLimit = 75000;
+            Config.ProcessorWeight = 250;
+            Config.EnableDeferredCommit = true;
+            Config.StorageIopsMaximum = 1000;
+            Config.StorageBandwidthMaximum = 10485760;
             NanaBox::NetworkAdapterConfiguration Adapter;
             Adapter.Connected = true;
             Adapter.NetworkId = "85c8668e-36fe-447f-aae0-ba159a0142a7";
@@ -117,6 +126,28 @@ int WINAPI wWinMain(
             Config.VideoMonitor.EnableContentResizing = false;
             Config.VideoMonitor.ShowFullScreenModeConnectionBar = false;
             auto Loaded = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Config));
+            if (Loaded.ProcessorLimit != 75000 || Loaded.ProcessorWeight != 250 ||
+                !Loaded.AllowMemoryOvercommit || !Loaded.EnableDeferredCommit ||
+                Loaded.StorageIopsMaximum != 1000 || Loaded.StorageBandwidthMaximum != 10485760) return 30;
+            auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(Loaded));
+            auto const& Vm = Hcs.at("VirtualMachine");
+            if (Vm.at("ComputeTopology").at("Processor").at("Limit") != 75000 ||
+                Vm.at("ComputeTopology").at("Processor").at("Weight") != 250 ||
+                Vm.at("ComputeTopology").at("Memory").at("EnableDeferredCommit") != true ||
+                Vm.at("StorageQoS").at("IopsMaximum") != 1000 ||
+                Vm.at("StorageQoS").at("BandwidthMaximum") != 10485760) return 31;
+            for (auto const& Invalid : {nlohmann::json{{"ProcessorLimit", 100001}},
+                nlohmann::json{{"ProcessorWeight", -1}}, nlohmann::json{{"StorageIopsMaximum", 1.5}},
+                nlohmann::json{{"AllowMemoryOvercommit", "true"}},
+                nlohmann::json{{"AllowMemoryOvercommit", false}, {"EnableDeferredCommit", true}}})
+            {
+                auto Bad = nlohmann::json::parse(NanaBox::SerializeConfiguration(Config));
+                Bad["NanaBox"].update(Invalid);
+                bool Rejected = false;
+                try { NanaBox::DeserializeConfiguration(Bad.dump()); }
+                catch (...) { Rejected = true; }
+                if (!Rejected) return 32;
+            }
             if (!Loaded.VideoMonitor.EnableDpiScalingValueOverride || Loaded.VideoMonitor.OverriddenDpiScalingValue != 175 ||
                 Loaded.VideoMonitor.EnableContentResizing || Loaded.VideoMonitor.ShowFullScreenModeConnectionBar ||
                 NanaBox::EffectiveDisplayScale(Loaded.VideoMonitor, 150, false) != 175) return 26;

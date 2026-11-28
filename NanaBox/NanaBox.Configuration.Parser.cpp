@@ -951,6 +951,12 @@ nlohmann::json NanaBox::FromVirtualMachineConfiguration(
     Result["ProcessorCount"] = Value.ProcessorCount;
 
     Result["MemorySize"] = Value.MemorySize;
+    if (Value.ProcessorLimit) Result["ProcessorLimit"] = Value.ProcessorLimit;
+    if (Value.ProcessorWeight) Result["ProcessorWeight"] = Value.ProcessorWeight;
+    if (!Value.AllowMemoryOvercommit) Result["AllowMemoryOvercommit"] = false;
+    if (Value.EnableDeferredCommit) Result["EnableDeferredCommit"] = true;
+    if (Value.StorageIopsMaximum) Result["StorageIopsMaximum"] = Value.StorageIopsMaximum;
+    if (Value.StorageBandwidthMaximum) Result["StorageBandwidthMaximum"] = Value.StorageBandwidthMaximum;
 
     Result["ComPorts"] = NanaBox::FromComPortsConfiguration(Value.ComPorts);
 
@@ -1140,6 +1146,33 @@ NanaBox::VirtualMachineConfiguration NanaBox::ToVirtualMachineConfiguration(
 
     Result.MemorySize = Mile::Json::ToUInt64(
         Mile::Json::GetSubKey(Value, "MemorySize"));
+
+    auto ReadUnsigned = [&](char const* Name, std::uint64_t Maximum) -> std::uint64_t
+    {
+        if (!Value.contains(Name)) return 0;
+        auto const& Field = Value.at(Name);
+        if (!Field.is_number_unsigned() &&
+            (!Field.is_number_integer() || Field.get<std::int64_t>() < 0))
+            throw std::invalid_argument(std::string("Invalid integer: ") + Name);
+        auto Number = Field.get<std::uint64_t>();
+        if (Number > Maximum) throw std::invalid_argument(std::string("Out of range: ") + Name);
+        return Number;
+    };
+    auto ReadBoolean = [&](char const* Name, bool Default) -> bool
+    {
+        if (!Value.contains(Name)) return Default;
+        auto const& Field = Value.at(Name);
+        if (!Field.is_boolean()) throw std::invalid_argument(std::string("Invalid boolean: ") + Name);
+        return Field.get<bool>();
+    };
+    Result.ProcessorLimit = ReadUnsigned("ProcessorLimit", 100000);
+    Result.ProcessorWeight = ReadUnsigned("ProcessorWeight", 10000);
+    Result.AllowMemoryOvercommit = ReadBoolean("AllowMemoryOvercommit", true);
+    Result.EnableDeferredCommit = ReadBoolean("EnableDeferredCommit", false);
+    Result.StorageIopsMaximum = ReadUnsigned("StorageIopsMaximum", UINT64_MAX);
+    Result.StorageBandwidthMaximum = ReadUnsigned("StorageBandwidthMaximum", UINT64_MAX);
+    if (Result.EnableDeferredCommit && !Result.AllowMemoryOvercommit)
+        throw std::invalid_argument("EnableDeferredCommit requires AllowMemoryOvercommit");
 
     Result.ComPorts = NanaBox::ToComPortsConfiguration(
         Mile::Json::GetSubKey(Value, "ComPorts"));

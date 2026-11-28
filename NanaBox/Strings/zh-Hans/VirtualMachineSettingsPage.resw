@@ -1718,4 +1718,17 @@ UseExtendedMaxVpPerSocketLimit</comment>
   <data name="NetworkCopy.Content" xml:space="preserve">
     <value>复制</value>
   </data>
+  <data name="ResourceAllocationHeading.Text" xml:space="preserve"><value>资源分配</value></data>
+  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU 使用率上限（0 表示默认值，100000 表示 100%）</value></data>
+  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU 使用率上限（0 表示默认值，100000 表示 100%）</value></data>
+  <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU 调度权重（0 表示默认值，1 至 10000）</value></data>
+  <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU 调度权重（0 表示默认值，1 至 10000）</value></data>
+  <data name="MemoryOvercommitCheckBox.Content" xml:space="preserve"><value>允许使用页面文件作为虚拟机内存的后备存储</value></data>
+  <data name="MemoryOvercommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>允许使用页面文件作为虚拟机内存的后备存储</value></data>
+  <data name="DeferredCommitCheckBox.Content" xml:space="preserve"><value>在首次访问内存页面时提交内存</value></data>
+  <data name="DeferredCommitCheckBox.AutomationProperties.Name" xml:space="preserve"><value>在首次访问内存页面时提交内存</value></data>
+  <data name="StorageIopsMaximumTextBox.Header" xml:space="preserve"><value>存储 IOPS 上限（0 表示默认值）</value></data>
+  <data name="StorageIopsMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>存储 IOPS 上限（0 表示默认值）</value></data>
+  <data name="StorageBandwidthMaximumTextBox.Header" xml:space="preserve"><value>存储带宽上限（字节/秒，0 表示默认值）</value></data>
+  <data name="StorageBandwidthMaximumTextBox.AutomationProperties.Name" xml:space="preserve"><value>存储带宽上限（字节/秒，0 表示默认值）</value></data>
 </root>

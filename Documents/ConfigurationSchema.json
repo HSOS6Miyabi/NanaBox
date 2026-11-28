@@ -39,6 +39,12 @@
           "description": "The memory size of virtual machine, in MB.",
           "examples": [2048]
         },
+        "ProcessorLimit": {"type":"integer","minimum":0,"maximum":100000,"default":0},
+        "ProcessorWeight": {"type":"integer","minimum":0,"maximum":10000,"default":0},
+        "AllowMemoryOvercommit": {"type":"boolean","default":true},
+        "EnableDeferredCommit": {"type":"boolean","default":false},
+        "StorageIopsMaximum": {"type":"integer","minimum":0,"default":0},
+        "StorageBandwidthMaximum": {"type":"integer","minimum":0,"default":0},
         "ChipsetInformation": {
           "type": "object",
           "description": "The chipset information object of virtual machine. Available starting with NanaBox 1.2 Update 4.",

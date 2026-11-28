@@ -148,6 +148,12 @@ try {
     Set-Text 'NameTextBox' 'UI automation saved'
     Set-Text 'ProcessorCountTextBox' '4'
     Set-Text 'MemorySizeTextBox' '4096'
+    Set-Text 'ProcessorLimitTextBox' '75000'
+    Set-Text 'ProcessorWeightTextBox' '250'
+    Set-Check 'MemoryOvercommitCheckBox' $true
+    Set-Check 'DeferredCommitCheckBox' $true
+    Set-Text 'StorageIopsMaximumTextBox' '1000'
+    Set-Text 'StorageBandwidthMaximumTextBox' '10485760'
     Set-Check 'SecureBootCheckBox' $true
     Set-Check 'TpmCheckBox' $true
     Set-Check 'VirtualizationExtensionsCheckBox' $true
@@ -362,6 +368,11 @@ try {
     Assert-Equal $saved.Name 'UI automation saved' 'Name'
     Assert-Equal $saved.ProcessorCount 4 'CPU'
     Assert-Equal $saved.MemorySize 4096 'Memory'
+    Assert-Equal $saved.ProcessorLimit 75000 'CPU limit'
+    Assert-Equal $saved.ProcessorWeight 250 'CPU weight'
+    Assert-Equal $saved.EnableDeferredCommit $true 'Deferred memory commit'
+    Assert-Equal $saved.StorageIopsMaximum 1000 'IOPS limit'
+    Assert-Equal $saved.StorageBandwidthMaximum 10485760 'Storage bandwidth limit'
     Assert-Equal $saved.ComPorts.ComPort1 $pipe1 'COM1'
     Assert-Equal $saved.ComPorts.ComPort2 $pipe2 'COM2'
     Assert-Equal $saved.Gpu.AssignmentMode 'List' 'GPU mode'
@@ -404,6 +415,10 @@ try {
     Assert-Equal @($saved.VirtualSmbShares | Where-Object {$_}).Count 0 'SMB removed'
     Select-Tab 'TabGeneral'
     Assert-Equal (Get-Text 'NameTextBox') 'UI automation saved' 'Reloaded name'
+    Assert-Equal (Get-Text 'ProcessorLimitTextBox') '75000' 'Reloaded CPU limit'
+    Assert-Equal (Get-Text 'ProcessorWeightTextBox') '250' 'Reloaded CPU weight'
+    Assert-Equal (Get-Text 'StorageIopsMaximumTextBox') '1000' 'Reloaded IOPS limit'
+    Assert-Equal (Get-Text 'StorageBandwidthMaximumTextBox') '10485760' 'Reloaded bandwidth limit'
     $external = Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
     $external.NanaBox.Name = 'External edit'
     [IO.File]::WriteAllText($config,($external | ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($true)))

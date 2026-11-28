@@ -175,6 +175,12 @@ namespace NanaBox
         std::string Name;
         std::uint32_t ProcessorCount = 0;
         std::uint64_t MemorySize = 0;
+        std::uint64_t ProcessorLimit = 0;
+        std::uint64_t ProcessorWeight = 0;
+        bool AllowMemoryOvercommit = true;
+        bool EnableDeferredCommit = false;
+        std::uint64_t StorageIopsMaximum = 0;
+        std::uint64_t StorageBandwidthMaximum = 0;
         ComPortsConfiguration ComPorts;
         GpuConfiguration Gpu;
         std::vector<NetworkAdapterConfiguration> NetworkAdapters;

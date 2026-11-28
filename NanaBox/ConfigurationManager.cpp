@@ -214,13 +214,17 @@ std::string NanaBox::MakeHcsConfiguration(
         nlohmann::json Memory;
         {
             Memory["SizeInMB"] = Configuration.MemorySize;
-            Memory["AllowOvercommit"] = true;
+            Memory["AllowOvercommit"] = Configuration.AllowMemoryOvercommit;
+            if (Configuration.EnableDeferredCommit)
+                Memory["EnableDeferredCommit"] = true;
         }
         ComputeTopology["Memory"] = Memory;
 
         nlohmann::json Processor;
         {
             Processor["Count"] = Configuration.ProcessorCount;
+            if (Configuration.ProcessorLimit) Processor["Limit"] = Configuration.ProcessorLimit;
+            if (Configuration.ProcessorWeight) Processor["Weight"] = Configuration.ProcessorWeight;
             if (Configuration.ExposeVirtualizationExtensions)
             {
                 Processor["ExposeVirtualizationExtensions"] = true;
@@ -285,6 +289,10 @@ std::string NanaBox::MakeHcsConfiguration(
         }
     }
     VirtualMachine["ComputeTopology"] = ComputeTopology;
+    if (Configuration.StorageIopsMaximum)
+        VirtualMachine["StorageQoS"]["IopsMaximum"] = Configuration.StorageIopsMaximum;
+    if (Configuration.StorageBandwidthMaximum)
+        VirtualMachine["StorageQoS"]["BandwidthMaximum"] = Configuration.StorageBandwidthMaximum;
 
     // Note: Skip Configuration.Gpu because it need to add at runtime.
 

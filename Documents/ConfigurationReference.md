@@ -182,6 +182,19 @@ Example value: 2048
 
 Note: You can update the memory size at runtime starting with NanaBox 1.1.
 
+### Resource allocation
+
+The following optional settings are applied when creating the virtual machine. Change them while the VM is stopped. A zero limit or weight leaves the corresponding HCS setting unspecified.
+
+| Setting | Meaning | Default |
+| --- | --- | --- |
+| ProcessorLimit | CPU scheduling limit in units of 1/1000 of one percent (100000 = 100%). | 0 |
+| ProcessorWeight | Relative scheduling weight, 1–10000. | 0 |
+| AllowMemoryOvercommit | Back guest memory with the Windows pagefile. | true |
+| EnableDeferredCommit | Charge memory commit on first access; requires AllowMemoryOvercommit. | false |
+| StorageIopsMaximum | Maximum storage I/O operations per second. | 0 |
+| StorageBandwidthMaximum | Maximum storage bandwidth in bytes per second. | 0 |
+
 ### ComPorts
 
 The COM ports setting object of virtual machine.
