@@ -487,6 +487,10 @@ https://learn.microsoft.com/en-us/windows/win32/termserv/terminal-services-short
 Note: Available starting with NanaBox 1.1 and you can modify these settings at
 runtime.
 
+#### ClipboardKeyboardLayout
+
+The clipboard typing button uses physical keyboard scan codes. Select the layout active in the guest: `00000409` (US, default), `00000809` (UK), `00000411` (Japanese), `00000407` (German), `0000040C` (French), or any installed Windows keyboard layout identifier (KLID). `Host` uses the current host layout. The complete text is validated before sending any keys. Printable characters representable by the layout, tabs and line breaks are supported; input methods and characters requiring composition are outside this mode.
+
 #### RedirectKeyCombinations
 
 (Optional) Apply key combinations at the virtual machine if set it true, or

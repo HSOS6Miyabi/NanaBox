@@ -286,7 +286,7 @@ void NanaBox::MainWindow::OnCommand(
                 Text.assign(Buffer, Length);
             }
             std::vector<NanaBox::KeyboardTextBatch> Batches;
-            try { Batches = NanaBox::EncodeKeyboardText(Text); }
+            try { Batches = NanaBox::EncodeKeyboardText(Text, this->m_Configuration.Keyboard.ClipboardKeyboardLayout); }
             catch (std::invalid_argument const& Error)
             { throw winrt::hresult_invalid_argument(winrt::to_hstring(Error.what())); }
             if (Batches.empty()) break;
@@ -299,6 +299,7 @@ void NanaBox::MainWindow::OnCommand(
                     KeyUp[I] = Batch[I].KeyUp ? VARIANT_TRUE : VARIANT_FALSE;
                     KeyData[I] = static_cast<LONG>(1u |
                         (static_cast<std::uint32_t>(Batch[I].ScanCode) << 16) |
+                        (Batch[I].Extended ? 0x01000000u : 0u) |
                         (Batch[I].KeyUp ? 0xc0000000u : 0u));
                 }
                 this->m_RdpClient->SendKeys(static_cast<LONG>(Batch.size()), KeyUp, KeyData);

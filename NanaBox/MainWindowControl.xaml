@@ -105,7 +105,7 @@
         Icon="Paste" Width="48" LabelPosition="Collapsed"
         Click="TypeClipboardTextButtonClick"
         AutomationProperties.Name="Type clipboard text"
-        ToolTipService.ToolTip="Type clipboard text (US keyboard, ASCII)"
+        ToolTipService.ToolTip="Type clipboard text with the configured keyboard layout"
         AutomationProperties.AutomationId="TypeClipboardTextButton" />
       <AppBarButton
         x:Uid="/MainWindow/CopyScreenshotButton"

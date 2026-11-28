@@ -575,6 +575,7 @@ namespace winrt::NanaBox::implementation
                 this->m_Configuration.Keyboard;
             this->RedirectKeyCombinationsCheckBox().IsChecked(
                 Configuration.RedirectKeyCombinations);
+            this->ClipboardKeyboardLayoutTextBox().Text(winrt::to_hstring(Configuration.ClipboardKeyboardLayout));
             this->FullScreenHotkeyTextBox().Text(
                 winrt::to_hstring(Configuration.FullScreenHotkey));
             this->CtrlEscHotkeyTextBox().Text(
@@ -960,6 +961,7 @@ namespace winrt::NanaBox::implementation
             Result.Keyboard.RedirectKeyCombinations =
                 winrt::unbox_value<bool>(
                     this->RedirectKeyCombinationsCheckBox().IsChecked());
+            Result.Keyboard.ClipboardKeyboardLayout = winrt::to_string(this->ClipboardKeyboardLayoutTextBox().Text());
             Result.Keyboard.FullScreenHotkey =
                 ::ReadSettingInteger<std::int32_t>(
                     this->FullScreenHotkeyTextBox());

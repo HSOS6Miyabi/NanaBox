@@ -92,6 +92,7 @@ namespace NanaBox
     struct KeyboardConfiguration
     {
         bool RedirectKeyCombinations = true;
+        std::string ClipboardKeyboardLayout = "00000409";
         std::int32_t FullScreenHotkey = VK_CANCEL; // CTRL + ALT + ?
         std::int32_t CtrlEscHotkey = VK_HOME; // ALT + ?
         std::int32_t AltEscHotkey = VK_INSERT; // ALT + ?

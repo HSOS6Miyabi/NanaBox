@@ -11,6 +11,7 @@
 #include "ConfigurationManager.h"
 
 #include "Utils.h"
+#include "KeyboardText.h"
 
 #include <Mile.Helpers.Base.h>
 
@@ -290,6 +291,8 @@ std::string NanaBox::MakeHcsConfiguration(
     if (!Configuration.HcsSchemaMinor || Configuration.HcsSchemaMinor > 65535)
         throw std::invalid_argument("Invalid HCS schema minor version");
     NanaBox::ValidatePlan9Shares(Configuration);
+    if (!NanaBox::ValidClipboardKeyboardLayout(Configuration.Keyboard.ClipboardKeyboardLayout))
+        throw std::invalid_argument("Clipboard keyboard layout must be Host or an eight-digit hexadecimal KLID.");
     auto Minor = Configuration.HcsSchemaMinor;
     for (auto const& Share : Configuration.Plan9Shares)
         if (!Share.AllowedFiles.empty()) Minor = (std::max)(Minor, 2u);

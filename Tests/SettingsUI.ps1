@@ -673,6 +673,7 @@ try {
     Invoke-Control 'RefreshDriveButton'
     Invoke-Control 'RefreshDeviceButton'
     Set-Check 'RedirectKeyCombinationsCheckBox' $false
+    Set-Text 'ClipboardKeyboardLayoutTextBox' '00000407'
     foreach ($id in @('FullScreen','CtrlEsc','AltEsc','AltTab','AltShiftTab','AltSpace','CtrlAltDel','FocusReleaseLeft','FocusReleaseRight')) {
         Set-Text ($id+'HotkeyTextBox') '65'
     }
@@ -749,6 +750,7 @@ try {
     }
     Assert-Equal $saved.Plan9Shares[0].AllowedFiles[0] 'example.txt' 'Plan9 allowed file'
     Assert-Equal $saved.VirtualSmbShares[0].Name 'test-smb' 'SMB'
+    Assert-Equal $saved.Keyboard.ClipboardKeyboardLayout '00000407' 'Clipboard keyboard layout'
     Assert-Equal $saved.VideoMonitor.HorizontalResolution 1280 'Resolution'
     Assert-Equal $saved.VideoMonitor.EnableDpiScalingValueOverride $true 'Display scaling override'
     Assert-Equal $saved.VideoMonitor.OverriddenDpiScalingValue 175 'Display scale'

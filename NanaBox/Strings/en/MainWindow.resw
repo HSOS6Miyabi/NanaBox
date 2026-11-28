@@ -251,6 +251,6 @@
     <value>Type clipboard text</value>
   </data>
   <data name="TypeClipboardTextButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Type clipboard text (US keyboard layout, printable ASCII)</value>
+    <value>Type clipboard text with the configured keyboard layout</value>
   </data>
 </root>

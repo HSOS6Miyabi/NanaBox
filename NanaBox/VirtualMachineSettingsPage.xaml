@@ -715,6 +715,12 @@
                 AutomationProperties.Name="[RedirectKeyCombinations]"
                 ToolTipService.ToolTip="[(Optional) Apply key combinations at the virtual machine if set it true, or apply key combinations to the virtual machine only when the host is running in full-screen mode.]" AutomationProperties.AutomationId="RedirectKeyCombinationsCheckBox" />
             </Grid>
+            <TextBox x:Name="ClipboardKeyboardLayoutTextBox" x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutTextBox"
+              Header="Clipboard keyboard layout" PlaceholderText="00000409 or Host"
+              AutomationProperties.AutomationId="ClipboardKeyboardLayoutTextBox" />
+            <TextBlock x:Uid="/VirtualMachineSettingsPage/ClipboardKeyboardLayoutHelp"
+              Text="Match the guest keyboard: US 00000409, UK 00000809, Japanese 00000411, German 00000407, French 0000040C, or Host. Characters requiring an input method cannot be typed using scan codes."
+              TextWrapping="Wrap" Opacity="0.8" />
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250" />

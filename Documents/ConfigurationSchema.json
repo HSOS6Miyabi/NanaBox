@@ -281,6 +281,12 @@
             "type": "object",
             "description": "Keyboard setting object of virtual machine. For more information about the default keyboard shortcut behavior, please read https://learn.microsoft.com/en-us/windows/win32/termserv/terminal-services-shortcut-keys.",
             "properties": {
+              "ClipboardKeyboardLayout": {
+                "type": "string",
+                "pattern": "^(Host|[0-9A-Fa-f]{8})$",
+                "default": "00000409",
+                "description": "Keyboard layout identifier used to generate physical scan codes for clipboard text."
+              },
               "RedirectKeyCombinations": {
                 "type": "boolean",
                 "description": "Apply key combinations at the virtual machine if set it true, or apply key combinations to the virtual machine only when the host is running in full-screen mode. If you don't want to apply key combinations at the virtual machine, please set it false."

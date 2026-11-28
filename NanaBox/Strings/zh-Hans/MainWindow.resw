@@ -251,6 +251,6 @@
     <value>键盘输入剪贴板文本</value>
   </data>
   <data name="TypeClipboardTextButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>模拟键盘输入剪贴板文本（美式键盘布局，支持 ASCII 字符）</value>
+    <value>按照配置的键盘布局模拟输入剪贴板文本</value>
   </data>
 </root>

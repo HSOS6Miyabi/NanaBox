@@ -126,6 +126,26 @@ int WINAPI wWinMain(
                 try { NanaBox::EncodeKeyboardText(L"a\u4e2d"); }
                 catch (std::invalid_argument const&) { Rejected = true; }
                 if (!Rejected) return 51;
+                if (!NanaBox::ValidClipboardKeyboardLayout("Host") ||
+                    !NanaBox::ValidClipboardKeyboardLayout("0000040C") ||
+                    NanaBox::ValidClipboardKeyboardLayout("123") ||
+                    NanaBox::ValidClipboardKeyboardLayout("00000XYZ")) return 51;
+                auto Map = [](wchar_t Ch) -> std::optional<NanaBox::KeyboardTextStroke>
+                {
+                    if (Ch == L'\u00e9') return NanaBox::KeyboardTextStroke{0x03};
+                    if (Ch == L'\u20ac') return NanaBox::KeyboardTextStroke{0x12, false, false, true};
+                    return {};
+                };
+                auto Localized = NanaBox::EncodeKeyboardTextWithLayout(L"\u00e9\u20ac\r\n", Map);
+                if (Localized.size() != 1 || Localized[0].size() != 8 ||
+                    Localized[0][0].ScanCode != 0x03 || Localized[0][2].ScanCode != 0x38 ||
+                    !Localized[0][2].Extended || Localized[0][2].KeyUp ||
+                    !Localized[0][5].Extended || !Localized[0][5].KeyUp ||
+                    Localized[0][6].ScanCode != 0x1c) return 51;
+                Rejected = false;
+                try { NanaBox::EncodeKeyboardTextWithLayout(L"\u00e9\u4e2d", Map); }
+                catch (std::invalid_argument const&) { Rejected = true; }
+                if (!Rejected) return 51;
             }
             {
                 auto M = NanaBox::Wddm::MakeMapping(L"gpu.inf_amd64_123", {L"sub\\x.dll", L"y.dll"}, true, true);
