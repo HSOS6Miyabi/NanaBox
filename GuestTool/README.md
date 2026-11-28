@@ -28,22 +28,22 @@ The native services run as SYSTEM. Enable DNS tunneling with `-EnableDnsTunnel`.
 
 In the VM settings, open Guest tools while the virtual machine is running. Heartbeat checks whether the installed agent responds. System information reports the guest OS, architecture, logical CPU count, UTC time, agent uptime and supported query capabilities. Network diagnostics reports the actual guest network configuration. The agent works over Hyper-V sockets independently of the VM network mode.
 
-From a Windows host with Python 3.12 or later:
+From the Windows host, using the GuestTool executable:
 
 ```powershell
-python gns.py query <runtime-vm-guid> Heartbeat
-python gns.py query <runtime-vm-guid> GuestInformation
-python gns.py query <runtime-vm-guid> Diagnostics
+.\nanabox-guest-tool.exe --query <runtime-vm-guid> Heartbeat
+.\nanabox-guest-tool.exe --query <runtime-vm-guid> GuestInformation
+.\nanabox-guest-tool.exe --query <runtime-vm-guid> Diagnostics
 ```
 
 The Guest tools tab also offers clock-offset measurement, explicit clock synchronization, and file exchange. Clock changes require the installation option above and confirmation in the host UI. File exchange is enabled by the file-exchange installation option and uses a protected directory: `/var/lib/nanabox-gns/exchange` on Linux and `ProgramData\NanaBox Guest Exchange` on Windows. Specify the filename within that directory and the local host file path. The service transfers 64 KiB chunks, checks SHA-256, publishes a completed file atomically, and rejects existing destinations unless replacement is explicitly authorized. Aborted uploads remain unpublished; expired or interrupted sessions are cleaned up by the service. File exchange does not expose arbitrary guest filesystem paths.
 
 ## Host requests
 
-Use Python 3.12+ on Windows. Send a request to the running HCS VM's runtime GUID:
+Send a request to the running HCS VM's runtime GUID:
 
 ```powershell
-python gns.py send <runtime-vm-guid> request.json
+.\nanabox-guest-tool.exe --send <runtime-vm-guid> request.json
 ```
 
 Example request (replace the MAC and addresses with the target interface's values):
@@ -74,10 +74,13 @@ Messages use a 4-byte big-endian length followed by UTF-8 JSON (maximum 256 KiB)
 ## Testing
 
 ```sh
-python -m unittest discover -s GuestTool -v
+./nanabox-guest-tool --self-test
+./nanabox-guest-tool --bind-self-test
+sudo unshare --net ./nanabox-guest-tool --network-self-test
+sudo unshare --net ./nanabox-guest-tool --loopback-self-test
 ```
 
-The tests verify protocol framing, validation, error replies and command generation for both platforms without modifying runner network settings. Actual Hyper-V socket connectivity and network changes require a Hyper-V host and installed guest agent.
+The self-tests verify protocol framing, validation, file exchange, DNS tunneling and command generation for both platforms. Linux additionally tests bind coordination and isolated network namespace changes. Actual Hyper-V socket connectivity and network changes require a Hyper-V host and installed guest agent.
 
 ## Architecture references
 
@@ -90,7 +93,7 @@ The host registers the Hyper-V socket service when starting a mirrored VM, check
 
 The host sends a complete `Reconcile` request for each dedicated mirrored adapter. The guest validates and compares the desired addresses, routes, DNS, MTU and dynamic port range with its actual network configuration. Direct routes are installed before gateway routes; stale agent-managed routes are removed before addresses. Repeated synchronization repairs configuration drift after guest service restarts without a host-side applied-state cache. IPv6 link-local addresses remain managed by the guest kernel. Use the current host and guest service versions together.
 
-On Ubuntu, the guest workflow additionally runs `live_network_test.py` in an isolated network namespace with a real veth pair. It checks route ordering, stale-address cleanup, repeated reconciliation and recovery after simulated drift. Resolver calls in that test use a controlled in-memory resolver; production resolver commands use systemd-resolved.
+On Ubuntu, the guest workflow additionally runs the native networking self-test in an isolated network namespace with a real veth pair. It checks route ordering, stale-address cleanup, repeated reconciliation and recovery after simulated drift. Resolver calls in that test use a controlled in-memory resolver; production resolver commands use systemd-resolved.
 
 Automatic listening-port reservation is enabled by default in mirrored mode and may be disabled using `MirroredAutoReservePorts`. The guest reports TCP listeners and non-loopback UDP endpoints, and the host reserves or releases HCN ports as the discovered set changes. Conflicts with existing host ports are shown in the VM status. Periodic discovery happens after the guest application binds; applications requiring guaranteed availability at bind time should reserve those ports explicitly before starting the VM. This does not intercept arbitrary application bind system calls.
 Host interface metrics are synchronized alongside routes to retain relative preference across Ethernet, wireless, VPN and other mirrored interfaces. The Linux integration test also checks IPv6 gateway routes and preserves routes belonging to a second interface.

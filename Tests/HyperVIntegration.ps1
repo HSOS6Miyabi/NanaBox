@@ -1,5 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$Executable,
+    [string]$GuestToolExecutable = (Join-Path $PSScriptRoot '..\GuestTool\nanabox-guest-tool.exe'),
     [Parameter(Mandatory=$true)][string]$WindowsConfig,
     [Parameter(Mandatory=$true)][string]$LinuxConfig,
     [Parameter(Mandatory=$true)][string]$TestAddress,
@@ -11,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'ModalUI.ps1')
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $Executable = (Resolve-Path $Executable).Path
+$GuestToolExecutable = (Resolve-Path -LiteralPath $GuestToolExecutable).Path
 $root = [System.Windows.Automation.AutomationElement]::RootElement
 $desc = [System.Windows.Automation.TreeScope]::Descendants
 $children = [System.Windows.Automation.TreeScope]::Children
@@ -87,8 +89,7 @@ function Guest-Request([string]$runtimeId,[string]$resource,$settings) {
     $file = Join-Path $env:TEMP ('NanaBox-GNS-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
         @{Version=1; ResourceType=$resource; RequestType='Query'; Settings=$settings} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $file -Encoding UTF8
-        $agent = Join-Path $PSScriptRoot '..\GuestTool\gns.py'
-        $response = & python $agent send $runtimeId $file
+        $response = & $GuestToolExecutable --send $runtimeId $file
         if ($LASTEXITCODE -ne 0) { throw "Guest request $resource failed: $response" }
         $reply = $response | ConvertFrom-Json
         if (-not $reply.Success) { throw "Guest request $resource failed: $($reply.Error)" }

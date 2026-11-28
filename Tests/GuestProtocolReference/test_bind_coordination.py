@@ -94,7 +94,7 @@ class BindTests(unittest.TestCase):
             root = pathlib.Path(temp)
             library = root / 'bind.so'
             subprocess.run(['cc', '-std=gnu11', '-O2', '-Wall', '-Wextra', '-Werror',
-                            '-shared', '-fPIC', str(pathlib.Path(__file__).with_name('bind_coord.c')),
+                            '-shared', '-fPIC', str(pathlib.Path(__file__).parents[2] / 'GuestTool' / 'bind_coord.c'),
                             '-o', str(library)], check=True)
             # Obtain unused local ports; the simulated HCN host rejects one
             # even though both are free in the guest kernel.

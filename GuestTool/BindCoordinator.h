@@ -20,7 +20,7 @@ std::set<BoundPort> BoundPorts()
         req.Header.nlmsg_flags=NLM_F_REQUEST|NLM_F_DUMP;req.Header.nlmsg_seq=++sequence;
         req.Body.sdiag_family=static_cast<__u8>(family);
         req.Body.sdiag_protocol=static_cast<__u8>(protocol);req.Body.idiag_states=UINT32_MAX;
-        if(sendto(fd.Value,&req,sizeof(req),0,reinterpret_cast<sockaddr*>(&kernel),sizeof(kernel))!=sizeof(req))
+        if(sendto(fd.Value,&req,sizeof(req),0,reinterpret_cast<sockaddr*>(&kernel),sizeof(kernel))!=static_cast<ssize_t>(sizeof(req)))
             Fail("Cannot request socket diagnostics");
         auto end=Mono::now()+std::chrono::seconds(3);
         bool done=false;

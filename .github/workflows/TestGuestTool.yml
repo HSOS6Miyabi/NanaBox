@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'GuestTool/**'
+      - 'Tests/GuestProtocolReference/**'
       - '.github/workflows/TestGuestTool.yml'
   pull_request:
     paths:
       - 'GuestTool/**'
+      - 'Tests/GuestProtocolReference/**'
       - '.github/workflows/TestGuestTool.yml'
   workflow_dispatch:
 
@@ -22,7 +24,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - run: python -m unittest discover -s GuestTool -v
+      - run: python -m unittest discover -s Tests/GuestProtocolReference -v
       - name: Validate Linux installation scripts
         if: runner.os == 'Linux'
         shell: bash
@@ -42,8 +44,8 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          sudo unshare --net "$(command -v python)" GuestTool/live_network_test.py
-          sudo unshare --net "$(command -v python)" GuestTool/live_loopback_test.py
+          sudo unshare --net "$(command -v python)" Tests/GuestProtocolReference/live_network_test.py
+          sudo unshare --net "$(command -v python)" Tests/GuestProtocolReference/live_loopback_test.py
       - name: Build and test Windows GuestTool
         if: runner.os == 'Windows'
         shell: pwsh

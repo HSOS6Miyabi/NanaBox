@@ -8,6 +8,8 @@
 #include <hvsocket.h>
 #include <bcrypt.h>
 #include <iphlpapi.h>
+#include <objbase.h>
+#pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -924,6 +926,56 @@ namespace
             {"Settings", std::move(settings)}};
     }
 
+#ifdef _WIN32
+    Json HostRequest(std::wstring vmId,Json const& request)
+    {
+        if(vmId.empty())Fail("Missing VM runtime GUID");
+        if(vmId.front()!=L'{')vmId=L"{"+vmId+L"}";
+        GUID vm{};
+        if(FAILED(CLSIDFromString(vmId.c_str(),&vm)))Fail("Invalid VM runtime GUID");
+        auto resource=request.at("ResourceType").get<std::string>();
+        unsigned port=resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
+            resource=="FileExchange"?27457u:27453u;
+        WSADATA data{};
+        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        struct Wsa{~Wsa(){WSACleanup();}} cleanup;
+        Socket connection(socket(AF_HYPERV,SOCK_STREAM,HV_PROTOCOL_RAW));
+        if(connection.Value==InvalidSocket)Fail("Cannot open Hyper-V socket");
+        Nonblocking(connection.Value);
+        SOCKADDR_HV address{};
+        address.Family=AF_HYPERV;address.VmId=vm;
+        address.ServiceId=GUID{port,0xfacb,0x11e6,{0xbd,0x58,0x64,0,0x6a,0x79,0x86,0xd3}};
+        auto end=Mono::now()+std::chrono::seconds(15);
+        if(connect(connection.Value,reinterpret_cast<sockaddr*>(&address),sizeof(address)))
+        {
+            auto err=WSAGetLastError();
+            if(err!=WSAEWOULDBLOCK&&err!=WSAEINPROGRESS)Fail("Cannot connect to guest");
+            if(!Wait(connection.Value,true,end))Fail("Guest connection timed out");
+            int result=0,len=sizeof(result);
+            if(getsockopt(connection.Value,SOL_SOCKET,SO_ERROR,reinterpret_cast<char*>(&result),&len)||result)
+                Fail("Guest connection failed");
+        }
+        Send(connection.Value,request,end);
+        return Receive(connection.Value,end);
+    }
+
+    Json ReadRequestFile(fs::path const& path)
+    {
+        std::ifstream stream(path,std::ios::binary);
+        if(!stream)Fail("Cannot open request file");
+        std::string contents;
+        std::array<char,4096> buffer{};
+        while(stream)
+        {
+            stream.read(buffer.data(),buffer.size());
+            contents.append(buffer.data(),static_cast<std::size_t>(stream.gcount()));
+            if(contents.size()>MaxFrame)Fail("Request file exceeds maximum frame size");
+        }
+        if(stream.bad())Fail("Cannot read request file");
+        return Json::parse(contents);
+    }
+#endif
+
     void Require(bool value, char const* message)
     {
         if (!value) Fail(message);
@@ -1068,6 +1120,18 @@ int main(int argc, char** argv)
 {
     try
     {
+#ifdef _WIN32
+        if(argc==4 && std::wstring_view(argv[1])==L"--send")
+        {
+            auto result=HostRequest(argv[2],ReadRequestFile(argv[3]));
+            std::cout<<result.dump()<<'\n';return result.value("Success",false)?0:1;
+        }
+        if(argc==4 && std::wstring_view(argv[1])==L"--query")
+        {
+            auto result=HostRequest(argv[2],Request(Utf8(argv[3]),"Query"));
+            std::cout<<result.dump()<<'\n';return result.value("Success",false)?0:1;
+        }
+#endif
         bool service = false;
         for (int i = 1; i < argc; ++i)
         {
