@@ -135,6 +135,7 @@ namespace NanaBox
         std::unique_ptr<NanaBox::MirroredNetworking> m_MirroredNetworking;
         std::unique_ptr<NanaBox::Plan9MountManager> m_Plan9MountManager;
         nlohmann::json m_Plan9Builtins = nlohmann::json::array();
+        nlohmann::json m_VirtualSmbManifest = nlohmann::json::array();
         std::string m_VirtualMachineGuid;
         bool m_VirtualMachineRunning = false;
         bool m_VirtualMachinePaused = false;

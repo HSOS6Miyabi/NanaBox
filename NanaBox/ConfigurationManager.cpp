@@ -217,6 +217,18 @@ void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configurati
             Allowed.push_back(File);
         }
     }
+    std::vector<std::string> SmbNames = {"HostDriverStore", "NanaBox.HostDrivers", "NanaBox.HostLxssLib"};
+    if (Configuration.VirtualSmbShares.size() > 128)
+        throw std::invalid_argument("At most 128 Virtual SMB shares are supported");
+    for (auto const& Share : Configuration.VirtualSmbShares)
+    {
+        CheckShareComponent(Share.Name);
+        if (Share.Path.empty() || Share.Path.find('\0') != std::string::npos ||
+            ::_strnicmp(Share.Name.c_str(), "NanaBox.GpuExtra.", 17) == 0 ||
+            std::any_of(SmbNames.begin(), SmbNames.end(), [&](auto const& Name) { return SamePlan9Name(Name, Share.Name); }))
+            throw std::invalid_argument("Invalid, duplicate or reserved Virtual SMB share: " + Share.Name);
+        SmbNames.push_back(Share.Name);
+    }
 }
 
 nlohmann::json NanaBox::MakeHcsPlan9Share(Plan9ShareConfiguration const& Share)
@@ -684,6 +696,7 @@ std::string NanaBox::MakeHcsConfiguration(
             if (!VirtualSmbShares.empty())
             {
                 Devices["VirtualSmb"]["Shares"] = VirtualSmbShares;
+                Devices["VirtualSmb"]["DirectFileMappingInMB"] = 2048;
             }
         }
     }

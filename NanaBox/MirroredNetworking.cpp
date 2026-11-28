@@ -1655,15 +1655,17 @@ struct NanaBox::Plan9MountManager::Impl
     std::uint64_t Revision = 0;
     std::thread Worker;
     std::set<std::string> PublishedGpuShares;
+    std::set<std::string> PublishedGpuSmbShares;
     Json GpuInventory;
     std::uint64_t GpuRevision = UINT64_MAX;
     std::chrono::steady_clock::time_point LastGpuInventory{};
 
-    void AddGpuShare(std::string const& HcsId, Json const& Extra)
+    void AddGpuShare(std::string const& HcsId, Json const& Extra, bool Smb = false)
     {
         auto Name = Extra.at("Name").get<std::string>();
-        if (PublishedGpuShares.count(Name)) return;
-        if (PublishedGpuShares.size() >= 96)
+        auto& Published = Smb ? PublishedGpuSmbShares : PublishedGpuShares;
+        if (Published.count(Name)) return;
+        if (Published.size() >= 96)
             throw winrt::hresult_error(E_BOUNDS, L"Too many GPU driver share generations; restart the virtual machine.");
         HcsSystem System;
         HcsOperation Operation;
@@ -1674,12 +1676,18 @@ struct NanaBox::Plan9MountManager::Impl
             {"Settings", {{"Name", Name}, {"AccessName", Name}, {"Path", Extra.at("Path")}, {"Port", 50001},
                 {"Flags", static_cast<std::uint32_t>(Plan9ShareFlags::ReadOnly | Plan9ShareFlags::RestrictFileAccess)},
                 {"AllowedFiles", Extra.at("AllowedFiles")}}}};
+        if (Smb)
+            Request = {{"ResourcePath", "VirtualMachine/Devices/VirtualSmb/Shares"}, {"RequestType", "Add"},
+                {"Settings", {{"Name", Name}, {"Path", Extra.at("Path")},
+                    {"AllowedFiles", Extra.at("AllowedFiles")},
+                    {"Options", {{"ReadOnly", true}, {"ShareRead", true}, {"CacheIo", true},
+                        {"PseudoOplocks", true}, {"RestrictFileAccess", true}}}}}};
         winrt::check_hresult(::HcsModifyComputeSystem(System.get(), Operation.get(),
             winrt::to_hstring(Request.dump()).c_str(), nullptr));
         PWSTR Result = nullptr;
         auto Cleanup = Mile::ScopeExitTaskHandler([&]() { if (Result) ::LocalFree(Result); });
         winrt::check_hresult(::HcsWaitForOperationResult(Operation.get(), 5000, &Result));
-        PublishedGpuShares.insert(Name);
+        Published.insert(Name);
     }
 
     Impl(winrt::guid const& Id, std::string Shares) : RuntimeId(Id), Manifest(std::move(Shares))
@@ -1716,6 +1724,15 @@ struct NanaBox::Plan9MountManager::Impl
                 if (Inventory.is_object())
                 {
                     auto Now = std::chrono::steady_clock::now();
+                    bool GpuEnabled = Inventory.value("GpuEnabled", true);
+                    auto SmbManifest = Inventory.value("VirtualSmbShares", Json::array());
+                    if (!GpuEnabled)
+                    {
+                        Settings = {{"Shares", Inventory.at("Shares")}, {"VirtualSmbShares", SmbManifest},
+                            {"GpuEnabled", false}};
+                    }
+                    else
+                    {
                     if (GpuRevision != Current || Now - LastGpuInventory >= std::chrono::seconds(30))
                     {
                         GpuInventory = Json::parse(winrt::to_string(EnumerateGpuDriverMappings(
@@ -1729,6 +1746,8 @@ struct NanaBox::Plan9MountManager::Impl
                     auto ExtraShares = Wddm.at("ExtraShares");
                     Wddm.erase("ExtraShares");
                     Wddm["ExtraFiles"] = Json::array();
+                    Wddm["VirtualSmbErrors"] = Json::array();
+                    Wddm["Plan9Errors"] = Json::array();
                     for (auto const& Extra : ExtraShares)
                     {
                         if (Stop) break;
@@ -1737,13 +1756,21 @@ struct NanaBox::Plan9MountManager::Impl
                             AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra);
                             PublishedManifest.push_back({{"Name", Extra.at("Name")}, {"Port", 50001},
                                 {"ReadOnly", true}, {"AutoMount", true}});
-                            for (auto const& File : Extra.at("AllowedFiles"))
-                                Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
-                                    {"Directory", Extra.at("Directory")}, {"Source", File}, {"Destination", File}});
                         }
-                        catch (...) { Wddm["Errors"].push_back("Cannot share supplemental GPU driver files"); }
+                        catch (...) { Wddm["Plan9Errors"].push_back("Cannot share supplemental GPU driver files using Plan 9"); }
+                        try
+                        {
+                            AddGpuShare(Inventory.at("HcsId").get<std::string>(), Extra, true);
+                            SmbManifest.push_back({{"Name", Extra.at("Name")}, {"ReadOnly", true}});
+                        }
+                        catch (...) { Wddm["VirtualSmbErrors"].push_back("Cannot share supplemental GPU driver files using Virtual SMB"); }
+                        for (auto const& File : Extra.at("AllowedFiles"))
+                            Wddm["ExtraFiles"].push_back({{"Share", Extra.at("Name")},
+                                {"Directory", Extra.at("Directory")}, {"Source", File}, {"Destination", File}});
                     }
-                    Settings = {{"Shares", PublishedManifest}, {"Wddm", Wddm}};
+                    Settings = {{"Shares", PublishedManifest}, {"VirtualSmbShares", SmbManifest},
+                        {"GpuEnabled", true}, {"Wddm", Wddm}};
+                    }
                 }
                 (void)GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
                     {"RequestType", "Update"}, {"Settings", Settings}}, Stop, 15, Plan9ServiceId);

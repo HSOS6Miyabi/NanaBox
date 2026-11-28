@@ -1115,6 +1115,14 @@ void NanaBox::MainWindow::InitializeVirtualMachine()
             [&](auto const& Share) { return Entry.at("Name") == Share.Name; }))
             this->m_Plan9Builtins.push_back(Entry);
     }
+    this->m_VirtualSmbManifest = nlohmann::json::array();
+    auto const& HcsDevices = HcsDocument.at("VirtualMachine").at("Devices");
+    if (HcsDevices.contains("VirtualSmb"))
+    {
+        for (auto const& Share : HcsDevices.at("VirtualSmb").at("Shares"))
+            this->m_VirtualSmbManifest.push_back({{"Name", Share.at("Name")},
+                {"ReadOnly", Share.value("Options", nlohmann::json::object()).value("ReadOnly", false)}});
+    }
     this->PublishPlan9Inventory();
     if (this->m_Configuration.MirroredNetworking)
     {
@@ -1150,7 +1158,7 @@ void NanaBox::MainWindow::PublishPlan9Inventory()
 {
     bool Windows = this->m_Configuration.GuestType == NanaBox::GuestType::Windows;
     if (this->m_Configuration.GuestType != NanaBox::GuestType::Linux && !Windows) return;
-    if (Windows && !this->m_Configuration.Gpu.EnableHostDriverStore) return;
+    if (Windows && !this->m_Configuration.Gpu.EnableHostDriverStore && this->m_VirtualSmbManifest.empty()) return;
     auto Manifest = this->m_Plan9Builtins;
     for (auto const& Share : this->m_Configuration.Plan9Shares)
         Manifest.push_back({{"Name", Share.Name}, {"Port", Share.Port},
@@ -1161,7 +1169,8 @@ void NanaBox::MainWindow::PublishPlan9Inventory()
         std::vector<std::string> Selected;
         if (Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::List)
             for (auto const& Device : Gpu.SelectedDevices) Selected.push_back(Device.first);
-        Manifest = {{"Shares", Manifest}, {"GpuDevices", Selected}, {"HcsId", this->m_Configuration.Name},
+        Manifest = {{"Shares", Manifest}, {"VirtualSmbShares", this->m_VirtualSmbManifest},
+            {"GpuEnabled", Gpu.EnableHostDriverStore}, {"GpuDevices", Selected}, {"HcsId", this->m_Configuration.Name},
             {"AllGpuDevices", Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Mirror ||
                 Gpu.AssignmentMode == NanaBox::GpuAssignmentMode::Default}};
     }

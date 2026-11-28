@@ -202,9 +202,28 @@ int WINAPI wWinMain(
                 Share.LinuxMetadata = true;
                 Share.AllowedFiles = {"file.txt"};
                 Shared.Plan9Shares.push_back(Share);
+                NanaBox::VirtualSmbShareConfiguration Smb;
+                Smb.Name = "ReadOnlySmb";
+                Smb.Path = Share.Path;
+                Smb.ReadOnly = true;
+                Shared.VirtualSmbShares.push_back(Smb);
                 auto RoundTrip = NanaBox::DeserializeConfiguration(NanaBox::SerializeConfiguration(Shared));
                 auto Hcs = nlohmann::json::parse(NanaBox::MakeHcsConfiguration(RoundTrip));
                 auto const& Device = Hcs["VirtualMachine"]["Devices"]["Plan9"]["Shares"][0];
+                auto const& VirtualSmb = Hcs["VirtualMachine"]["Devices"]["VirtualSmb"];
+                if (VirtualSmb["DirectFileMappingInMB"] != 2048 ||
+                    VirtualSmb["Shares"][0]["Name"] != "ReadOnlySmb" ||
+                    VirtualSmb["Shares"][0]["Options"]["ReadOnly"] != true) return 53;
+                auto DuplicateSmb = Shared;
+                Smb.Name = "readonlysmb";
+                DuplicateSmb.VirtualSmbShares.push_back(Smb);
+                bool SmbRejected = false;
+                try { NanaBox::ValidatePlan9Shares(DuplicateSmb); } catch (...) { SmbRejected = true; }
+                if (!SmbRejected) return 53;
+                DuplicateSmb.VirtualSmbShares[1].Name = "NanaBox.GpuExtra.0123456789abcdef";
+                SmbRejected = false;
+                try { NanaBox::ValidatePlan9Shares(DuplicateSmb); } catch (...) { SmbRejected = true; }
+                if (!SmbRejected) return 53;
                 auto Guest = NanaBox::MakePlan9GuestManifest(RoundTrip, Hcs);
                 if (Hcs["SchemaVersion"]["Minor"] != 2 || Device["Flags"] != 133 ||
                     Device["AccessName"] != "Projects" || Device["AllowedFiles"][0] != "file.txt" ||
