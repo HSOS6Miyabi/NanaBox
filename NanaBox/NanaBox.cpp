@@ -785,7 +785,8 @@ int WINAPI wWinMain(
             catch (...) { return -1; }
         }
         if (ArgumentCount >= 2 && (0 == ::_wcsicmp(Arguments[1], L"--edit-config") ||
-            0 == ::_wcsicmp(Arguments[1], L"--edit-config-test")))
+            0 == ::_wcsicmp(Arguments[1], L"--edit-config-test") ||
+            0 == ::_wcsicmp(Arguments[1], L"--edit-config-integration-test")))
         {
             if (ArgumentCount != 3) return ERROR_INVALID_PARAMETER;
             try
@@ -807,6 +808,16 @@ int WINAPI wWinMain(
                         else if (Resource == "GuestInformation") Data["HostName"] = "mock-guest";
                         else throw winrt::hresult_invalid_argument();
                         return nlohmann::json{{"Success", true}, {"ResourceType", Resource}, {"Data", Data}}.dump(2);
+                    };
+                }
+                if (0 == ::_wcsicmp(Arguments[1], L"--edit-config-test") ||
+                    0 == ::_wcsicmp(Arguments[1], L"--edit-config-integration-test"))
+                {
+                    if (!HostOperations) HostOperations = std::make_shared<NanaBox::SettingsHostOperations>();
+                    HostOperations->ReportTestResult = [Path](std::wstring const& Id, winrt::hstring const& Value)
+                    {
+                        try { ::WriteAllTextToUtf8TextFile(Path + L"." + Id + L".result", winrt::to_string(Value)); }
+                        catch (...) {}
                     };
                 }
                 auto Page = winrt::make<winrt::NanaBox::implementation::VirtualMachineSettingsPage>(

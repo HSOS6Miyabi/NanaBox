@@ -28,6 +28,7 @@ namespace NanaBox
         std::function<std::string(std::string const&, std::wstring const&, std::string const&,
             bool, std::shared_ptr<std::atomic<bool>> const&)> GuestAction;
         std::function<winrt::hstring(winrt::hstring const&, std::wstring const&)> ExternalAction;
+        std::function<void(std::wstring const&, winrt::hstring const&)> ReportTestResult;
     };
 }
 
@@ -220,6 +221,7 @@ namespace winrt::NanaBox::implementation
         std::vector<Plan9ShareSettings> m_Plan9ShareSettings;
         std::vector<VirtualSmbShareSettings> m_VirtualSmbShareSettings;
 
+        void SetOperationResult(std::wstring const& Id, winrt::hstring const& Raw);
         void ReloadConfiguration();
         void ShowConfigurationError();
 

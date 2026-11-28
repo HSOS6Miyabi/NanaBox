@@ -462,7 +462,7 @@
             </StackPanel>
             <TextBlock x:Name="SummaryDiskResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryDiskResultTextBox" />
             <CheckBox x:Name="DetailsDiskResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsDiskResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsDiskResultTextBox" />
-            <TextBox Visibility="Collapsed" x:Name="DiskResultTextBox" x:Uid="/VirtualMachineSettingsPage/DiskResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="200" AutomationProperties.AutomationId="DiskResultTextBox" />
+            <TreeView x:Name="DiskResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="DiskResultTextBoxTree" />
             <StackPanel x:Name="ScsiDevicePanel" Spacing="4" />
             <Button
               x:Name="AddScsiDeviceButton"
@@ -586,7 +586,7 @@
             </StackPanel>
             <TextBlock x:Name="SummaryNetworkDiagnosticsTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryNetworkDiagnosticsTextBox" />
             <CheckBox x:Name="DetailsNetworkDiagnosticsTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkDiagnosticsTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkDiagnosticsTextBox" />
-            <TextBox Visibility="Collapsed" x:Name="NetworkDiagnosticsTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="240" AutomationProperties.AutomationId="NetworkDiagnosticsTextBox" />
+            <TreeView x:Name="NetworkDiagnosticsTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkDiagnosticsTextBoxTree" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionShares" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1344,7 +1344,7 @@
             <StackPanel Orientation="Vertical" Spacing="8"><Button x:Name="GuestUploadControl" x:Uid="/VirtualMachineSettingsPage/GuestUpload" Content="Upload to guest" Tag="FileUpload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestUploadButton" /><Button x:Name="GuestDownloadControl" x:Uid="/VirtualMachineSettingsPage/GuestDownload" Content="Download from guest" Tag="FileDownload" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestDownloadButton" /><Button x:Name="GuestCancelControl" x:Uid="/VirtualMachineSettingsPage/GuestCancel" Content="Cancel transfer" Tag="Cancel" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestCancelButton" IsEnabled="False" /></StackPanel>
             <TextBlock x:Name="SummaryGuestToolsResult" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryGuestToolsResult" />
             <CheckBox x:Name="DetailsGuestToolsResult" x:Uid="/VirtualMachineSettingsPage/DetailsGuestToolsResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsGuestToolsResult" />
-            <TextBox Visibility="Collapsed" x:Name="GuestToolsResult" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" AutomationProperties.AutomationId="GuestToolsResult" />
+            <TreeView x:Name="GuestToolsResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="GuestToolsResultTree" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionHostManagement" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1358,7 +1358,7 @@
             </StackPanel>
             <TextBlock x:Name="SummaryNetworkPropertiesTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryNetworkPropertiesTextBox" />
             <CheckBox x:Name="DetailsNetworkPropertiesTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsNetworkPropertiesTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsNetworkPropertiesTextBox" />
-            <TextBox Visibility="Collapsed" x:Name="NetworkPropertiesTextBox" IsReadOnly="True" AcceptsReturn="True" MaxHeight="160" TextWrapping="Wrap" AutomationProperties.AutomationId="NetworkPropertiesTextBox" />
+            <TreeView x:Name="NetworkPropertiesTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="NetworkPropertiesTextBoxTree" />
             <TextBox x:Name="NetworkNameTextBox" x:Uid="/VirtualMachineSettingsPage/NetworkName" Header="New network name" AutomationProperties.AutomationId="NetworkNameTextBox" />
             <StackPanel x:Name="NetworkBasicPanel" Spacing="8">
               <ComboBox x:Name="NetworkModeComboBox" x:Uid="/VirtualMachineSettingsPage/NetworkMode" Header="Connection type" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="NetworkModeComboBox">
@@ -1409,7 +1409,7 @@
             <Button x:Name="SettingsLabel143" x:Uid="/VirtualMachineSettingsPage/RuleCreateButton" Content="Create rule" Tag="RuleCreate" Click="HostManagementButtonClick" AutomationProperties.AutomationId="RuleCreateButton" />
             <TextBlock x:Name="SummaryHostManagementResult" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryHostManagementResult" />
             <CheckBox x:Name="DetailsHostManagementResult" x:Uid="/VirtualMachineSettingsPage/DetailsHostManagementResult" Content="Show technical details" AutomationProperties.AutomationId="DetailsHostManagementResult" />
-            <TextBox Visibility="Collapsed" x:Name="HostManagementResult" x:Uid="/VirtualMachineSettingsPage/HostManagementResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="220" AutomationProperties.AutomationId="HostManagementResult" />
+            <TreeView x:Name="HostManagementResultTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HostManagementResultTree" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionVmms" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1596,7 +1596,7 @@
             </ContentControl>
             <TextBlock x:Name="SummaryVmmsResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryVmmsResultTextBox" />
             <CheckBox x:Name="DetailsVmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsVmmsResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsVmmsResultTextBox" />
-            <TextBox Visibility="Collapsed" x:Name="VmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsResultTextBox" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="460" AutomationProperties.AutomationId="VmmsResultTextBox" />
+            <TreeView x:Name="VmmsResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="VmmsResultTextBoxTree" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionHcn" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1663,7 +1663,7 @@
             </StackPanel>
             <TextBlock x:Name="SummaryHcnResultTextBox" TextWrapping="Wrap" AutomationProperties.AutomationId="SummaryHcnResultTextBox" />
             <CheckBox x:Name="DetailsHcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/DetailsHcnResultTextBox" Content="Show technical details" AutomationProperties.AutomationId="DetailsHcnResultTextBox" />
-            <TextBox Visibility="Collapsed" x:Name="HcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/HcnResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="220" AutomationProperties.AutomationId="HcnResultTextBox" />
+            <TreeView x:Name="HcnResultTextBoxTree" Visibility="Collapsed" MaxHeight="320" SelectionMode="None" CanDragItems="False" AllowDrop="False" AutomationProperties.AutomationId="HcnResultTextBoxTree" />
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer Grid.Row="1" x:Name="SectionAdvanced" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">

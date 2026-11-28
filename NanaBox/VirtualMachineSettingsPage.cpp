@@ -194,7 +194,15 @@ namespace
         if (Raw.empty()) return ::GetSettingsString(L"ResultWaiting");
         using Json = nlohmann::json;
         auto Data = Json::parse(winrt::to_string(Raw), nullptr, false);
-        if (Data.is_discarded() || !Data.is_object()) return Raw;
+        if (Data.is_array()) return ::GetSettingsString(L"ResultInfo");
+        if (Data.is_discarded() || !Data.is_object())
+        {
+            auto Text = winrt::to_string(Raw);
+            auto Position = Text.find('{');
+            if (Position != std::string::npos && Json::parse(Text.substr(Position), nullptr, false).is_structured())
+                return winrt::to_hstring(Text.substr(0, Position));
+            return Raw;
+        }
         std::wstring Summary;
         auto Add = [&](LPCWSTR Label, std::wstring const& Value)
         {
@@ -225,7 +233,16 @@ namespace
             {
                 auto It = Object.find(Name);
                 if (It == Object.end()) return;
-                if (It->is_string()) Add(Label, winrt::to_hstring(It->get<std::string>()).c_str());
+                if (It->is_string())
+                {
+                    auto Text = It->get<std::string>();
+                    auto Position = Text.find('{');
+                    auto Parsed = Json::parse(Text, nullptr, false);
+                    if (Parsed.is_structured()) Add(Label, ::GetSettingsString(L"PropertyStructuredValue").c_str());
+                    else if (Position != std::string::npos && Json::parse(Text.substr(Position), nullptr, false).is_structured())
+                        Add(Label, winrt::to_hstring(Text.substr(0, Position)).c_str());
+                    else Add(Label, winrt::to_hstring(Text).c_str());
+                }
                 else if (It->is_boolean()) Add(Label, ::GetSettingsString(It->get<bool>() ? L"ResultYes" : L"ResultNo").c_str());
                 else if (It->is_number()) Add(Label, winrt::to_hstring(It->dump()).c_str());
             };
@@ -254,21 +271,139 @@ namespace
         return winrt::hstring(Summary);
     }
 
-    void BindOperationDetails(winrt::TextBox const& Raw, winrt::TextBlock const& Summary,
-        winrt::CheckBox const& Toggle)
+
+    winrt::hstring PropertyCaption(std::string const& Key)
     {
-        ::BindVisibility(Toggle, Raw);
-        auto Update = [Weak = winrt::make_weak(Summary)](
-            winrt::IInspectable const& Sender, winrt::Windows::UI::Xaml::Controls::TextChangedEventArgs const&)
-        {
-            if (auto Target = Weak.get())
-            {
-                try { Target.Text(::DescribeSettingsResult(Sender.as<winrt::TextBox>().Text())); }
-                catch (...) { Target.Text(::GetSettingsString(L"ResultInfo")); }
-            }
+        static const std::map<std::string, LPCWSTR> Labels = {
+            {"Id", L"PropertyId"}, {"Name", L"ResultName"}, {"Type", L"ResultType"},
+            {"Flags", L"PropertyFlags"}, {"SchemaVersion", L"PropertySchemaVersion"},
+            {"Major", L"PropertyMajor"}, {"Minor", L"PropertyMinor"},
+            {"Subnets", L"PropertySubnets"}, {"Routes", L"PropertyRoutes"},
+            {"NextHop", L"PropertyGateway"}, {"GatewayAddress", L"PropertyGateway"},
+            {"Policies", L"PropertyPolicies"}, {"IpAddressPrefix", L"PropertyAddressPrefix"},
+            {"DestinationPrefix", L"PropertyAddressPrefix"}, {"Protocol", L"PropertyProtocol"},
+            {"PortMappings", L"PropertyPortMappings"}, {"ExternalPort", L"PropertyExternalPort"},
+            {"InternalPort", L"PropertyInternalPort"}, {"HostComputeEndpoints", L"PropertyEndpoints"},
+            {"UseUtc", L"PropertyUseUtc"}, {"Chipset", L"PropertyChipset"},
+            {"PropertyTypes", L"PropertyPropertyTypes"}, {"RequestType", L"PropertyRequestType"},
+            {"ResourceType", L"PropertyResourceType"}, {"Settings", L"PropertySettings"},
+            {"Properties", L"PropertyProperties"}, {"Items", L"PropertyItems"},
+            {"Operation", L"PropertyOperation"}, {"Success", L"PropertySuccess"},
+            {"Data", L"PropertyData"}, {"Details", L"PropertyDetails"}, {"VM", L"PropertyVm"},
+            {"State", L"ResultState"}, {"Error", L"ResultError"}, {"Count", L"ResultCount"},
+            {"MemoryMiB", L"PropertyMemoryMiB"}, {"ProcessorCount", L"PropertyProcessorCount"},
+            {"Devices", L"PropertyDevices"}, {"Checkpoints", L"PropertyCheckpoints"},
+            {"FrontendVIPs", L"PropertyFrontendAddresses"}, {"Path", L"ResultPath"}
         };
-        Raw.TextChanged(Update);
-        Update(Raw, nullptr);
+        if (auto Found = Labels.find(Key); Found != Labels.end()) return ::GetSettingsString(Found->second);
+        std::string Label;
+        for (std::size_t Index = 0; Index < Key.size(); ++Index)
+        {
+            char Ch = Key[Index];
+            if (Ch == '_') { Label += ' '; continue; }
+            if (Index && Ch >= 'A' && Ch <= 'Z' &&
+                ((Key[Index-1] >= 'a' && Key[Index-1] <= 'z') ||
+                 (Index+1 < Key.size() && Key[Index+1] >= 'a' && Key[Index+1] <= 'z')))
+                Label += ' ';
+            Label += Ch;
+        }
+        return winrt::to_hstring(Label);
+    }
+
+    nlohmann::json ExpandStructuredValue(nlohmann::json const& Value)
+    {
+        if (Value.is_string())
+        {
+            auto Text = Value.get<std::string>();
+            auto Parsed = nlohmann::json::parse(Text, nullptr, false);
+            if (Parsed.is_structured()) return Parsed;
+            auto Position = Text.find('{');
+            if (Position != std::string::npos)
+            {
+                Parsed = nlohmann::json::parse(Text.substr(Position), nullptr, false);
+                if (Parsed.is_structured())
+                    return nlohmann::json{{"Error", Text.substr(0, Position)}, {"Details", std::move(Parsed)}};
+            }
+        }
+        return Value;
+    }
+
+    winrt::hstring PropertyValue(nlohmann::json const& Value)
+    {
+        if (Value.is_boolean()) return ::GetSettingsString(Value.get<bool>() ? L"PropertyOn" : L"PropertyOff");
+        if (Value.is_null()) return ::GetSettingsString(L"PropertyEmpty");
+        if (Value.is_structured()) return ::GetSettingsString(L"PropertyStructuredValue");
+        if (Value.is_string()) return winrt::to_hstring(Value.get<std::string>());
+        return winrt::to_hstring(Value.dump());
+    }
+
+    using ResultNode = winrt::Windows::UI::Xaml::Controls::TreeViewNode;
+    ResultNode BuildResultNode(winrt::hstring const& Name, nlohmann::json const& Input,
+        unsigned Depth, std::size_t& Remaining)
+    {
+        ResultNode Node;
+        auto Value = ::ExpandStructuredValue(Input);
+        std::wstring Caption(Name.c_str());
+        if (Remaining) --Remaining;
+        if (!Value.is_structured())
+            Caption += L": " + std::wstring(::PropertyValue(Value).c_str());
+        else if (Value.empty())
+            Caption += L": " + std::wstring(::GetSettingsString(L"PropertyEmptyGroup").c_str());
+        Node.Content(winrt::box_value(winrt::hstring(Caption)));
+        if (Value.is_structured() && !Value.empty())
+        {
+            if (Depth >= 24 || !Remaining)
+            {
+                ResultNode More;
+                More.Content(winrt::box_value(::GetSettingsString(L"PropertyMore")));
+                Node.Children().Append(More);
+                return Node;
+            }
+            std::size_t Index = 0;
+            for (auto It = Value.begin(); It != Value.end(); ++It)
+            {
+                if (!Remaining)
+                {
+                    ResultNode More;
+                    More.Content(winrt::box_value(::GetSettingsString(L"PropertyMore")));
+                    Node.Children().Append(More);
+                    break;
+                }
+                auto Label = Value.is_object() ? ::PropertyCaption(It.key()) :
+                    winrt::hstring(std::wstring(::GetSettingsString(L"PropertyItem").c_str()) + L" " + std::to_wstring(++Index));
+                Node.Children().Append(::BuildResultNode(Label, It.value(), Depth + 1, Remaining));
+            }
+            Node.IsExpanded(Depth == 0);
+        }
+        return Node;
+    }
+
+    void FillResultTree(winrt::Windows::UI::Xaml::Controls::TreeView const& Tree,
+        winrt::hstring const& Raw)
+    {
+        Tree.RootNodes().Clear();
+        auto Value = ::ExpandStructuredValue(nlohmann::json(winrt::to_string(Raw)));
+        if (!Value.is_structured()) return;
+        std::size_t Remaining = 8192;
+        if (Value.is_object())
+            for (auto It = Value.begin(); It != Value.end() && Remaining; ++It)
+                Tree.RootNodes().Append(::BuildResultNode(::PropertyCaption(It.key()), It.value(), 0, Remaining));
+        else
+            Tree.RootNodes().Append(::BuildResultNode(::GetSettingsString(L"PropertyItems"), Value, 0, Remaining));
+    }
+
+    std::wstring CopyResultTree(winrt::Windows::UI::Xaml::Controls::TreeView const& Tree)
+    {
+        std::wstring Text;
+        std::function<void(ResultNode const&, unsigned)> Append = [&](ResultNode const& Node, unsigned Depth)
+        {
+            Text.append(Depth * 2, L' ');
+            Text += winrt::unbox_value<winrt::hstring>(Node.Content()).c_str();
+            Text += L"\r\n";
+            for (auto const& Child : Node.Children()) Append(Child, Depth + 1);
+        };
+        for (auto const& Root : Tree.RootNodes()) Append(Root, 0);
+        return Text;
     }
 
     bool ParseIpv4(std::string_view Text, std::uint32_t& Value)
@@ -1029,6 +1164,30 @@ namespace winrt::NanaBox::implementation
 
     VirtualMachineSettingsPage::~VirtualMachineSettingsPage() = default;
 
+
+    void VirtualMachineSettingsPage::SetOperationResult(std::wstring const& Id, winrt::hstring const& Raw)
+    {
+        if (Id == L"ConfigurationStatusTextBox")
+            this->ConfigurationStatusTextBox().Text(::DescribeSettingsResult(Raw));
+        else
+        {
+            auto Summary = this->FindName(winrt::hstring(L"Summary" + Id)).try_as<winrt::TextBlock>();
+            auto Tree = this->FindName(winrt::hstring(Id + L"Tree")).try_as<winrt::Windows::UI::Xaml::Controls::TreeView>();
+            try
+            {
+                if (Summary) Summary.Text(::DescribeSettingsResult(Raw));
+                if (Tree) ::FillResultTree(Tree, Raw);
+            }
+            catch (...)
+            {
+                if (Summary) Summary.Text(::GetSettingsString(L"ResultInfo"));
+                if (Tree) Tree.RootNodes().Clear();
+            }
+        }
+        if (this->m_HostOperations->ReportTestResult)
+            this->m_HostOperations->ReportTestResult(Id, Raw);
+    }
+
     void VirtualMachineSettingsPage::ReloadConfiguration()
     {
         auto Content = ::ReadAllTextFromUtf8TextFile(this->m_ConfigurationFilePath);
@@ -1137,13 +1296,20 @@ namespace winrt::NanaBox::implementation
         this->m_HcnEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->HcnSettingsEditor(), L"HcnSettingsEditor");
         this->m_QueryEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->HcsQueryEditor(), L"HcsQueryEditor");
         this->m_SystemEditor = std::make_shared<::NanaBox::StructuredSettingsEditor>(this->AdditionalHcsSettingsEditor(), L"AdditionalHcsSettingsEditor");
-        ::BindOperationDetails(this->NetworkPropertiesTextBox(), this->SummaryNetworkPropertiesTextBox(), this->DetailsNetworkPropertiesTextBox());
-        ::BindOperationDetails(this->NetworkDiagnosticsTextBox(), this->SummaryNetworkDiagnosticsTextBox(), this->DetailsNetworkDiagnosticsTextBox());
-        ::BindOperationDetails(this->HostManagementResult(), this->SummaryHostManagementResult(), this->DetailsHostManagementResult());
-        ::BindOperationDetails(this->HcnResultTextBox(), this->SummaryHcnResultTextBox(), this->DetailsHcnResultTextBox());
-        ::BindOperationDetails(this->DiskResultTextBox(), this->SummaryDiskResultTextBox(), this->DetailsDiskResultTextBox());
-        ::BindOperationDetails(this->GuestToolsResult(), this->SummaryGuestToolsResult(), this->DetailsGuestToolsResult());
-        ::BindOperationDetails(this->VmmsResultTextBox(), this->SummaryVmmsResultTextBox(), this->DetailsVmmsResultTextBox());
+        ::BindVisibility(this->DetailsNetworkPropertiesTextBox(), this->NetworkPropertiesTextBoxTree());
+        this->SummaryNetworkPropertiesTextBox().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsNetworkDiagnosticsTextBox(), this->NetworkDiagnosticsTextBoxTree());
+        this->SummaryNetworkDiagnosticsTextBox().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsHostManagementResult(), this->HostManagementResultTree());
+        this->SummaryHostManagementResult().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsHcnResultTextBox(), this->HcnResultTextBoxTree());
+        this->SummaryHcnResultTextBox().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsDiskResultTextBox(), this->DiskResultTextBoxTree());
+        this->SummaryDiskResultTextBox().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsGuestToolsResult(), this->GuestToolsResultTree());
+        this->SummaryGuestToolsResult().Text(::GetSettingsString(L"ResultWaiting"));
+        ::BindVisibility(this->DetailsVmmsResultTextBox(), this->VmmsResultTextBoxTree());
+        this->SummaryVmmsResultTextBox().Text(::GetSettingsString(L"ResultWaiting"));
         ::BindVisibility(this->NetworkExpertCheckBox(), this->NetworkExpertCheckBoxPanel());
         ::BindVisibility(this->HcnExpertCheckBox(), this->HcnExpertCheckBoxPanel());
         auto UpdateHcnForm = [Weak = this->get_weak()]()
@@ -2039,7 +2205,7 @@ namespace winrt::NanaBox::implementation
             if (Path.empty()) return;
             if (this->m_HostOperations->ExternalAction)
             {
-                this->ConfigurationStatusTextBox().Text(this->m_HostOperations->ExternalAction(L"OpenConfiguration", Path));
+                this->SetOperationResult(L"ConfigurationStatusTextBox", this->m_HostOperations->ExternalAction(L"OpenConfiguration", Path));
                 return;
             }
             Path = ::GetAbsolutePath(Path);
@@ -2076,7 +2242,7 @@ namespace winrt::NanaBox::implementation
         try
         {
             if (this->m_HostOperations->ExternalAction)
-                this->ConfigurationStatusTextBox().Text(this->m_HostOperations->ExternalAction(L"Reference", L""));
+                this->SetOperationResult(L"ConfigurationStatusTextBox", this->m_HostOperations->ExternalAction(L"Reference", L""));
             else
                 ::LaunchDocumentation();
         }
@@ -2522,7 +2688,7 @@ namespace winrt::NanaBox::implementation
         catch (...)
         {
             auto Error = Mile::WinRT::ToHResultError();
-            this->GuestToolsResult().Text(winrt::to_hstring(nlohmann::json{
+            this->SetOperationResult(L"GuestToolsResult", winrt::to_hstring(nlohmann::json{
                 {"Success", false}, {"Error", winrt::to_string(Error.message())}}.dump(2)));
         }
     }
@@ -2551,7 +2717,7 @@ namespace winrt::NanaBox::implementation
         auto Lifetime = this->get_strong();
         winrt::apartment_context Foreground;
         this->SetGuestToolsBusy(true, Resource == "FileUpload" || Resource == "FileDownload");
-        this->GuestToolsResult().Text(::GetSettingsString(L"DiskOperationRunning"));
+        this->SetOperationResult(L"GuestToolsResult", ::GetSettingsString(L"DiskOperationRunning"));
         std::string Result;
         try
         {
@@ -2569,7 +2735,7 @@ namespace winrt::NanaBox::implementation
             co_await Foreground;
             this->m_GuestCancellation.reset();
             this->SetGuestToolsBusy(false);
-            this->GuestToolsResult().Text(winrt::to_hstring(Result));
+            this->SetOperationResult(L"GuestToolsResult", winrt::to_hstring(Result));
         }
         catch (...) {}
     }
@@ -2584,14 +2750,14 @@ namespace winrt::NanaBox::implementation
             if (Action == L"Copy")
             {
                 winrt::Windows::ApplicationModel::DataTransfer::DataPackage Data;
-                Data.SetText(this->NetworkDiagnosticsTextBox().Text());
+                Data.SetText(winrt::hstring(std::wstring(this->SummaryNetworkDiagnosticsTextBox().Text().c_str()) + L"\r\n" + ::CopyResultTree(this->NetworkDiagnosticsTextBoxTree())));
                 winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(Data);
                 winrt::Windows::ApplicationModel::DataTransfer::Clipboard::Flush();
                 return;
             }
             if (Action != L"Host" && this->m_HostOperations->NetworkDiagnostics)
             {
-                this->NetworkDiagnosticsTextBox().Text(this->m_HostOperations->NetworkDiagnostics(Action == L"Retry"));
+                this->SetOperationResult(L"NetworkDiagnosticsTextBox", this->m_HostOperations->NetworkDiagnostics(Action == L"Retry"));
                 return;
             }
             if (Action == L"Host" || !this->m_MainWindow)
@@ -2605,18 +2771,18 @@ namespace winrt::NanaBox::implementation
             {
                 Dispatcher.RunAsync(winrt::CoreDispatcherPriority::Normal, [Weak, Report]()
                 {
-                    if (auto Page = Weak.get()) Page->NetworkDiagnosticsTextBox().Text(Report);
+                    if (auto Page = Weak.get()) Page->SetOperationResult(L"NetworkDiagnosticsTextBox", Report);
                 });
             });
         }
-        catch (...) { this->NetworkDiagnosticsTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+        catch (...) { this->SetOperationResult(L"NetworkDiagnosticsTextBox", Mile::WinRT::ToHResultError().message()); }
     }
 
     winrt::fire_and_forget VirtualMachineSettingsPage::RunHostPreflight()
     {
         auto Lifetime = this->get_strong();
         winrt::apartment_context Foreground;
-        this->NetworkDiagnosticsTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+        this->SetOperationResult(L"NetworkDiagnosticsTextBox", ::GetSettingsString(L"DiskOperationRunning"));
         this->NetworkPreflightButton().IsEnabled(false);
         winrt::hstring Result;
         try
@@ -2628,7 +2794,7 @@ namespace winrt::NanaBox::implementation
         try
         {
             co_await Foreground;
-            this->NetworkDiagnosticsTextBox().Text(Result);
+            this->SetOperationResult(L"NetworkDiagnosticsTextBox", Result);
             this->NetworkPreflightButton().IsEnabled(true);
         }
         catch (...) {}
@@ -2674,7 +2840,7 @@ namespace winrt::NanaBox::implementation
         }
         catch (...)
         {
-            this->NetworkPropertiesTextBox().Text(winrt::to_hstring(nlohmann::json{
+            this->SetOperationResult(L"NetworkPropertiesTextBox", winrt::to_hstring(nlohmann::json{
                 {"Success", false}, {"Operation", "Create"}, {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}.dump(2)));
         }
     }
@@ -2718,7 +2884,7 @@ namespace winrt::NanaBox::implementation
         std::vector<::NanaBox::HostNetworkInfo> Networks;
         Json Result;
         this->SetNetworkManagementBusy(true);
-        this->NetworkPropertiesTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+        this->SetOperationResult(L"NetworkPropertiesTextBox", ::GetSettingsString(L"DiskOperationRunning"));
         try
         {
             co_await winrt::resume_background();
@@ -2759,12 +2925,12 @@ namespace winrt::NanaBox::implementation
                     this->m_NetworkEditor->Load(nlohmann::json::object());
                 }
             }
-            this->NetworkPropertiesTextBox().Text(winrt::to_hstring(Result.dump(2)));
+            this->SetOperationResult(L"NetworkPropertiesTextBox", winrt::to_hstring(Result.dump(2)));
         }
         catch (...)
         {
             this->m_NetworkManagementRunning = false;
-            try { this->SetNetworkManagementBusy(false); this->NetworkPropertiesTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+            try { this->SetNetworkManagementBusy(false); this->SetOperationResult(L"NetworkPropertiesTextBox", Mile::WinRT::ToHResultError().message()); }
             catch (...) {}
         }
     }
@@ -2834,7 +3000,7 @@ namespace winrt::NanaBox::implementation
             else if (Action != L"SwitchList" && Action != L"AdapterList" && Action != L"CreatorList")
                 throw winrt::hresult_invalid_argument();
             this->m_HostManagementRunning = true;
-            this->HostManagementResult().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->SetOperationResult(L"HostManagementResult", ::GetSettingsString(L"DiskOperationRunning"));
             this->RunHostManagementOperation(Action, Data.dump());
         }
         catch (...) { this->m_HostManagementRunning = false; ::ShowSettingsError(this->m_WindowHandle); }
@@ -2874,7 +3040,7 @@ namespace winrt::NanaBox::implementation
             this->m_HostManagementRunning = false;
             if (!ErrorText.empty())
             {
-                this->HostManagementResult().Text(winrt::to_hstring(Json{{"Success", false}, {"Operation", winrt::to_string(Action)},
+                this->SetOperationResult(L"HostManagementResult", winrt::to_hstring(Json{{"Success", false}, {"Operation", winrt::to_string(Action)},
                     {"Error", winrt::to_string(ErrorText)}}.dump(2)));
                 co_return;
             }
@@ -2919,12 +3085,12 @@ namespace winrt::NanaBox::implementation
                 Result = Json{{"Items", std::move(Result)}};
             Result["Success"] = true;
             Result["Operation"] = winrt::to_string(Action);
-            this->HostManagementResult().Text(winrt::to_hstring(Result.dump(2)));
+            this->SetOperationResult(L"HostManagementResult", winrt::to_hstring(Result.dump(2)));
         }
         catch (...)
         {
             this->m_HostManagementRunning = false;
-            try { this->HostManagementResult().Text(Mile::WinRT::ToHResultError().message()); }
+            try { this->SetOperationResult(L"HostManagementResult", Mile::WinRT::ToHResultError().message()); }
             catch (...) {}
         }
     }
@@ -3055,14 +3221,14 @@ namespace winrt::NanaBox::implementation
                     L"NanaBox", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
             this->m_HcnResourceRunning = true;
             this->HcnKindComboBox().IsEnabled(false);
-            this->HcnResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->SetOperationResult(L"HcnResultTextBox", ::GetSettingsString(L"DiskOperationRunning"));
             this->RunHcnResourceOperation(Action, Data.dump());
         }
         catch (...)
         {
             this->m_HcnResourceRunning = false;
             this->HcnKindComboBox().IsEnabled(true);
-            this->HcnResultTextBox().Text(Mile::WinRT::ToHResultError().message());
+            this->SetOperationResult(L"HcnResultTextBox", Mile::WinRT::ToHResultError().message());
         }
     }
 
@@ -3158,9 +3324,9 @@ namespace winrt::NanaBox::implementation
                 }
             }
             Result["Operation"] = winrt::to_string(Action);
-            this->HcnResultTextBox().Text(winrt::to_hstring(Result.dump(2)));
+            this->SetOperationResult(L"HcnResultTextBox", winrt::to_hstring(Result.dump(2)));
         }
-        catch (...) { this->HcnResultTextBox().Text(Mile::WinRT::ToHResultError().message()); }
+        catch (...) { this->SetOperationResult(L"HcnResultTextBox", Mile::WinRT::ToHResultError().message()); }
     }
 
     void VirtualMachineSettingsPage::VmmsSelectionChanged(winrt::IInspectable const&,
@@ -3419,14 +3585,14 @@ namespace winrt::NanaBox::implementation
             else if (Action != L"VmmsList" && Action != L"HcsInventory") throw winrt::hresult_invalid_argument();
             this->m_VmmsRunning = true;
             this->VmmsForm().IsEnabled(false);
-            this->VmmsResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->SetOperationResult(L"VmmsResultTextBox", ::GetSettingsString(L"DiskOperationRunning"));
             this->RunVmmsOperation(Action, Data.dump());
         }
         catch (...)
         {
             this->m_VmmsRunning = false;
             this->VmmsForm().IsEnabled(true);
-            this->VmmsResultTextBox().Text(winrt::to_hstring(Json{{"Success", false},
+            this->SetOperationResult(L"VmmsResultTextBox", winrt::to_hstring(Json{{"Success", false},
                 {"Error", winrt::to_string(Mile::WinRT::ToHResultError().message())}}.dump(2)));
         }
     }
@@ -3513,7 +3679,7 @@ namespace winrt::NanaBox::implementation
             }
             if (!Result.contains("Success")) Result["Success"] = true;
             Result["Operation"] = winrt::to_string(Action);
-            this->VmmsResultTextBox().Text(winrt::to_hstring(Result.dump(2)));
+            this->SetOperationResult(L"VmmsResultTextBox", winrt::to_hstring(Result.dump(2)));
         }
         catch (...)
         {
@@ -3521,7 +3687,7 @@ namespace winrt::NanaBox::implementation
             try
             {
                 this->VmmsForm().IsEnabled(true);
-                this->VmmsResultTextBox().Text(Mile::WinRT::ToHResultError().message());
+                this->SetOperationResult(L"VmmsResultTextBox", Mile::WinRT::ToHResultError().message());
             }
             catch (...) {}
         }
@@ -3563,7 +3729,7 @@ namespace winrt::NanaBox::implementation
                 Size = MiB << 20;
             }
             this->m_DiskOperationRunning = true;
-            this->DiskResultTextBox().Text(::GetSettingsString(L"DiskOperationRunning"));
+            this->SetOperationResult(L"DiskResultTextBox", ::GetSettingsString(L"DiskOperationRunning"));
             this->RunDiskManagerOperation(Action, Path, Size);
         }
         catch (...) { this->m_DiskOperationRunning = false; ::ShowSettingsError(this->m_WindowHandle); }
@@ -3623,7 +3789,7 @@ namespace winrt::NanaBox::implementation
         {
             co_await Foreground;
             this->m_DiskOperationRunning = false;
-            this->DiskResultTextBox().Text(winrt::to_hstring(Result));
+            this->SetOperationResult(L"DiskResultTextBox", winrt::to_hstring(Result));
         }
         catch (...) {}
     }

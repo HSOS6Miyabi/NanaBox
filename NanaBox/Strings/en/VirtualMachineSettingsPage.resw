@@ -960,4 +960,40 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="PropertyItem" xml:space="preserve"><value>Item</value></data>
   <data name="PropertyObjectExpected" xml:space="preserve"><value>A property group is required.</value></data>
   <data name="PropertyCustomName" xml:space="preserve"><value>Custom property name</value></data>
+  <data name="PropertyMore" xml:space="preserve"><value>Additional entries are omitted from this view.</value></data>
+  <data name="PropertyStructuredValue" xml:space="preserve"><value>Structured details</value></data>
+  <data name="PropertyEmptyGroup" xml:space="preserve"><value>No properties</value></data>
+  <data name="PropertyId" xml:space="preserve"><value>Identifier</value></data>
+  <data name="PropertyFlags" xml:space="preserve"><value>Feature flags</value></data>
+  <data name="PropertySchemaVersion" xml:space="preserve"><value>Schema version</value></data>
+  <data name="PropertyMajor" xml:space="preserve"><value>Major version</value></data>
+  <data name="PropertyMinor" xml:space="preserve"><value>Minor version</value></data>
+  <data name="PropertySubnets" xml:space="preserve"><value>Subnets</value></data>
+  <data name="PropertyRoutes" xml:space="preserve"><value>Routes</value></data>
+  <data name="PropertyGateway" xml:space="preserve"><value>Gateway</value></data>
+  <data name="PropertyPolicies" xml:space="preserve"><value>Policies</value></data>
+  <data name="PropertyAddressPrefix" xml:space="preserve"><value>Address prefix</value></data>
+  <data name="PropertyProtocol" xml:space="preserve"><value>Protocol</value></data>
+  <data name="PropertyPortMappings" xml:space="preserve"><value>Port mappings</value></data>
+  <data name="PropertyExternalPort" xml:space="preserve"><value>External port</value></data>
+  <data name="PropertyInternalPort" xml:space="preserve"><value>Internal port</value></data>
+  <data name="PropertyEndpoints" xml:space="preserve"><value>Network endpoints</value></data>
+  <data name="PropertyUseUtc" xml:space="preserve"><value>Use UTC clock</value></data>
+  <data name="PropertyChipset" xml:space="preserve"><value>Chipset</value></data>
+  <data name="PropertyPropertyTypes" xml:space="preserve"><value>Information categories</value></data>
+  <data name="PropertyRequestType" xml:space="preserve"><value>Change operation</value></data>
+  <data name="PropertyResourceType" xml:space="preserve"><value>Resource type</value></data>
+  <data name="PropertySettings" xml:space="preserve"><value>Settings</value></data>
+  <data name="PropertyProperties" xml:space="preserve"><value>Properties</value></data>
+  <data name="PropertyItems" xml:space="preserve"><value>Items</value></data>
+  <data name="PropertyOperation" xml:space="preserve"><value>Operation</value></data>
+  <data name="PropertySuccess" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="PropertyData" xml:space="preserve"><value>Data</value></data>
+  <data name="PropertyDetails" xml:space="preserve"><value>Details</value></data>
+  <data name="PropertyVm" xml:space="preserve"><value>Virtual machine</value></data>
+  <data name="PropertyMemoryMiB" xml:space="preserve"><value>Memory (MiB)</value></data>
+  <data name="PropertyProcessorCount" xml:space="preserve"><value>Virtual processors</value></data>
+  <data name="PropertyDevices" xml:space="preserve"><value>Devices</value></data>
+  <data name="PropertyCheckpoints" xml:space="preserve"><value>Checkpoints</value></data>
+  <data name="PropertyFrontendAddresses" xml:space="preserve"><value>Frontend addresses</value></data>
 </root>

@@ -13,7 +13,7 @@ $config = Join-Path $OutputDirectory 'ui-test.7b'
 $initial = @{NanaBox=@{Type='VirtualMachine';Version=1;Name='UI automation';GuestType='Windows';ProcessorCount=2;MemorySize=2048;Gpu=@{AssignmentMode='Disabled'}}} | ConvertTo-Json -Depth 10
 [IO.File]::WriteAllText($config,$initial,(New-Object Text.UTF8Encoding($true)))
 
-$mode = if ($HostIntegration) { '--edit-config' } else { '--edit-config-test' }
+$mode = if ($HostIntegration) { '--edit-config-integration-test' } else { '--edit-config-test' }
 $process = Start-Process -FilePath $Executable -ArgumentList ($mode + ' "' + $config + '"') -PassThru
 $root = [System.Windows.Automation.AutomationElement]::RootElement
 $pidCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, [int]$process.Id)
@@ -57,9 +57,6 @@ function Set-Text([string]$id,[string]$value) {
     if ((Get-Text $id) -cne $value) { throw "Value not accepted: $id" }
 }
 function Get-Text([string]$id) {
-    if ($id -in @('NetworkPropertiesTextBox','NetworkDiagnosticsTextBox','HostManagementResult','HcnResultTextBox','DiskResultTextBox','GuestToolsResult','VmmsResultTextBox')) {
-        Set-Check ('Details'+$id) $true
-    }
     return (Pattern (Find-Control $id) ([System.Windows.Automation.ValuePattern]::Pattern)).Current.Value
 }
 function Set-Check([string]$id,[bool]$value) {
@@ -142,7 +139,9 @@ function Wait-Result([string]$id,[scriptblock]$predicate,[int]$seconds=90) {
     $until = [DateTime]::UtcNow.AddSeconds($seconds)
     do {
         try {
-            $result = Get-Text $id | ConvertFrom-Json
+            $report = "$config.$id.result"
+            if (-not (Test-Path -LiteralPath $report)) { Start-Sleep -Milliseconds 100; continue }
+            $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
             if ($null -ne $result -and (& $predicate $result)) { return $result }
         } catch {}
         Start-Sleep -Milliseconds 250
@@ -396,6 +395,10 @@ try {
     $null = Find-Control 'SummaryNetworkPropertiesTextBox'
     if ((Find-Control 'DetailsNetworkPropertiesTextBox').Current.IsOffscreen) { Scroll (Find-Control 'DetailsNetworkPropertiesTextBox') }
     Assert-Equal ((Pattern (Find-Control 'DetailsNetworkPropertiesTextBox') ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState) ([System.Windows.Automation.ToggleState]::Off) 'Technical details hidden by default'
+    Set-Check 'DetailsNetworkPropertiesTextBox' $true
+    $tree = Find-Control 'NetworkPropertiesTextBoxTree'
+    Assert-Equal $tree.Current.ControlType ([System.Windows.Automation.ControlType]::Tree) 'Technical details use a property tree'
+    Set-Check 'DetailsNetworkPropertiesTextBox' $false
     Select-Tab 'TabNetwork'
     Invoke-Control 'NetworkPreflightButton'
     $diagnostics = Wait-Result 'NetworkDiagnosticsTextBox' {param($v) $v.Mode -eq 'HostPreflight'}

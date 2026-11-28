@@ -32,4 +32,9 @@ foreach ($node in $xaml.SelectNodes('//*[@Text or @Content or @Header]')) {
         if ($node.GetAttribute($property) -match '^\[[^\]]+\]$') { throw "Unresolved UI placeholder: $($node.GetAttribute($property))" }
     }
 }
+foreach ($node in $xaml.SelectNodes('//*[@Text or @Content or @Header]')) {
+    foreach ($property in @('Text','Content','Header')) {
+        if ($node.GetAttribute($property) -match '\bJSON\b') { throw "Serialization format exposed in settings: $($node.GetAttribute($property))" }
+    }
+}
 Write-Host "Validated $($english.Count) bilingual resource keys and $($bindings.Count) XAML bindings."

@@ -960,4 +960,40 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="PropertyItem" xml:space="preserve"><value>项目</value></data>
   <data name="PropertyObjectExpected" xml:space="preserve"><value>请选择属性组。</value></data>
   <data name="PropertyCustomName" xml:space="preserve"><value>自定义属性名称</value></data>
+  <data name="PropertyMore" xml:space="preserve"><value>此视图省略了更多项目。</value></data>
+  <data name="PropertyStructuredValue" xml:space="preserve"><value>结构化详情</value></data>
+  <data name="PropertyEmptyGroup" xml:space="preserve"><value>无属性</value></data>
+  <data name="PropertyId" xml:space="preserve"><value>标识符</value></data>
+  <data name="PropertyFlags" xml:space="preserve"><value>功能标志</value></data>
+  <data name="PropertySchemaVersion" xml:space="preserve"><value>架构版本</value></data>
+  <data name="PropertyMajor" xml:space="preserve"><value>主版本</value></data>
+  <data name="PropertyMinor" xml:space="preserve"><value>次版本</value></data>
+  <data name="PropertySubnets" xml:space="preserve"><value>子网</value></data>
+  <data name="PropertyRoutes" xml:space="preserve"><value>路由</value></data>
+  <data name="PropertyGateway" xml:space="preserve"><value>网关</value></data>
+  <data name="PropertyPolicies" xml:space="preserve"><value>策略</value></data>
+  <data name="PropertyAddressPrefix" xml:space="preserve"><value>地址前缀</value></data>
+  <data name="PropertyProtocol" xml:space="preserve"><value>协议</value></data>
+  <data name="PropertyPortMappings" xml:space="preserve"><value>端口映射</value></data>
+  <data name="PropertyExternalPort" xml:space="preserve"><value>外部端口</value></data>
+  <data name="PropertyInternalPort" xml:space="preserve"><value>内部端口</value></data>
+  <data name="PropertyEndpoints" xml:space="preserve"><value>网络端点</value></data>
+  <data name="PropertyUseUtc" xml:space="preserve"><value>使用 UTC 时钟</value></data>
+  <data name="PropertyChipset" xml:space="preserve"><value>芯片组</value></data>
+  <data name="PropertyPropertyTypes" xml:space="preserve"><value>信息类别</value></data>
+  <data name="PropertyRequestType" xml:space="preserve"><value>变更操作</value></data>
+  <data name="PropertyResourceType" xml:space="preserve"><value>资源类型</value></data>
+  <data name="PropertySettings" xml:space="preserve"><value>设置</value></data>
+  <data name="PropertyProperties" xml:space="preserve"><value>属性</value></data>
+  <data name="PropertyItems" xml:space="preserve"><value>项目</value></data>
+  <data name="PropertyOperation" xml:space="preserve"><value>操作</value></data>
+  <data name="PropertySuccess" xml:space="preserve"><value>成功</value></data>
+  <data name="PropertyData" xml:space="preserve"><value>数据</value></data>
+  <data name="PropertyDetails" xml:space="preserve"><value>详情</value></data>
+  <data name="PropertyVm" xml:space="preserve"><value>虚拟机</value></data>
+  <data name="PropertyMemoryMiB" xml:space="preserve"><value>内存（MiB）</value></data>
+  <data name="PropertyProcessorCount" xml:space="preserve"><value>虚拟处理器</value></data>
+  <data name="PropertyDevices" xml:space="preserve"><value>设备</value></data>
+  <data name="PropertyCheckpoints" xml:space="preserve"><value>检查点</value></data>
+  <data name="PropertyFrontendAddresses" xml:space="preserve"><value>前端地址</value></data>
 </root>
