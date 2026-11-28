@@ -208,9 +208,18 @@ try {
         $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Mount'}
         Assert-Equal $result.Data.Shares[0].MountPoint 'C:\ProgramData\NanaBox Guest 9P\Custom' 'Windows Plan 9 custom mount point'
         Assert-Equal $result.Data.Shares[0].Mounted $true 'Windows Plan 9 mounted'
+        Invoke-Control 'GuestVsmbUnmountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'VirtualSmbUnmount'}
+        Assert-Equal $result.Data.VirtualSmbShares[0].Mounted $false 'VSMB unmounted'
+        Assert-Equal $result.Data.VirtualSmbShares[0].Suppressed $true 'VSMB automatic mounting suppressed'
+        Invoke-Control 'GuestVsmbMountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'VirtualSmbMount'}
+        Assert-Equal $result.Data.VirtualSmbShares[0].Mounted $true 'VSMB remounted'
         Select-Tab 'TabGeneral'
         Select-Choice 'GuestTypeComboBox' 'GuestLinux'
         Select-Tab 'TabGuestTools'
+        Assert-Missing 'GuestVsmbMountButton'
+        Assert-Missing 'GuestVsmbUnmountButton'
         Invoke-Control 'GuestInformationButton'
         $null = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'GuestInformation' -and $v.Data.HostName -eq 'mock-guest'}
         Invoke-Control 'GuestDiagnosticsButton'

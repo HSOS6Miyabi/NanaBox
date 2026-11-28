@@ -331,7 +331,7 @@ public:
     }
     bool Mapped(fs::path const& path,std::wstring const& name,bool readOnly)
     {
-        return Existing(path,name,readOnly);
+        return Existing(path,name,readOnly)&&fs::is_directory(path);
     }
     // Exercise the same Bind Filter API and mapping validation on two
     // disposable directories without initializing the VMBus transport.

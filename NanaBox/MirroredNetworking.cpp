@@ -1824,12 +1824,15 @@ std::string NanaBox::RunGuestToolsAction(winrt::guid const& RuntimeId, std::stri
     auto Cleanup = Mile::ScopeExitTaskHandler([]() { ::WSACleanup(); });
     std::atomic<bool> LocalStop{false};
     auto const& Stop = Cancellation ? *Cancellation : LocalStop;
-    if (Action == "Plan9Shares" || Action == "VirtualSmbShares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
+    if (Action == "Plan9Shares" || Action == "VirtualSmbShares" || Action == "Plan9Mount" || Action == "Plan9Unmount" ||
+        Action == "VirtualSmbMount" || Action == "VirtualSmbUnmount")
     {
         RegisterGuestSocket(false, false, true);
         Json Settings = Json::object();
-        auto Verb = Action == "Plan9Mount" ? "Mount" : Action == "Plan9Unmount" ? "Unmount" : "Query";
-        if (Action == "Plan9Mount" || Action == "Plan9Unmount") Settings["Name"] = GuestName;
+        auto Verb = Action == "Plan9Mount" ? "Mount" : Action == "Plan9Unmount" ? "Unmount" :
+            Action == "VirtualSmbMount" ? "VsmbMount" : Action == "VirtualSmbUnmount" ? "VsmbUnmount" : "Query";
+        if (Action == "Plan9Mount" || Action == "Plan9Unmount" ||
+            Action == "VirtualSmbMount" || Action == "VirtualSmbUnmount") Settings["Name"] = GuestName;
         if (Action == "Plan9Mount") Settings["Target"] = winrt::to_string(LocalPath);
         auto Reply = GuestRequest(RuntimeId, Json{{"Version", 1}, {"ResourceType", "Plan9Shares"},
             {"RequestType", Verb}, {"Settings", Settings}}, Stop, 30, Plan9ServiceId);

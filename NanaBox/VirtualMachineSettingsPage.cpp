@@ -1589,7 +1589,7 @@ namespace winrt::NanaBox::implementation
         winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs const&)
     {
         if (!this->GuestTypeComboBox() || !this->GuestManualMountPanel() ||
-            !this->GuestLinuxShareNote() || !this->GuestWindowsShareNote()) return;
+            !this->GuestLinuxShareNote() || !this->GuestWindowsShareNote() || !this->GuestVsmbMountPanel()) return;
         auto Type = static_cast<NanaBox::GuestType>(this->GuestTypeComboBox().SelectedIndex());
         bool WindowsGuest = Type == NanaBox::GuestType::Windows;
         if (this->ClipboardGtkUnicodeCheckBox())
@@ -1597,6 +1597,7 @@ namespace winrt::NanaBox::implementation
         if (this->ClipboardWindowsUnicodeCheckBox())
             this->ClipboardWindowsUnicodeCheckBox().IsEnabled(WindowsGuest);
         this->GuestManualMountPanel().Visibility(winrt::Visibility::Visible);
+        this->GuestVsmbMountPanel().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
         this->GuestLinuxShareNote().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestWindowsShareNote().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
     }
@@ -1650,10 +1651,13 @@ namespace winrt::NanaBox::implementation
                 if (Path.empty() || Name.empty())
                     throw winrt::hresult_invalid_argument(::GetSettingsString(L"GuestFileRequired"));
             }
-            if (Resource == "Plan9Mount" || Resource == "Plan9Unmount")
+            if (Resource == "Plan9Mount" || Resource == "Plan9Unmount" ||
+                Resource == "VirtualSmbMount" || Resource == "VirtualSmbUnmount")
             {
                 Name = winrt::to_string(this->GuestPlan9NameTextBox().Text());
-                if (Name.empty()) throw winrt::hresult_invalid_argument(::GetSettingsString(L"Plan9ShareNameLabel"));
+                if (Name.empty()) throw winrt::hresult_invalid_argument(::GetSettingsString(
+                    Resource == "VirtualSmbMount" || Resource == "VirtualSmbUnmount" ?
+                    L"VirtualSmbShareNameLabel" : L"Plan9ShareNameLabel"));
                 if (Resource == "Plan9Mount") Path = this->GuestPlan9PathTextBox().Text().c_str();
             }
             if ((Resource == "TimeSync" || (Transfer && Overwrite)) &&
@@ -1695,7 +1699,8 @@ namespace winrt::NanaBox::implementation
         this->m_GuestToolsRunning = Busy;
         for (auto const& Button : {this->GuestHeartbeatControl(), this->GuestInformationControl(),
             this->GuestDiagnosticsControl(), this->GuestPlan9Control(), this->GuestPlan9MountControl(),
-            this->GuestPlan9UnmountControl(), this->GuestClockQueryControl(), this->GuestClockSyncControl(),
+            this->GuestPlan9UnmountControl(), this->GuestVsmbMountControl(), this->GuestVsmbUnmountControl(),
+            this->GuestClockQueryControl(), this->GuestClockSyncControl(),
             this->GuestUploadControl(), this->GuestDownloadControl(), this->GuestBrowseUploadControl(),
             this->GuestBrowseDownloadControl()})
             Button.IsEnabled(!Busy);

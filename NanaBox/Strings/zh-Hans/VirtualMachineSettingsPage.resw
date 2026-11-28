@@ -1447,8 +1447,8 @@
   <data name="GuestPlan9Note.Text" xml:space="preserve"><value>客户机将启用自动挂载的共享目录挂载至 /media 下。输入共享名称即可挂载或卸载，也可指定客户机中的空目录。</value></data>
   <data name="GuestPlan9Name.Header" xml:space="preserve"><value>共享名称</value></data>
   <data name="GuestPlan9Path.Header" xml:space="preserve"><value>客户机挂载目录（可选）</value></data>
-  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>挂载共享</value></data>
-  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>卸载共享</value></data>
+  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>挂载 9P</value></data>
+  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>卸载 9P</value></data>
   <data name="TabShares.Header" xml:space="preserve"><value>共享目录</value></data>
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>选择宿主机目录</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>剪贴板键盘布局</value></data>
@@ -1538,7 +1538,7 @@
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
     <value>查询所选 HCS 计算系统属性</value>
   </data>
-  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB 共享目录自动挂载至 ProgramData。安装 WinFsp 并启用 Windows 9P 集成功能后，可在 NanaBox Guest 9P 目录下挂载 9P 共享。挂载目录可留空，也可填写该目录下的子目录名称。</value></data>
+  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>原生 VSMB 共享挂载至 ProgramData 下的 NanaBox Guest Shares 目录，可按名称挂载和卸载。WinFsp 9P 共享位于 NanaBox Guest 9P 目录下，选填的挂载目录仅用于 9P。卸载 VSMB 将解除本地目录映射，宿主机仍保留共享配置。</value></data>
   <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>添加 GPU 分区适配器</value></data>
   <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>移除所选 GPU 分区适配器</value></data>
   <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>设置所选 GPU 分区的资源配额</value></data>
@@ -1561,4 +1561,6 @@
   <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>GuestTool 收到宿主机共享清单后自动挂载此共享。关闭后可按需挂载。</value></data>
   <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>禁用文件直接映射</value></data>
   <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>禁用将宿主机文件页直接映射到客户机的功能，适用于不支持直接映射的宿主机文件系统。</value></data>
+  <data name="GuestVsmbMount.Content" xml:space="preserve"><value>挂载 VSMB</value></data>
+  <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>卸载 VSMB</value></data>
 </root>

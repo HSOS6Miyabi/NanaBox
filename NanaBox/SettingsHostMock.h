@@ -27,6 +27,7 @@ namespace NanaBox
             std::map<std::string, std::vector<char>> GuestFiles;
             std::int64_t GuestClock = 1800000000000ll;
             bool Plan9Mounted = true;
+            bool VirtualSmbMounted = true;
             std::string Plan9MountPoint = "/media/Projects";
         };
         auto Data = std::make_shared<State>();
@@ -58,12 +59,21 @@ namespace NanaBox
             }
             std::lock_guard Lock(Data->Mutex);
             Json Result = Json::object();
-            if (Action == "VirtualSmbShares")
-                Result = {{"Backend", "VirtualSmb"}, {"Mounted", true}, {"VirtualSmbShares", Json::array({
+            if (Action == "VirtualSmbShares" || Action == "VirtualSmbMount" || Action == "VirtualSmbUnmount")
+            {
+                if (Action != "VirtualSmbShares")
+                {
+                    if (Name != "Projects") throw winrt::hresult_invalid_argument();
+                    Data->VirtualSmbMounted = Action == "VirtualSmbMount";
+                }
+                Result = {{"Backend", "VirtualSmb"}, {"Mounted", true}, {"VirtualSmbEnabled", true},
+                    {"VirtualSmbShares", Json::array({
                     Json{{"Name", "Projects"}, {"Target", "C:\\ProgramData\\NanaBox Guest Shares\\Projects"},
-                        {"ReadOnly", true}, {"Mounted", true}}})}, {"Plan9Enabled", true},
+                        {"ReadOnly", true}, {"Available", true}, {"Mounted", Data->VirtualSmbMounted},
+                         {"Suppressed", !Data->VirtualSmbMounted}}})}, {"Plan9Enabled", true},
                     {"Shares", Json::array({Json{{"Name", "Projects"}, {"MountPoint", "C:\\ProgramData\\NanaBox Guest 9P\\Projects"},
                         {"Mounted", Data->Plan9Mounted}}})}};
+            }
             else if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
             {
                 if (Action != "Plan9Shares")

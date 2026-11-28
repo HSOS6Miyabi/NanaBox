@@ -1447,8 +1447,8 @@
   <data name="GuestPlan9Note.Text" xml:space="preserve"><value>The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory.</value></data>
   <data name="GuestPlan9Name.Header" xml:space="preserve"><value>Share name</value></data>
   <data name="GuestPlan9Path.Header" xml:space="preserve"><value>Guest mount directory (optional)</value></data>
-  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>Mount share</value></data>
-  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>Unmount share</value></data>
+  <data name="GuestPlan9Mount.Content" xml:space="preserve"><value>Mount 9P</value></data>
+  <data name="GuestPlan9Unmount.Content" xml:space="preserve"><value>Unmount 9P</value></data>
   <data name="TabShares.Header" xml:space="preserve"><value>Shared folders</value></data>
   <data name="Plan9BrowseFolder" xml:space="preserve"><value>Choose host folder</value></data>
   <data name="ClipboardKeyboardLayoutTextBox.Header" xml:space="preserve"><value>Clipboard keyboard layout</value></data>
@@ -1538,7 +1538,7 @@
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
     <value>Selected HCS system properties</value>
   </data>
-  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB shares mount automatically under ProgramData. Install WinFsp and enable Windows 9P integration to mount 9P shares under NanaBox Guest 9P. Leave the mount directory blank or specify a folder name within that directory.</value></data>
+  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Native VSMB shares use NanaBox Guest Shares under ProgramData. Mount or unmount a configured share by name. WinFsp 9P shares use NanaBox Guest 9P; the optional mount directory applies only to 9P. Unmounting VSMB removes the local directory mapping while the host share remains configured.</value></data>
   <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>Add GPU partition adapter</value></data>
   <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>Remove selected GPU partition adapter</value></data>
   <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>Set selected GPU partition quotas</value></data>
@@ -1561,4 +1561,6 @@
   <data name="VirtualSmbAutoMountHelp" xml:space="preserve"><value>Mount this share after GuestTool receives the host inventory. Disable to mount it on demand.</value></data>
   <data name="VirtualSmbNoDirectmapLabel" xml:space="preserve"><value>Disable direct file mapping</value></data>
   <data name="VirtualSmbNoDirectmapHelp" xml:space="preserve"><value>Use VSMB without direct mapping of host file pages into the guest. This can help compatibility with host filesystems that lack direct mapping support.</value></data>
+  <data name="GuestVsmbMount.Content" xml:space="preserve"><value>Mount VSMB</value></data>
+  <data name="GuestVsmbUnmount.Content" xml:space="preserve"><value>Unmount VSMB</value></data>
 </root>

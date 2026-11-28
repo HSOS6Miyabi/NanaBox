@@ -1668,16 +1668,20 @@
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestPlan9Title" Text="Shared folders and GPU drivers" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
             <TextBlock x:Name="GuestLinuxShareNote" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Note" Text="The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory." TextWrapping="Wrap" Opacity="0.75" />
             <TextBlock x:Name="GuestWindowsShareNote" x:Uid="/VirtualMachineSettingsPage/GuestWindowsShareNote"
-              Text="Virtual SMB shares mount automatically under ProgramData. Install WinFsp and enable Windows 9P integration to mount 9P shares under NanaBox Guest 9P. Leave the mount directory blank or specify a folder name within that directory."
+              Text="Native VSMB shares use NanaBox Guest Shares under ProgramData. Mount or unmount a configured share by name. WinFsp 9P shares use NanaBox Guest 9P; the optional mount directory applies only to 9P. Unmounting VSMB removes the local directory mapping while the host share remains configured."
               TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed" />
             <StackPanel Spacing="8">
               <Button x:Name="GuestPlan9Control" x:Uid="/VirtualMachineSettingsPage/GuestPlan9" Content="Inspect guest mounts" Tag="Plan9Shares" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9Button" />
               <StackPanel x:Name="GuestManualMountPanel" Spacing="8">
               <TextBox x:Name="GuestPlan9NameTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Name" Header="Share name" AutomationProperties.AutomationId="GuestPlan9NameTextBox" />
               <TextBox x:Name="GuestPlan9PathTextBox" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Path" Header="Guest mount directory (optional)" AutomationProperties.AutomationId="GuestPlan9PathTextBox" />
+              <StackPanel x:Name="GuestVsmbMountPanel" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+                <Button x:Name="GuestVsmbMountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbMount" Content="Mount VSMB" Tag="VirtualSmbMount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbMountButton" />
+                <Button x:Name="GuestVsmbUnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestVsmbUnmount" Content="Unmount VSMB" Tag="VirtualSmbUnmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestVsmbUnmountButton" />
+              </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="GuestPlan9MountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Mount" Content="Mount share" Tag="Plan9Mount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9MountButton" />
-                <Button x:Name="GuestPlan9UnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Unmount" Content="Unmount share" Tag="Plan9Unmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9UnmountButton" />
+                <Button x:Name="GuestPlan9MountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Mount" Content="Mount 9P" Tag="Plan9Mount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9MountButton" />
+                <Button x:Name="GuestPlan9UnmountControl" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Unmount" Content="Unmount 9P" Tag="Plan9Unmount" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9UnmountButton" />
               </StackPanel>
               </StackPanel>
             </StackPanel>
