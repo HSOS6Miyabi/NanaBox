@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
 done
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 legacy_network=0
-if [ "$dns" -eq 1 ] || [ "$loopback" -eq 1 ] || [ "$bind" -eq 1 ]; then
+if [ "$loopback" -eq 1 ] || [ "$bind" -eq 1 ]; then
     legacy_network=1
     python3 -c 'import socket; assert hasattr(socket, "AF_VSOCK")'
 fi
@@ -128,7 +128,7 @@ if [ "$legacy_network" -eq 1 ]; then
     network_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py serve$options"
     cleanup_command="/usr/bin/python3 -I /opt/nanabox-gns/gns.py clear-loopback /run/nanabox-gns/loopback.json"
 else
-    network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network"
+    network_command="/opt/nanabox-gns/nanabox-guest-tool --serve --network$options"
     cleanup_command=
 fi
 printf '[Service]\nExecStart=\nExecStart=%s\nExecStopPost=\n%s\nCapabilityBoundingSet=\nCapabilityBoundingSet=%s\nRuntimeDirectoryMode=%s\n%s\nEnvironment=LC_ALL=C\nEnvironment=PATH=/usr/sbin:/usr/bin:/sbin:/bin\n' "$network_command" "$(if [ -n "$cleanup_command" ]; then printf 'ExecStopPost=%s' "$cleanup_command"; fi)" "$caps" "$runtime_mode" "$extra_groups" > "$temporary"

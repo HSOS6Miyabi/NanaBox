@@ -64,6 +64,7 @@ jobs:
             GuestTool/gns.py
             GuestTool/GuestTool.cpp
             GuestTool/GuestNetwork.h
+            GuestTool/DnsTunnel.h
             GuestTool/WindowsNetworkScripts.h
             GuestTool/nanabox-guest-tool
             GuestTool/nanabox-guest-tool.exe

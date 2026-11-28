@@ -846,7 +846,9 @@
 #else
         LinuxNetwork Backend;
 #endif
+        bool DnsEnabled=false;
     public:
+        void EnableDns(){DnsEnabled=true;}
         Json Dispatch(std::string const& resource,std::string const& action,Json const& request)
         {
             auto const& settings=request.at("Settings");
@@ -857,8 +859,20 @@
             auto normalized=NormalizeResource(resource,action,settings);
             if(resource=="Reconcile")
             {
-                if(Boolean(normalized,"DnsTunnel"))Fail("DNS tunneling is not enabled in this network service");
-                return Backend.Reconcile(target,normalized);
+                bool tunnel=Boolean(normalized,"DnsTunnel");
+                if(tunnel)
+                {
+                    if(!DnsEnabled)Fail("DNS tunneling is not enabled in this network service");
+#ifdef _WIN32
+                    normalized["DNS"]["Servers"]=Boolean(normalized.at("Interface"),"Connected")?
+                        Json::array({"127.0.0.1"}):Json::array();
+#else
+                    normalized["DNS"]["Servers"]=Json::array();
+#endif
+                }
+                auto reply=Backend.Reconcile(target,normalized);
+                if(tunnel)reply["DnsTunnel"]=true;
+                return reply;
             }
             Backend.Apply(target,resource,action,normalized);
             return Json::object();

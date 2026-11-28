@@ -34,6 +34,9 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 #include <cstdint>
 #include <cstring>
 #include <ctime>
@@ -682,6 +685,7 @@ namespace
             if (network) Net = std::make_unique<Network>();
         }
         void Reap() { if (Files) Files->Reap(); }
+        void EnableDns() { if (Net) Net->EnableDns(); }
         Json Dispatch(Json const& request)
         {
             try
@@ -759,9 +763,9 @@ namespace
         Socket& operator=(Socket const&) = delete;
     };
 
-    bool Wait(SocketType s, bool writing, Mono::time_point deadline)
+    bool Wait(SocketType s, bool writing, Mono::time_point deadline, std::atomic<bool> const& closing = Stop)
     {
-        while (!Stop && Mono::now() < deadline)
+        while (!Stop && !closing && Mono::now() < deadline)
         {
 #ifdef _WIN32
             fd_set ready, except;
@@ -792,11 +796,12 @@ namespace
 #endif
     }
 
-    void Transfer(SocketType s, char* bytes, std::size_t size, bool writing, Mono::time_point end)
+    void Transfer(SocketType s, char* bytes, std::size_t size, bool writing, Mono::time_point end,
+        std::atomic<bool> const& closing = Stop)
     {
         while (size)
         {
-            if (!Wait(s, writing, end)) Fail("Guest socket deadline expired");
+            if (!Wait(s, writing, end, closing)) Fail("Guest socket deadline expired");
 #ifdef _WIN32
             auto n = writing ? send(s, bytes, static_cast<int>(size), 0) : recv(s, bytes, static_cast<int>(size), 0);
             if (n == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) continue;
@@ -840,43 +845,55 @@ namespace
         Send(s, response, Mono::now() + std::chrono::seconds(5));
     }
 
-    void Serve(Agent& agent, bool network = false)
+    std::unique_ptr<Socket> OpenParentListener(unsigned port,int backlog)
+    {
+#ifdef _WIN32
+        auto server=std::make_unique<Socket>(socket(AF_HYPERV,SOCK_STREAM,HV_PROTOCOL_RAW));
+        constexpr GUID parent{0xa42e7cda,0xd03f,0x480c,{0x9c,0xc2,0xa4,0xde,0x20,0xab,0xb8,0x78}};
+        GUID service{port,0xfacb,0x11e6,{0xbd,0x58,0x64,0,0x6a,0x79,0x86,0xd3}};
+        SOCKADDR_HV address{};address.Family=AF_HYPERV;address.VmId=parent;address.ServiceId=service;
+#else
+        auto server=std::make_unique<Socket>(socket(AF_VSOCK,SOCK_STREAM|SOCK_CLOEXEC,0));
+        sockaddr_vm address{};address.svm_family=AF_VSOCK;address.svm_cid=VMADDR_CID_ANY;address.svm_port=port;
+#endif
+        if(server->Value==InvalidSocket||bind(server->Value,reinterpret_cast<sockaddr*>(&address),sizeof(address))||
+            listen(server->Value,backlog))Fail("Cannot listen on GuestTool Hyper-V socket");
+        Nonblocking(server->Value);return server;
+    }
+
+    SocketType AcceptParent(SocketType listener)
+    {
+#ifdef _WIN32
+        SOCKADDR_HV peer{};int length=sizeof(peer);
+        return accept(listener,reinterpret_cast<sockaddr*>(&peer),&length);
+#else
+        sockaddr_vm peer{};socklen_t length=sizeof(peer);
+        auto value=accept4(listener,reinterpret_cast<sockaddr*>(&peer),&length,SOCK_CLOEXEC);
+        if(value!=InvalidSocket&&peer.svm_cid!=VMADDR_CID_HOST){close(value);return InvalidSocket;}
+        return value;
+#endif
+    }
+
+#include "DnsTunnel.h"
+
+    void Serve(Agent& agent,bool network=false,bool dns=false)
     {
 #ifdef _WIN32
         WSADATA data{};
-        if (WSAStartup(MAKEWORD(2, 2), &data)) Fail("WSAStartup failed");
-        struct Wsa { ~Wsa() { WSACleanup(); } } cleanup;
-        Socket server(socket(AF_HYPERV, SOCK_STREAM, HV_PROTOCOL_RAW));
-        constexpr GUID parent{0xa42e7cda, 0xd03f, 0x480c, {0x9c,0xc2,0xa4,0xde,0x20,0xab,0xb8,0x78}};
-        GUID service{network ? 27453u : Port, 0xfacb, 0x11e6, {0xbd,0x58,0x64,0,0x6a,0x79,0x86,0xd3}};
-        SOCKADDR_HV address{};
-        address.Family = AF_HYPERV; address.VmId = parent; address.ServiceId = service;
-#else
-        Socket server(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
-        sockaddr_vm address{};
-        address.svm_family = AF_VSOCK; address.svm_cid = VMADDR_CID_ANY; address.svm_port = network ? 27453u : Port;
+        if(WSAStartup(MAKEWORD(2,2),&data))Fail("WSAStartup failed");
+        struct Wsa{~Wsa(){WSACleanup();}} cleanup;
 #endif
-        if (server.Value == InvalidSocket ||
-            bind(server.Value, reinterpret_cast<sockaddr*>(&address), sizeof(address)) ||
-            listen(server.Value, 8)) Fail("Cannot listen on GuestTool Hyper-V socket");
-        Nonblocking(server.Value);
-        while (!Stop)
+        auto server=OpenParentListener(network?27453u:Port,8);
+        std::unique_ptr<DnsTunnel> tunnel;
+        if(dns){tunnel=std::make_unique<DnsTunnel>();agent.EnableDns();}
+        while(!Stop)
         {
             agent.Reap();
-            if (!Wait(server.Value, false, Mono::now() + std::chrono::seconds(1))) continue;
-#ifdef _WIN32
-            SOCKADDR_HV peer{};
-            int length = sizeof(peer);
-            Socket client(accept(server.Value, reinterpret_cast<sockaddr*>(&peer), &length));
-#else
-            sockaddr_vm peer{};
-            socklen_t length = sizeof(peer);
-            Socket client(accept4(server.Value, reinterpret_cast<sockaddr*>(&peer), &length, SOCK_CLOEXEC));
-            if (client.Value != InvalidSocket && peer.svm_cid != VMADDR_CID_HOST) continue;
-#endif
-            if (client.Value == InvalidSocket) continue;
-            try { Handle(client.Value, agent); }
-            catch (std::exception const& error) { std::cerr << error.what() << '\n'; }
+            if(!Wait(server->Value,false,Mono::now()+std::chrono::seconds(1)))continue;
+            Socket client(AcceptParent(server->Value));
+            if(client.Value==InvalidSocket)continue;
+            try{Handle(client.Value,agent);}
+            catch(std::exception const& error){std::cerr<<error.what()<<'\n';}
         }
     }
 
@@ -894,6 +911,7 @@ namespace
     void SelfTest()
     {
         NetworkValidationTest();
+        DnsSelfTest();
         auto root = fs::temp_directory_path() / ("NanaBox-GuestTool-" + Token());
         Require(fs::create_directory(root), "Cannot create test directory");
 #ifndef _WIN32
@@ -981,6 +999,7 @@ namespace
     fs::path ExchangeRoot;
     bool AllowClock = false;
     bool NetworkMode = false;
+    bool DnsMode = false;
 #ifdef _WIN32
     SERVICE_STATUS_HANDLE StatusHandle = nullptr;
     constexpr wchar_t ServiceName[] = L"NanaBoxGuestTool";
@@ -1008,7 +1027,7 @@ namespace
         {
             Agent agent(ExchangeRoot, AllowClock, NetworkMode);
             Status(SERVICE_RUNNING);
-            Serve(agent, NetworkMode);
+            Serve(agent, NetworkMode, DnsMode);
             Status(SERVICE_STOPPED);
         }
         catch (...) { Status(SERVICE_STOPPED, ERROR_GEN_FAILURE); }
@@ -1038,8 +1057,10 @@ int main(int argc, char** argv)
             else if (arg == "--allow-clock-set") AllowClock = true;
             else if (arg == "--service") service = true;
             else if (arg == "--network") NetworkMode = true;
+            else if (arg == "--dns-tunnel") DnsMode = true;
             else if (arg != "--serve") Fail("Unknown GuestTool option");
         }
+        if (DnsMode && !NetworkMode) Fail("DNS tunneling requires network mode");
 #ifdef _WIN32
         if (service)
         {
@@ -1052,7 +1073,7 @@ int main(int argc, char** argv)
         signal(SIGTERM, OnSignal); signal(SIGINT, OnSignal);
 #endif
         Agent agent(ExchangeRoot, AllowClock, NetworkMode);
-        Serve(agent, NetworkMode);
+        Serve(agent, NetworkMode, DnsMode);
         return 0;
     }
     catch (std::exception const& e) { std::cerr << e.what() << '\n'; return 1; }
