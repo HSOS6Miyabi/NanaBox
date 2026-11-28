@@ -112,7 +112,7 @@ class NativeVsmb
         NativeHandle token(raw);
         TOKEN_PRIVILEGES privileges{};
         privileges.PrivilegeCount=1;
-        if(!LookupPrivilegeValueW(nullptr,SE_LOAD_DRIVER_NAME,&privileges.Privileges[0].Luid))Error("Look up driver privilege");
+        if(!LookupPrivilegeValueW(nullptr,L"SeLoadDriverPrivilege",&privileges.Privileges[0].Luid))Error("Look up driver privilege");
         privileges.Privileges[0].Attributes=SE_PRIVILEGE_ENABLED;
         SetLastError(ERROR_SUCCESS);
         if(!AdjustTokenPrivileges(token.Get(),FALSE,&privileges,0,nullptr,nullptr)||GetLastError()!=ERROR_SUCCESS)

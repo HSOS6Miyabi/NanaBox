@@ -393,6 +393,20 @@ namespace
         state.Write(ownedName, JoinPath(nextOwned));
     }
 
+    // Verify that the Windows memory manager can create an executable image
+    // section on the mapped filesystem before restarting a GPU.
+    void VerifyImageMapping(fs::path const& path)
+    {
+        auto extension = Wddm::Fold(path.extension().wstring());
+        if (extension != L".dll" && extension != L".exe") return;
+        NativeHandle file(CreateFileW(path.c_str(), GENERIC_READ | GENERIC_EXECUTE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr));
+        if (!file.Valid()) Error("Open mapped driver image");
+        NativeHandle section(CreateFileMappingW(file.Get(), nullptr, PAGE_READONLY | SEC_IMAGE, 0, 0, nullptr));
+        if (!section.Valid()) Error("Create mapped driver image section");
+    }
+
     std::uint64_t FileVersion(fs::path const& path)
     {
         DWORD ignored = 0;
@@ -843,6 +857,7 @@ namespace
                     }
                     else
                     {
+                        if (NativeMode) VerifyImageMapping(item.Source);
                         if (existing == links.end() && ExistsEntry(target))
                         {
                             if (backups.count(id) || ExistsEntry(BackupPath(target)) || !PlainFile(target))

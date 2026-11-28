@@ -131,19 +131,39 @@ Use `sudo nanabox-plan9 list` to view the available shares, mount points and err
 Select Linux as the guest operating system and enable Share Host Driver Store in the VM GPU settings. The read-only driver repository and host lxss libraries are mounted at `/usr/lib/wsl/drivers` and `/usr/lib/wsl/lib`. The native mount service manages its own loader configuration and login-shell PATH, LD_LIBRARY_PATH and LIBRARY_PATH entries while the library share is mounted. Existing unrelated configuration files are preserved. Linux packages include the native executable; building from source requires a C++17 compiler and Boost.JSON headers. Applications that already loaded GPU libraries may need restarting after a host driver update. A compatible guest dxgkrnl driver and GPU-PV support remain required.
 
 
-## Windows GPU-PV driver integration
+## Windows shared folders and GPU-PV
 
-Select Windows as the guest operating system and enable Share host GPU driver store in the VM configuration. Install the native GPU component from the Windows GuestTool package inside the guest. The Windows 9P filesystem uses [Mile.Cirno](https://github.com/ProjectMile/Mile.Cirno). The installer verifies the bundled release archive's SHA-256 and installs its native Dokany driver if needed. Run as administrator:
+Select Windows as the guest operating system. Configure Virtual SMB shares in the Shared folders settings and enable Share host GPU driver store in the GPU settings when using GPU-PV.
+
+Install the Windows share and GPU service as administrator:
 
 ```powershell
 .\InstallWindowsGpuTool.ps1
 ```
 
-The service mounts the host's read-only FileRepository share at %SystemRoot%\System32\HostDriverStore\FileRepository. It reads the WDDM file mappings supplied by the host, including renamed files and WOW64 destinations. The host discovers installed GPU packages using SetupAPI and the four CopyToVm registry subkeys, with selected-device filtering for List assignment. Mapped supplemental files are symbolic links to the mounted repository. GuestTool tracks its own links. For WhenNewer rules, an equal or newer existing guest file is retained. If a driver mapping requires replacement of an existing regular file, GuestTool preserves the original before installing the link and restores it when the mapping is removed or the service is uninstalled. Windows Resource Protection files and unrelated reparse points are preserved. Conflicting mappings and missing files are reported in Guest tools. The host additionally resolves the GPU service's driver-store package and enumerates Win32_PNPSignedDriverCIMDataFile associations for the selected devices, exposes supplemental Windows system-directory files through restricted read-only Plan 9 shares, and preserves their original directory structure in the guest. Host kernel-mode driver files and INF/catalog files are excluded from these supplemental mappings. Existing share generations remain available until the VM stops so loaded modules are not forcibly detached. New file lists are published while the VM is running. Available package and dependency directories are appended to the machine PATH and LIB variables; obsolete entries are removed after successful reconciliation. Existing processes may need to be restarted to inherit the environment.
+The default backend is the native Windows Virtual SMB redirector over VMBus, using Bind Filter for local directory mounts. It does not install a third-party filesystem driver. Windows build 18362 or later is required. The service automatically maps configured Virtual SMB shares under `%ProgramData%\NanaBox Guest Shares\<share>` and reports their mount status in the host Guest tools. Host and guest read-only settings are both enforced. Changes to the configured Virtual SMB shares take effect at the next VM creation.
 
-Once the driver inventory is complete, GuestTool automatically restarts present Microsoft Virtual Render devices using SetupAPI. A change in the selected driver's version or file mappings triggers a new restart; unchanged inventories do not repeatedly restart devices. Manually disabled devices remain disabled. Restart failures are retried after one minute, and any required guest reboot is reported in Guest tools without initiating a reboot. Use `-DisableAutomaticGpuRestart` to manage device restarts manually. Disable GPU-PV devices before dismounting the filesystem or uninstalling the GPU service. Use UninstallWindowsGpuTool.ps1 to remove GuestTool-owned links and environment entries after dismounting. The service does not force-unmount a filesystem while the GPU may be using it.
+The native GPU service maps the host's read-only FileRepository at `%SystemRoot%\System32\HostDriverStore\FileRepository`. SetupAPI resolves the selected GPU's installed driver package and the WDDM CopyToVm rules, including renamed files and WOW64 destinations. Supplemental system-directory dependencies are published as restricted read-only shares; Windows kernel-mode driver files and INF/catalog files are excluded from these supplemental shares. Each mapping is verified before use. For executable dependencies, GuestTool tests whether Windows can create an image section before changing the destination. Existing regular files are backed up before replacement and restored when mappings are removed. Windows-protected files, unrelated reparse points and conflicting destinations are preserved. Driver directories are added to the machine PATH and LIB variables.
 
-The Windows filesystem client uses Mile.Cirno 1.3.1180.0 and its matching Dokany kernel driver. An offline package may be specified with `-CirnoArchive`; an existing extracted client can be specified with `-CirnoDirectory` and `-DokanyDriver`. Use `-UseExistingDokany` only for a compatible already installed driver. The installer preserves existing unrelated driver installations. GPU-PV requires a compatible guest display stack. The build tests run without a physical GPU; physical GPU and driver-update integration testing requires a Hyper-V GPU-PV environment. The ordinary networking component is installed separately.
+GuestTool restarts present Microsoft Virtual Render devices only after the driver inventory is complete, and only when the inventory changes. Administrator-disabled devices remain disabled. Failed restarts are retried after one minute. If Windows requires a restart, the service reports it without rebooting the guest. `-DisableAutomaticGpuRestart` disables automatic device restart.
+
+The native transport retains an open share handle for the lifetime of the guest. Because unloading an active VSMB transport can affect the Windows kernel and loaded GPU modules, ordinary service stop is disabled after the connection is established. For service maintenance, run:
+
+```powershell
+.\UninstallWindowsGpuTool.ps1 -PrepareMaintenance
+```
+
+Restart the guest, then rerun the installer to update it, or run the uninstall script without parameters to remove it. Disable GPU-PV devices before removing their driver mappings. Native Bind Filter mappings are recreated after each guest boot.
+
+For compatibility with guests that cannot use native VSMB, select the Plan 9 backend explicitly:
+
+```powershell
+.\InstallWindowsGpuTool.ps1 -Backend Plan9
+```
+
+This backend uses the pinned Mile.Cirno 1.3.1180.0 package and its matching Dokany driver. The installer verifies the release SHA-256 and selects the native architecture. Use `-CirnoArchive` for an offline archive, or `-CirnoDirectory` and `-DokanyDriver` for a compatible extracted distribution. Existing unrelated Dokany installations are preserved. This mode manages the GPU repository using Plan 9; ordinary Virtual SMB shares require the native backend.
+
+The VSMB initialization follows the version-specific request layouts in [NanaRun VirtualSmb](https://github.com/M2Team/NanaRun/tree/main/VirtualSmb) and the [Microsoft hcsshim VSMB implementation](https://github.com/microsoft/hcsshim/blob/main/internal/gcs-sidecar/vsmb.go). The automated build checks request layout, response parsing and driver mapping logic without starting the kernel redirector. Actual VMBus transport, image loading and device restart require a compatible Hyper-V guest and hardware integration testing.
 
 ## Native integration service
 

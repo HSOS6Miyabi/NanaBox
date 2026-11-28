@@ -1,10 +1,21 @@
-# Disable GPU-PV devices and dismount the Mile.Cirno filesystem before removing the service.
+# Disable GPU-PV devices before removing the service.
+param([switch]$PrepareMaintenance)
 $ErrorActionPreference = 'Stop'
 $name = 'NanaBoxGuestGpu'
 $root = Join-Path $env:ProgramFiles 'NanaBox Guest GPU'
 $binary = Join-Path $root 'nanabox-gpu.exe'
 if (Get-Process -Name 'Mile.Cirno' -ErrorAction SilentlyContinue) { throw 'Disable GPU-PV devices and dismount Mile.Cirno first.' }
 $service = Get-Service -Name $name -ErrorAction SilentlyContinue
+if ($PrepareMaintenance) {
+    if ($service) {
+        Set-Service -Name $name -StartupType Disabled
+        Write-Host 'The service will stay stopped after the next Windows restart. Restart Windows before updating or uninstalling it.'
+    }
+    return
+}
+if ($service -and $service.Status -ne 'Stopped' -and -not $service.CanStop) {
+    throw 'Native Virtual SMB is active. Run this script with -PrepareMaintenance and restart Windows before removal.'
+}
 if ($service -and $service.Status -ne 'Stopped') {
     Stop-Service -Name $name
     (Get-Service -Name $name).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(30))

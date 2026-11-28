@@ -1,5 +1,6 @@
 # Run in a Windows guest as administrator.
 param(
+    [ValidateSet('VirtualSmb','Plan9')][string]$Backend = 'VirtualSmb',
     [string]$CirnoDirectory,
     [string]$DokanyDriver,
     [string]$CirnoArchive,
@@ -24,8 +25,9 @@ $binary = (Resolve-Path -LiteralPath $Executable).Path
 $name = 'NanaBoxGuestGpu'
 $root = Join-Path $env:ProgramFiles 'NanaBox Guest GPU'
 $client = Join-Path $root 'Cirno'
+$shared = Join-Path $env:ProgramData 'NanaBox Guest Shares'
 $destination = Join-Path $root 'nanabox-gpu.exe'
-function Protect-Directory([string]$Path) {
+function Protect-Directory([string]$Path,[switch]$UserRead) {
     $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
     $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
     if (Test-Path -LiteralPath $Path) {
@@ -41,10 +43,27 @@ function Protect-Directory([string]$Path) {
         $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
             $sid,'FullControl','ContainerInherit, ObjectInherit','None','Allow'))
     }
+    if ($UserRead) {
+        $users = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
+        $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
+            $users,'ReadAndExecute','ContainerInherit, ObjectInherit','None','Allow'))
+    }
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
+$service = Get-Service -Name $name -ErrorAction SilentlyContinue
+if ($service -and $service.Status -ne 'Stopped' -and -not $service.CanStop) {
+    throw 'The native VSMB transport is active. Run UninstallWindowsGpuTool.ps1 -PrepareMaintenance and restart Windows before updating the service.'
+}
+if ($Backend -eq 'VirtualSmb' -and ($CirnoDirectory -or $CirnoArchive -or $DokanyDriver -or $UseExistingDokany)) {
+    throw 'Mile.Cirno and Dokany options require -Backend Plan9.'
+}
+$windowsBuild = [int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name CurrentBuildNumber).CurrentBuildNumber
+if ($Backend -eq 'VirtualSmb' -and $windowsBuild -lt 18362) {
+    throw 'Native Virtual SMB requires Windows build 18362 or later.'
+}
 Protect-Directory $root
-Protect-Directory $client
+if ($Backend -eq 'VirtualSmb') { Protect-Directory $shared -UserRead }
+else { Protect-Directory $client }
 if ((Get-PeMachine $binary) -ne (Get-ArchitectureMachine $architecture)) { throw 'Wrong GuestTool architecture.' }
 $staging = Join-Path $root ('package-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $staging | Out-Null
@@ -52,6 +71,7 @@ try {
 if (Get-Process -Name 'Mile.Cirno' -ErrorAction SilentlyContinue) {
     throw 'Disable GPU-PV devices and dismount the existing Mile.Cirno filesystem before upgrading the client.'
 }
+if ($Backend -eq 'Plan9') {
 if ($CirnoDirectory) {
     $source = (Resolve-Path -LiteralPath $CirnoDirectory).Path
     $cirno = Join-Path $source 'Mile.Cirno.exe'
@@ -80,6 +100,7 @@ if ($CirnoDirectory) {
     $DokanyDriver = $files.Driver
 }
 Install-CirnoDriver $DokanyDriver $architecture -UseExistingDriver:$UseExistingDokany
+}
 $service = Get-Service -Name $name -ErrorAction SilentlyContinue
 if ($service -and $service.Status -ne 'Stopped') {
     Stop-Service -Name $name
@@ -93,12 +114,19 @@ function Copy-ProtectedFile([string]$Source,[string]$Destination) {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 Copy-ProtectedFile $binary $destination
-Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll' } | ForEach-Object {
-    Copy-ProtectedFile $_.FullName (Join-Path $client $_.Name)
+if ($Backend -eq 'Plan9') {
+    Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll' } | ForEach-Object {
+        Copy-ProtectedFile $_.FullName (Join-Path $client $_.Name)
+    }
 }
 $key = 'HKLM:\SOFTWARE\NanaBox\GuestTool\Gpu'
 New-Item -Path $key -Force | Out-Null
-New-ItemProperty -Path $key -Name CirnoPath -Value (Join-Path $client 'Mile.Cirno.exe') -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $key -Name Backend -Value $Backend -PropertyType String -Force | Out-Null
+if ($Backend -eq 'Plan9') {
+    New-ItemProperty -Path $key -Name CirnoPath -Value (Join-Path $client 'Mile.Cirno.exe') -PropertyType String -Force | Out-Null
+} else {
+    Remove-ItemProperty -Path $key -Name CirnoPath -ErrorAction SilentlyContinue
+}
 New-ItemProperty -Path $key -Name AutomaticRestart -Value $(if ($DisableAutomaticGpuRestart) {'0'} else {'1'}) -PropertyType String -Force | Out-Null
 $image = '"' + $destination + '"'
 if ($service) {
@@ -111,7 +139,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to register GPU service.' }
 if ($LASTEXITCODE -ne 0) { throw 'Failed to configure GPU service recovery.' }
 Start-Service -Name $name
 (Get-Service -Name $name).WaitForStatus('Running',[TimeSpan]::FromSeconds(30))
-Write-Host 'NanaBox GPU service is running. Use the host Guest tools to inspect the mount.'
+Write-Host "NanaBox Windows share and GPU service is running ($Backend). Use the host Guest tools to inspect the mounts."
 } finally {
     if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
 }
