@@ -442,16 +442,16 @@
     <comment>Drives</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>设为 true 时，通过只读 Plan 9 和 Virtual SMB 共享公开宿主操作系统中与 GPU-PV 相关的若干目录（可选）。</value>
-    <comment>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</comment>
+    <value>根据所选客户机操作系统，以只读方式共享宿主 GPU 驱动目录。Linux 使用 Plan 9；Windows 使用驱动存储及系统支持的 Virtual SMB。</value>
+    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.AutomationProperties.Name" xml:space="preserve">
     <value>启用宿主驱动存储共享</value>
     <comment>Share Host Driver Store</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>设为 true 时，通过只读 Plan 9 和 Virtual SMB 共享公开宿主操作系统中与 GPU-PV 相关的若干目录（可选）。</value>
-    <comment>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</comment>
+    <value>根据所选客户机操作系统，以只读方式共享宿主 GPU 驱动目录。Linux 使用 Plan 9；Windows 使用驱动存储及系统支持的 Virtual SMB。</value>
+    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
   </data>
   <data name="EnableHostDriverStoreLabel.Text" xml:space="preserve">
     <value>启用宿主驱动存储共享</value>

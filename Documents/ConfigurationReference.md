@@ -250,6 +250,9 @@ Available values: "Disabled", "Default", "List" and "Mirror"
 
 (Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB
 shares for several GPU-PV (paravirtualization) related folders from the Host OS.
+Linux guests receive the driver FileRepository and lxss/lib shares over Plan 9.
+Windows guests receive the Windows driver store shares, without Linux ELF libraries.
+Unknown guests retain both transport types for compatibility.
 
 Note: You cannot suspend the virtual machine properly if this option is enabled.
 

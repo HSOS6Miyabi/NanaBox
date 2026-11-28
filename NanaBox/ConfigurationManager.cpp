@@ -192,8 +192,7 @@ namespace
 void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configuration)
 {
     std::vector<std::string> Names;
-    if (Configuration.Gpu.EnableHostDriverStore)
-        Names = {"HostDriverStore", "NanaBox.HostDrivers", "NanaBox.HostLxssLib"};
+    Names = {"HostDriverStore", "NanaBox.HostDrivers", "NanaBox.HostLxssLib"};
     if (Names.size() + Configuration.Plan9Shares.size() > 128)
         throw std::invalid_argument("At most 128 Plan9 shares are supported");
     for (auto const& Share : Configuration.Plan9Shares)
@@ -577,6 +576,8 @@ std::string NanaBox::MakeHcsConfiguration(
                     SystemDirectoryPath.data(),
                     static_cast<UINT>(SystemDirectoryPath.size())));
 
+                const bool LinuxGuest = Configuration.GuestType == NanaBox::GuestType::Linux;
+                const bool WindowsGuest = Configuration.GuestType == NanaBox::GuestType::Windows;
                 const std::uint32_t Plan9SharePort = 50001;
 
                 typedef struct { LPCSTR Name; LPCWSTR Path; } ShareItem;
@@ -600,6 +601,9 @@ std::string NanaBox::MakeHcsConfiguration(
 
                 for (size_t i = 0; i < Plan9ShareItemsCount; ++i)
                 {
+                    if ((LinuxGuest && i == 0) || (WindowsGuest && i == 2))
+                        continue;
+
                     std::wstring SharePath(
                         SystemDirectoryPath + Plan9ShareItems[i].Path);
 
@@ -613,12 +617,18 @@ std::string NanaBox::MakeHcsConfiguration(
                     Current["AccessName"] = Plan9ShareItems[i].Name;
                     Current["Path"] = Mile::ToString(CP_UTF8, SharePath);
                     Current["Port"] = Plan9SharePort;
-                    Current["Flags"] = NanaBox::Plan9ShareFlags::ReadOnly;
+                    std::uint32_t Flags = NanaBox::Plan9ShareFlags::ReadOnly;
+                    if (LinuxGuest)
+                        Flags |= NanaBox::Plan9ShareFlags::AllowOptions;
+                    Current["Flags"] = Flags;
                     Plan9Shares.push_back(Current);
                 }
 
-                for (size_t i = 0; i < VirtualSmbShareItemsCount; ++i)
+                for (size_t i = 0; !LinuxGuest && i < VirtualSmbShareItemsCount; ++i)
                 {
+                    if (WindowsGuest && i == 1)
+                        continue;
+
                     std::wstring SharePath(
                         SystemDirectoryPath + VirtualSmbShareItems[i].Path);
 

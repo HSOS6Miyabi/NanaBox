@@ -442,16 +442,16 @@
     <comment>Drives</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.AutomationProperties.HelpText" xml:space="preserve">
-    <value>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</value>
-    <comment>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</comment>
+    <value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value>
+    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.AutomationProperties.Name" xml:space="preserve">
     <value>Share Host Driver Store</value>
     <comment>Share Host Driver Store</comment>
   </data>
   <data name="EnableHostDriverStoreCheckBox.ToolTipService.ToolTip" xml:space="preserve">
-    <value>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</value>
-    <comment>(Optional) Set it true if you want to enable readonly Plan 9 and Virtual SMB shares for several GPU-PV (paravirtualization) related folders from the Host OS.</comment>
+    <value>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</value>
+    <comment>Expose read-only host GPU driver directories for the selected guest operating system. Linux uses Plan 9; Windows uses the driver store and Virtual SMB where supported.</comment>
   </data>
   <data name="EnableHostDriverStoreLabel.Text" xml:space="preserve">
     <value>Share Host Driver Store</value>
