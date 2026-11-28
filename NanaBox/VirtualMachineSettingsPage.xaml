@@ -1668,7 +1668,7 @@
             <TextBlock x:Uid="/VirtualMachineSettingsPage/GuestPlan9Title" Text="Shared folders and GPU drivers" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
             <TextBlock x:Name="GuestLinuxShareNote" x:Uid="/VirtualMachineSettingsPage/GuestPlan9Note" Text="The guest mounts enabled shares under /media. Specify a share name to mount or unmount it, and optionally choose an empty guest directory." TextWrapping="Wrap" Opacity="0.75" />
             <TextBlock x:Name="GuestWindowsShareNote" x:Uid="/VirtualMachineSettingsPage/GuestWindowsShareNote"
-              Text="Virtual SMB shares are mounted automatically under ProgramData. GPU driver mappings and restart status are included in the mount report."
+              Text="Virtual SMB shares mount automatically under ProgramData. Install WinFsp and enable Windows 9P integration to mount 9P shares under NanaBox Guest 9P. Leave the mount directory blank or specify a folder name within that directory."
               TextWrapping="Wrap" Opacity="0.75" Visibility="Collapsed" />
             <StackPanel Spacing="8">
               <Button x:Name="GuestPlan9Control" x:Uid="/VirtualMachineSettingsPage/GuestPlan9" Content="Inspect guest mounts" Tag="Plan9Shares" Click="GuestToolsButtonClick" AutomationProperties.AutomationId="GuestPlan9Button" />

@@ -1538,7 +1538,7 @@
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
     <value>查询所选 HCS 计算系统属性</value>
   </data>
-  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB 共享目录自动挂载至 ProgramData 下。挂载报告同时显示 GPU 驱动映射及设备重启状态。</value></data>
+  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB 共享目录自动挂载至 ProgramData。安装 WinFsp 并启用 Windows 9P 集成功能后，可在 NanaBox Guest 9P 目录下挂载 9P 共享。挂载目录可留空，也可填写该目录下的子目录名称。</value></data>
   <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>添加 GPU 分区适配器</value></data>
   <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>移除所选 GPU 分区适配器</value></data>
   <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>设置所选 GPU 分区的资源配额</value></data>

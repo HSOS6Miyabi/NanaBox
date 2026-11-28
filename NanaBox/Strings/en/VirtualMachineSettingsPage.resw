@@ -1538,7 +1538,7 @@
   <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
     <value>Selected HCS system properties</value>
   </data>
-  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB shares are mounted automatically under ProgramData. GPU driver mappings and restart status are included in the mount report.</value></data>
+  <data name="GuestWindowsShareNote.Text" xml:space="preserve"><value>Virtual SMB shares mount automatically under ProgramData. Install WinFsp and enable Windows 9P integration to mount 9P shares under NanaBox Guest 9P. Leave the mount directory blank or specify a folder name within that directory.</value></data>
   <data name="VmmsGpuAdd.Content" xml:space="preserve"><value>Add GPU partition adapter</value></data>
   <data name="VmmsGpuRemove.Content" xml:space="preserve"><value>Remove selected GPU partition adapter</value></data>
   <data name="VmmsGpuQuotas.Content" xml:space="preserve"><value>Set selected GPU partition quotas</value></data>

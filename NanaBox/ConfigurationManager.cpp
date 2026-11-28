@@ -200,6 +200,9 @@ void NanaBox::ValidatePlan9Shares(VirtualMachineConfiguration const& Configurati
     for (auto const& Share : Configuration.Plan9Shares)
     {
         CheckShareComponent(Share.Name);
+        if (Configuration.GuestType == NanaBox::GuestType::Windows &&
+            !NanaBox::Wddm::SafeComponent(winrt::to_hstring(Share.Name).c_str()))
+            throw std::invalid_argument("Invalid Windows Plan9 share name: " + Share.Name);
         if (Share.Path.empty() || Share.Path.find('\0') != std::string::npos)
             throw std::invalid_argument("Plan9 share requires a valid host path");
         if (!Share.Port || Share.Port == UINT32_MAX || (Share.Port >= 27453 && Share.Port <= 27457))

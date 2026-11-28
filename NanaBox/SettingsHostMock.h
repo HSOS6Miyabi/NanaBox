@@ -61,7 +61,9 @@ namespace NanaBox
             if (Action == "VirtualSmbShares")
                 Result = {{"Backend", "VirtualSmb"}, {"Mounted", true}, {"VirtualSmbShares", Json::array({
                     Json{{"Name", "Projects"}, {"Target", "C:\\ProgramData\\NanaBox Guest Shares\\Projects"},
-                        {"ReadOnly", true}, {"Mounted", true}}})}};
+                        {"ReadOnly", true}, {"Mounted", true}}})}, {"Plan9Enabled", true},
+                    {"Shares", Json::array({Json{{"Name", "Projects"}, {"MountPoint", "C:\\ProgramData\\NanaBox Guest 9P\\Projects"},
+                        {"Mounted", Data->Plan9Mounted}}})}};
             else if (Action == "Plan9Shares" || Action == "Plan9Mount" || Action == "Plan9Unmount")
             {
                 if (Action != "Plan9Shares")

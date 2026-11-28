@@ -1594,7 +1594,7 @@ namespace winrt::NanaBox::implementation
             this->ClipboardGtkUnicodeCheckBox().IsEnabled(Type == NanaBox::GuestType::Linux);
         if (this->ClipboardWindowsUnicodeCheckBox())
             this->ClipboardWindowsUnicodeCheckBox().IsEnabled(WindowsGuest);
-        this->GuestManualMountPanel().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+        this->GuestManualMountPanel().Visibility(winrt::Visibility::Visible);
         this->GuestLinuxShareNote().Visibility(WindowsGuest ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
         this->GuestWindowsShareNote().Visibility(WindowsGuest ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
     }

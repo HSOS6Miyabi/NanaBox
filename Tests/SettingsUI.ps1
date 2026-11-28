@@ -198,8 +198,16 @@ try {
         $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'VirtualSmbShares'}
         Assert-Equal $result.Data.Backend 'VirtualSmb' 'Native Windows share backend'
         Assert-Equal $result.Data.VirtualSmbShares[0].Target 'C:\ProgramData\NanaBox Guest Shares\Projects' 'Windows share mount point'
-        Assert-Missing 'GuestPlan9MountButton'
-        Assert-Missing 'GuestPlan9UnmountButton'
+        Assert-Equal $result.Data.Plan9Enabled $true 'Windows Plan 9 capability'
+        Set-Text 'GuestPlan9NameTextBox' 'Projects'
+        Invoke-Control 'GuestPlan9UnmountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Unmount'}
+        Assert-Equal $result.Data.Shares[0].Mounted $false 'Windows Plan 9 unmounted'
+        Set-Text 'GuestPlan9PathTextBox' 'C:\ProgramData\NanaBox Guest 9P\Custom'
+        Invoke-Control 'GuestPlan9MountButton'
+        $result = Wait-Result 'GuestToolsResult' {param($v) $v.Success -and $v.ResourceType -eq 'Plan9Mount'}
+        Assert-Equal $result.Data.Shares[0].MountPoint 'C:\ProgramData\NanaBox Guest 9P\Custom' 'Windows Plan 9 custom mount point'
+        Assert-Equal $result.Data.Shares[0].Mounted $true 'Windows Plan 9 mounted'
         Select-Tab 'TabGeneral'
         Select-Choice 'GuestTypeComboBox' 'GuestLinux'
         Select-Tab 'TabGuestTools'
