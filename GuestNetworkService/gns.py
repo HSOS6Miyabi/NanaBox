@@ -1,5 +1,8 @@
 """NanaBox guest network configuration protocol (Python 3.12+ on Windows)."""
 import argparse
+import base64
+import hashlib
+import hmac
 import datetime
 import os
 import time
@@ -10,6 +13,9 @@ import platform
 import re
 import socket
 import struct
+import secrets
+import stat
+import tempfile
 import subprocess
 import sys
 
@@ -17,7 +23,11 @@ PORT = 27453
 SERVICE = f'{PORT:08x}-facb-11e6-bd58-64006a7986d3'
 LIMIT = 256 * 1024
 STARTED = time.monotonic()
-QUERY_CAPABILITIES = ('Heartbeat', 'GuestInformation', 'Diagnostics', 'Connectivity')
+QUERY_CAPABILITIES = ('Heartbeat', 'GuestInformation', 'Diagnostics', 'Connectivity', 'TimeSync')
+FILE_CHUNK = 64 * 1024
+MAX_FILE_SIZE = (1 << 63) - 1
+SESSION_TTL = 900
+MAX_SESSIONS = 16
 
 
 def read_exact(sock, length):
@@ -60,6 +70,10 @@ def normalize(request):
     if not isinstance(request, dict) or type(request.get('Version')) is not int or request['Version'] != 1:
         raise ValueError('Unsupported protocol version')
     resource = request.get('ResourceType')
+    if resource in ('FileExchange', 'TimeSync'):
+        action = request.get('RequestType')
+        settings = normalize_tools(resource, action, request.get('Settings'))
+        return '', resource, action, settings
     if resource in ('Heartbeat', 'GuestInformation', 'Diagnostics') and request.get('RequestType') == 'Query':
         if request.get('Settings') != {}:
             raise ValueError('Query settings must be an empty object')
@@ -684,7 +698,274 @@ class WindowsBackend:
                      text=True, capture_output=True, check=True, timeout=30)
 
 
-def guest_information():
+def exchange_name(name):
+    # The exchange directory contains regular files only. Apply the same
+    # portable filename rules on both guest operating systems.
+    if not isinstance(name, str) or not 1 <= len(name.encode('utf-8')) <= 240:
+        raise ValueError('Invalid filename')
+    if name.startswith('.') or name.endswith((' ', '.')) or any(
+            ord(c) < 32 or c in '/\\:*?"<>|' for c in name):
+        raise ValueError('Invalid filename')
+    stem = name.split('.')[0].upper()
+    if stem in ('CON', 'PRN', 'AUX', 'NUL') or re.fullmatch(r'(?:COM|LPT)[1-9¹²³]', stem):
+        raise ValueError('Reserved filename')
+    return name
+
+
+def normalize_tools(resource, action, settings):
+    if not isinstance(settings, dict):
+        raise ValueError('Invalid settings')
+    if resource == 'TimeSync':
+        if action == 'Query' and not settings:
+            return {}
+        if action == 'Update' and set(settings) == {'UnixMilliseconds'}:
+            return {'UnixMilliseconds': number(settings['UnixMilliseconds'], 946684800000, 4102444800000)}
+        raise ValueError('Invalid clock request')
+    fields = {
+        'BeginUpload': {'Name', 'Size', 'Overwrite'},
+        'OpenDownload': {'Name'},
+        'Write': {'Token', 'Offset', 'Data'},
+        'Read': {'Token', 'Offset', 'Length'},
+        'Commit': {'Token', 'Sha256'},
+        'FinishDownload': {'Token'},
+        'Abort': {'Token'},
+    }
+    if not isinstance(action, str) or action not in fields or set(settings) != fields[action]:
+        raise ValueError('Invalid file exchange request')
+    result = dict(settings)
+    if 'Name' in result:
+        result['Name'] = exchange_name(result['Name'])
+    if 'Size' in result:
+        result['Size'] = number(result['Size'], 0, MAX_FILE_SIZE)
+        if type(result['Overwrite']) is not bool:
+            raise ValueError('Overwrite must be Boolean')
+    if 'Token' in result:
+        token = result['Token']
+        if not isinstance(token, str) or not re.fullmatch(r'[0-9a-f]{32}', token):
+            raise ValueError('Invalid transfer token')
+    if 'Offset' in result:
+        result['Offset'] = number(result['Offset'], 0, MAX_FILE_SIZE)
+    if 'Length' in result:
+        result['Length'] = number(result['Length'], 1, FILE_CHUNK)
+    if 'Data' in result:
+        encoded = result['Data']
+        if not isinstance(encoded, str) or len(encoded) > ((FILE_CHUNK + 2) // 3) * 4:
+            raise ValueError('Invalid transfer chunk')
+        result['Data'] = base64.b64decode(encoded, validate=True)
+        if not 0 < len(result['Data']) <= FILE_CHUNK:
+            raise ValueError('Invalid transfer chunk')
+    if 'Sha256' in result and (not isinstance(result['Sha256'], str)
+                               or not re.fullmatch(r'[0-9a-f]{64}', result['Sha256'])):
+        raise ValueError('Invalid SHA-256 digest')
+    return result
+
+
+def regular_file(info):
+    return stat.S_ISREG(info.st_mode) and not (
+        getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0))
+
+
+def publish_file(temporary, target, overwrite):
+    if overwrite:
+        # Never follow an existing symbolic link or reparse point.
+        try:
+            if not regular_file(target.lstat()):
+                raise ValueError('Destination is not a regular file')
+        except FileNotFoundError:
+            pass
+        os.replace(temporary, target)
+    elif os.name == 'nt':
+        os.rename(temporary, target)  # fails if the destination exists
+    else:
+        os.link(temporary, target)  # atomic no-replace publication
+        temporary.unlink()
+
+
+class FileExchange:
+    """File transactions scoped to a directory administered by the guest."""
+    def __init__(self, root, monotonic=time.monotonic):
+        self.root = pathlib.Path(root)
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        info = self.root.lstat()
+        if not stat.S_ISDIR(info.st_mode) or self.root.is_symlink() or (
+                getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)):
+            raise ValueError('Exchange root must be a real directory')
+        if os.name != 'nt' and (info.st_uid != os.geteuid() or info.st_mode & 0o022):
+            raise PermissionError('Exchange root must be owned by the service and not writable by other users')
+        self.root = self.root.resolve(strict=True)
+        self.monotonic = monotonic
+        self.sessions = {}
+        # A service restart invalidates previous session tokens.
+        for path in self.root.glob('.nanabox-upload-*'):
+            if re.fullmatch(r'\.nanabox-upload-[0-9a-f]{32}', path.name):
+                path.unlink()
+
+    def abort(self, token):
+        session = self.sessions.pop(token, None)
+        if session:
+            try:
+                session['File'].close()
+            finally:
+                if session.get('Temporary') is not None:
+                    session['Temporary'].unlink(missing_ok=True)
+
+    def close(self):
+        for token in list(self.sessions):
+            self.abort(token)
+
+    def reap(self):
+        now = self.monotonic()
+        for token, session in list(self.sessions.items()):
+            if now - session['Touched'] > SESSION_TTL:
+                self.abort(token)
+
+    def request(self, action, settings):
+        self.reap()
+        if action in ('BeginUpload', 'OpenDownload'):
+            if len(self.sessions) >= MAX_SESSIONS:
+                raise RuntimeError('Too many active transfers')
+            name = exchange_name(settings['Name'])
+            target = self.root / name
+            token = secrets.token_hex(16)
+            session = {'Name': name, 'Target': target, 'Offset': 0, 'Hash': hashlib.sha256(),
+                       'Touched': self.monotonic()}
+            if action == 'BeginUpload':
+                try:
+                    existing = target.lstat()
+                except FileNotFoundError:
+                    existing = None
+                if existing is not None and (not settings['Overwrite'] or not regular_file(existing)):
+                    raise FileExistsError('Destination already exists or is not a regular file')
+                temporary = self.root / ('.nanabox-upload-' + token)
+                fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY |
+                             getattr(os, 'O_BINARY', 0), 0o600)
+                session.update(File=os.fdopen(fd, 'wb'), Temporary=temporary,
+                               Size=settings['Size'], Overwrite=settings['Overwrite'], Upload=True)
+            else:
+                info = target.lstat()
+                if not regular_file(info):
+                    raise ValueError('Source is not a regular file')
+                fd = os.open(target, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) |
+                             getattr(os, 'O_BINARY', 0))
+                stream = os.fdopen(fd, 'rb')
+                current = os.fstat(stream.fileno())
+                if not regular_file(current) or not os.path.samestat(info, current):
+                    stream.close()
+                    raise ValueError('Source changed during open')
+                session.update(File=stream, Size=current.st_size, Info=current, Upload=False)
+            self.sessions[token] = session
+            return {'Token': token, 'Name': name, 'Size': session['Size'], 'ChunkSize': FILE_CHUNK}
+
+        token = settings['Token']
+        if action == 'Abort':
+            self.abort(token)
+            return {'Aborted': True}
+        session = self.sessions.get(token)
+        if session is None:
+            raise ValueError('Unknown or expired transfer token')
+        session['Touched'] = self.monotonic()
+        stream = session['File']
+        offset = session['Offset']
+        if action in ('Read', 'Write') and settings['Offset'] != offset:
+            raise ValueError('Unexpected transfer offset')
+        if action == 'Write' and session['Upload']:
+            chunk = settings['Data']
+            if offset + len(chunk) > session['Size']:
+                raise ValueError('Chunk exceeds declared file size')
+            try:
+                if stream.write(chunk) != len(chunk):
+                    raise OSError('Short file write')
+            except Exception:
+                self.abort(token)
+                raise
+            session['Hash'].update(chunk)
+            session['Offset'] += len(chunk)
+            return {'Offset': session['Offset']}
+        if action == 'Read' and not session['Upload']:
+            chunk = stream.read(min(settings['Length'], session['Size'] - offset))
+            if not chunk and offset < session['Size']:
+                self.abort(token)
+                raise OSError('Source file was truncated')
+            session['Hash'].update(chunk)
+            session['Offset'] += len(chunk)
+            return {'Offset': session['Offset'], 'Data': base64.b64encode(chunk).decode('ascii'),
+                    'End': session['Offset'] == session['Size']}
+        if action in ('Commit', 'FinishDownload'):
+            upload = session['Upload']
+            if (action == 'Commit') != upload:
+                raise ValueError('Incorrect transfer direction')
+            try:
+                if offset != session['Size']:
+                    raise ValueError('Incomplete transfer')
+                digest = session['Hash'].hexdigest()
+                if upload:
+                    if not hmac.compare_digest(settings['Sha256'], digest):
+                        raise ValueError('SHA-256 mismatch')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                    stream.close()
+                    publish_file(session['Temporary'], session['Target'], session['Overwrite'])
+                else:
+                    current = os.fstat(stream.fileno())
+                    if current.st_size != session['Size'] or current.st_mtime_ns != session['Info'].st_mtime_ns:
+                        raise ValueError('Source file changed during download')
+                return {'Name': session['Name'], 'Size': offset, 'Sha256': digest}
+            finally:
+                self.abort(token)
+        raise ValueError('Incorrect transfer operation')
+
+
+def clock_milliseconds():
+    return time.time_ns() // 1000000
+
+
+def set_guest_clock(milliseconds):
+    if platform.system() == 'Windows':
+        import ctypes
+        from ctypes import wintypes
+
+        class SystemTime(ctypes.Structure):
+            _fields_ = [(name, wintypes.WORD) for name in (
+                'Year', 'Month', 'DayOfWeek', 'Day', 'Hour', 'Minute', 'Second', 'Milliseconds')]
+
+        seconds, remainder = divmod(milliseconds, 1000)
+        dt = datetime.datetime.fromtimestamp(seconds, datetime.timezone.utc)
+        value = SystemTime(dt.year, dt.month, (dt.weekday() + 1) % 7, dt.day,
+                           dt.hour, dt.minute, dt.second, remainder)
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel32.SetSystemTime.argtypes = [ctypes.POINTER(SystemTime)]
+        kernel32.SetSystemTime.restype = wintypes.BOOL
+        if not kernel32.SetSystemTime(ctypes.byref(value)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    else:
+        time.clock_settime_ns(time.CLOCK_REALTIME, milliseconds * 1000000)
+
+
+class GuestTools:
+    def __init__(self, exchange=None, allow_clock_set=False,
+                 clock=clock_milliseconds, set_clock=set_guest_clock):
+        self.exchange = exchange
+        self.allow_clock_set = allow_clock_set
+        self.clock = clock
+        self.set_clock = set_clock
+
+    def capabilities(self):
+        return {'FileExchange': self.exchange is not None, 'ClockSet': self.allow_clock_set,
+                'FileChunkSize': FILE_CHUNK}
+
+    def request(self, resource, action, settings):
+        if resource == 'FileExchange':
+            if self.exchange is None:
+                raise PermissionError('File exchange is disabled in the guest service')
+            return self.exchange.request(action, settings)
+        if action == 'Update':
+            if not self.allow_clock_set:
+                raise PermissionError('Clock synchronization is disabled in the guest service')
+            self.set_clock(settings['UnixMilliseconds'])
+        return {'UnixMilliseconds': self.clock(), 'ClockSetEnabled': self.allow_clock_set}
+
+
+def guest_information(tools=None):
     return {
         'HostName': socket.gethostname(),
         'OperatingSystem': platform.system(),
@@ -696,10 +977,11 @@ def guest_information():
         'ServiceUptimeSeconds': max(0, int(time.monotonic() - STARTED)),
         'ProtocolVersion': 1,
         'QueryCapabilities': list(QUERY_CAPABILITIES),
+        'Capabilities': (tools or GuestTools()).capabilities(),
     }
 
 
-def handle(sock, backend):
+def handle(sock, backend, tools=None):
     try:
         request = receive(sock)
         target, resource, action, settings = normalize(request)
@@ -708,7 +990,9 @@ def handle(sock, backend):
             response['Data'] = {'Alive': True, 'ProtocolVersion': 1,
                                 'ServiceUptimeSeconds': max(0, int(time.monotonic() - STARTED))}
         elif resource == 'GuestInformation':
-            response['Data'] = guest_information()
+            response['Data'] = guest_information(tools)
+        elif resource in ('TimeSync', 'FileExchange'):
+            response['Data'] = (tools or GuestTools()).request(resource, action, settings)
         elif resource == 'Diagnostics':
             response['Data'] = backend.diagnostics()
         elif resource == 'Connectivity':
@@ -730,7 +1014,9 @@ def handle(sock, backend):
         send(sock, {'Version': 1, 'Success': False, 'Error': 'Guest response cannot be encoded or exceeds the message limit'})
 
 
-def serve():
+def serve(exchange_root=None, allow_clock_set=False):
+    exchange = FileExchange(exchange_root) if exchange_root is not None else None
+    tools = GuestTools(exchange, allow_clock_set)
     windows = platform.system() == 'Windows'
     backend = WindowsBackend() if windows else LinuxBackend()
     if windows:
@@ -749,7 +1035,7 @@ def serve():
                     continue
                 conn.settimeout(90)
                 try:
-                    handle(conn, backend)
+                    handle(conn, backend, tools)
                 except (OSError, EOFError, ValueError) as exc:
                     print(f'GNS connection: {exc}', file=sys.stderr)
 
@@ -766,7 +1052,9 @@ def host_send(vm_id, request):
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest='command', required=True)
-    commands.add_parser('serve')
+    server = commands.add_parser('serve')
+    server.add_argument('--exchange-root', type=pathlib.Path, help='Enable file exchange in this protected directory')
+    server.add_argument('--allow-clock-set', action='store_true', help='Allow the parent partition to synchronize the guest clock')
     host = commands.add_parser('send')
     host.add_argument('vm_id', help='HCS runtime VM ID')
     host.add_argument('request', type=pathlib.Path, help='JSON request')
@@ -775,7 +1063,7 @@ def main():
     query.add_argument('resource', choices=QUERY_CAPABILITIES[:3])
     options = cli.parse_args()
     if options.command == 'serve':
-        serve()
+        serve(options.exchange_root, options.allow_clock_set)
     else:
         import uuid
         request = ({'Version': 1, 'ResourceType': options.resource, 'RequestType': 'Query', 'Settings': {}}
