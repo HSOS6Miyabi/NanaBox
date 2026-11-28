@@ -499,8 +499,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="ProcessorCountTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>Choose how many virtual CPU cores are available to the guest.</value></data>
   <data name="ProcessorCountTextBox.AutomationProperties.Name" xml:space="preserve"><value>Virtual processors</value></data>
   <data name="ProcessorCountTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>Choose how many virtual CPU cores are available to the guest.</value></data>
-  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
-  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU limit (0 = default; 100000 = 100%)</value></data>
+  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU usage limit (%) — 0 = automatic</value></data>
+  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU usage limit (%) — 0 = automatic</value></data>
   <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
   <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU scheduling weight (0 = default; 1–10000)</value></data>
   <data name="ProductNameLabel.Text" xml:space="preserve"><value>Product Name</value></data>
@@ -882,4 +882,30 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="InvalidIpv4Subnet" xml:space="preserve"><value>Enter a valid IPv4 subnet, for example 192.168.100.0/24.</value></data>
   <data name="InvalidIpv4Gateway" xml:space="preserve"><value>Enter a valid gateway address in the selected subnet.</value></data>
   <data name="HcnExpertRequired" xml:space="preserve"><value>Enable expert settings to create or modify this resource. Common virtual networks can be created under Host networking.</value></data>
+  <data name="HcsQueryMode.Header" xml:space="preserve"><value>Information to retrieve</value></data>
+  <data name="HcsQueryDefault.Content" xml:space="preserve"><value>Default information</value></data>
+  <data name="HcsQueryBasic.Content" xml:space="preserve"><value>Basic system information</value></data>
+  <data name="HcsQueryStatistics.Content" xml:space="preserve"><value>Performance statistics</value></data>
+  <data name="HcnParentNetwork.Header" xml:space="preserve"><value>Parent virtual network</value></data>
+  <data name="HcnNamespaceType.Header" xml:space="preserve"><value>Network namespace type</value></data>
+  <data name="HcnNamespaceHost.Content" xml:space="preserve"><value>Host namespace</value></data>
+  <data name="HcnNamespaceGuest.Content" xml:space="preserve"><value>Guest namespace</value></data>
+  <data name="HcnNamespaceAction.Header" xml:space="preserve"><value>Endpoint membership change</value></data>
+  <data name="HcnNamespaceAdd.Content" xml:space="preserve"><value>Add selected endpoint</value></data>
+  <data name="HcnNamespaceRemove.Content" xml:space="preserve"><value>Remove selected endpoint</value></data>
+  <data name="HcnEndpointReferencesLabel.Text" xml:space="preserve"><value>Select managed network endpoints below (refresh to update the list).</value></data>
+  <data name="HcnFrontendIp.Header" xml:space="preserve"><value>Frontend IPv4 address</value></data>
+  <data name="HcnProtocol.Header" xml:space="preserve"><value>Transport protocol</value></data>
+  <data name="HcnProtocolTcp.Content" xml:space="preserve"><value>TCP</value></data>
+  <data name="HcnProtocolUdp.Content" xml:space="preserve"><value>UDP</value></data>
+  <data name="HcnExternalPort.Header" xml:space="preserve"><value>External port</value></data>
+  <data name="HcnInternalPort.Header" xml:space="preserve"><value>Internal port</value></data>
+  <data name="HcnDestination.Header" xml:space="preserve"><value>Destination subnet (CIDR)</value></data>
+  <data name="HcnNextHop.Header" xml:space="preserve"><value>Next-hop IPv4 address</value></data>
+  <data name="HcnEncapsulation.Content" xml:space="preserve"><value>Enable encapsulation</value></data>
+  <data name="HcnSelectReferences" xml:space="preserve"><value>Select at least one managed endpoint. Refresh the list if necessary.</value></data>
+  <data name="HcnSelectNamespaceEndpoint" xml:space="preserve"><value>Select exactly one endpoint to change namespace membership.</value></data>
+  <data name="HcnSelectParentNetwork" xml:space="preserve"><value>Select a managed parent network. Create one first if the list is empty.</value></data>
+  <data name="HcnInvalidAddress" xml:space="preserve"><value>Enter a valid IPv4 address.</value></data>
+  <data name="HcnInvalidPort" xml:space="preserve"><value>Enter a port number between 1 and 65535.</value></data>
 </root>

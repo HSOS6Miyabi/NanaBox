@@ -247,6 +247,42 @@ namespace
                 Name.c_str())));
     }
 
+
+    winrt::hstring FormatCpuPercentage(std::uint64_t Value)
+    {
+        auto Text = std::to_wstring(Value / 1000);
+        if (auto Remainder = Value % 1000)
+        {
+            auto Fraction = std::to_wstring(Remainder + 1000).substr(1);
+            while (!Fraction.empty() && Fraction.back() == L'0') Fraction.pop_back();
+            Text += L"." + Fraction;
+        }
+        return winrt::hstring(Text);
+    }
+
+    std::uint64_t ReadCpuPercentage(winrt::TextBox const& Input)
+    {
+        auto Text = winrt::to_string(Input.Text());
+        auto Dot = Text.find('.');
+        auto Whole = std::string_view(Text).substr(0, Dot);
+        auto Fraction = Dot == std::string::npos ? std::string_view() : std::string_view(Text).substr(Dot + 1);
+        unsigned int Integer = 0, Decimal = 0;
+        auto Parsed = std::from_chars(Whole.data(), Whole.data() + Whole.size(), Integer);
+        if (Whole.empty() || Parsed.ec != std::errc() || Parsed.ptr != Whole.data() + Whole.size() ||
+            Integer > 100 || (Dot != std::string::npos && (Fraction.empty() || Fraction.size() > 3)))
+            ::InvalidSetting(::GetSettingsString(L"ProcessorLimitTextBox.Header"));
+        if (!Fraction.empty())
+        {
+            auto ParsedFraction = std::from_chars(Fraction.data(), Fraction.data() + Fraction.size(), Decimal);
+            if (ParsedFraction.ec != std::errc() || ParsedFraction.ptr != Fraction.data() + Fraction.size())
+                ::InvalidSetting(::GetSettingsString(L"ProcessorLimitTextBox.Header"));
+            for (std::size_t Index = Fraction.size(); Index < 3; ++Index) Decimal *= 10;
+        }
+        auto Result = static_cast<std::uint64_t>(Integer) * 1000 + Decimal;
+        if (Result > 100000) ::InvalidSetting(::GetSettingsString(L"ProcessorLimitTextBox.Header"));
+        return Result;
+    }
+
     template <typename ValueType>
     ValueType ReadSettingInteger(
         winrt::TextBox const& Input)
@@ -631,11 +667,14 @@ namespace winrt::NanaBox::implementation
                     Page->SectionAdvanced(),
                 };
                 auto Index = Sender.as<ListView>().SelectedIndex();
+                if (auto NavigationItem = Sender.as<ListView>().SelectedItem().try_as<ListViewItem>())
+                    Page->SectionHeading().Text(winrt::AutomationProperties::GetName(NavigationItem));
                 for (int i = 0; i < static_cast<int>(sizeof(Sections) / sizeof(Sections[0])); ++i)
                     Sections[i].Visibility(i == Index ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
             }
         });
         this->SettingsNavigation().SelectedIndex(0);
+        this->SectionHeading().Text(::GetSettingsString(L"TabGeneral.Content"));
         this->SizeChanged([Weak = this->get_weak()](winrt::IInspectable const&, winrt::Windows::UI::Xaml::SizeChangedEventArgs const& Args)
         {
             if (auto Page = Weak.get())
@@ -650,7 +689,37 @@ namespace winrt::NanaBox::implementation
         ::BindOperationDetails(this->VmmsResultTextBox(), this->SummaryVmmsResultTextBox(), this->DetailsVmmsResultTextBox());
         ::BindVisibility(this->NetworkExpertCheckBox(), this->NetworkExpertCheckBoxPanel());
         ::BindVisibility(this->HcnExpertCheckBox(), this->HcnExpertCheckBoxPanel());
+        auto UpdateHcnForm = [Weak = this->get_weak()]()
+        {
+            if (auto Page = Weak.get())
+            {
+                auto Choice = Page->HcnKindComboBox().SelectedItem().try_as<ComboBoxItem>();
+                if (!Choice) return;
+                auto Kind = winrt::unbox_value<winrt::hstring>(Choice.Tag());
+                bool Expert = Page->HcnExpertCheckBox().IsChecked().Value();
+                auto Visible = [](bool Show) { return Show ? winrt::Visibility::Visible : winrt::Visibility::Collapsed; };
+                Page->HcnGuidedPanel().Visibility(Visible(!Expert));
+                Page->HcnNameTextBox().Visibility(Visible(Expert || Kind == L"Network"));
+                Page->HcnNetworkIdTextBox().Visibility(Visible(Expert));
+                Page->HcnParentNetworkPanel().Visibility(Visible(Kind == L"Endpoint"));
+                Page->HcnNamespacePanel().Visibility(Visible(Kind == L"Namespace"));
+                Page->HcnEndpointReferencesPanel().Visibility(Visible(Kind == L"Namespace" || Kind == L"LoadBalancer" || Kind == L"Route"));
+                Page->HcnLoadBalancerPanel().Visibility(Visible(Kind == L"LoadBalancer"));
+                Page->HcnRoutePanel().Visibility(Visible(Kind == L"Route"));
+            }
+        };
+        this->HcnKindComboBox().SelectionChanged([UpdateHcnForm](winrt::IInspectable const&, winrt::SelectionChangedEventArgs const&) { UpdateHcnForm(); });
+        this->HcnExpertCheckBox().Checked([UpdateHcnForm](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateHcnForm(); });
+        this->HcnExpertCheckBox().Unchecked([UpdateHcnForm](winrt::IInspectable const&, winrt::RoutedEventArgs const&) { UpdateHcnForm(); });
+        UpdateHcnForm();
         ::BindVisibility(this->HcsQueryExpertCheckBox(), this->HcsQueryExpertCheckBoxPanel());
+        auto UpdateQueryMode = [Weak = winrt::make_weak(this->HcsQueryModeComboBox())](winrt::IInspectable const& Sender, winrt::RoutedEventArgs const&)
+        {
+            if (auto Choice = Weak.get()) Choice.Visibility(Sender.as<winrt::CheckBox>().IsChecked().Value()
+                ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
+        };
+        this->HcsQueryExpertCheckBox().Checked(UpdateQueryMode);
+        this->HcsQueryExpertCheckBox().Unchecked(UpdateQueryMode);
         ::BindVisibility(this->HcsExtensionsExpertCheckBox(), this->HcsExtensionsExpertCheckBoxPanel());
         auto UpdateNetworkMode = [Weak = this->get_weak()]()
         {
@@ -726,7 +795,7 @@ namespace winrt::NanaBox::implementation
                 winrt::to_hstring(this->m_Configuration.MemorySize));
             this->ResourceAllocationPanel().Visibility(this->m_MainWindow
                 ? winrt::Visibility::Collapsed : winrt::Visibility::Visible);
-            this->ProcessorLimitTextBox().Text(winrt::to_hstring(this->m_Configuration.ProcessorLimit));
+            this->ProcessorLimitTextBox().Text(::FormatCpuPercentage(this->m_Configuration.ProcessorLimit));
             this->ProcessorWeightTextBox().Text(winrt::to_hstring(this->m_Configuration.ProcessorWeight));
             this->MemoryOvercommitCheckBox().IsChecked(this->m_Configuration.AllowMemoryOvercommit);
             this->DeferredCommitCheckBox().IsChecked(this->m_Configuration.EnableDeferredCommit);
@@ -1019,7 +1088,7 @@ namespace winrt::NanaBox::implementation
                 Result.ProcessorCount =
                     ::ReadSettingInteger<std::uint32_t>(
                         this->ProcessorCountTextBox());
-                Result.ProcessorLimit = ::ReadSettingInteger<std::uint64_t>(this->ProcessorLimitTextBox());
+                Result.ProcessorLimit = ::ReadCpuPercentage(this->ProcessorLimitTextBox());
                 Result.ProcessorWeight = ::ReadSettingInteger<std::uint64_t>(this->ProcessorWeightTextBox());
                 Result.AllowMemoryOvercommit = winrt::unbox_value<bool>(this->MemoryOvercommitCheckBox().IsChecked());
                 Result.EnableDeferredCommit = winrt::unbox_value<bool>(this->DeferredCommitCheckBox().IsChecked());
@@ -2414,9 +2483,90 @@ namespace winrt::NanaBox::implementation
             }
             if (Action == L"HcnCreate" || Action == L"HcnModify")
             {
-                if (!this->HcnExpertCheckBox().IsChecked().Value())
-                    throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnExpertRequired"));
-                Data["Settings"] = Json::parse(winrt::to_string(this->HcnSettingsTextBox().Text()));
+                if (this->HcnExpertCheckBox().IsChecked().Value())
+                    Data["Settings"] = Json::parse(winrt::to_string(this->HcnSettingsTextBox().Text()));
+                else
+                {
+                    auto Kind = Data.at("Kind").get<std::string>();
+                    Json Settings = {{"SchemaVersion", {{"Major", 2}, {"Minor", 0}}}};
+                    auto References = [&]()
+                    {
+                        Json Ids = Json::array();
+                        for (auto const& Entry : this->HcnEndpointReferencesList().SelectedItems())
+                            Ids.push_back(winrt::to_string(winrt::unbox_value<winrt::hstring>(
+                                Entry.as<winrt::Windows::UI::Xaml::Controls::ListViewItem>().Tag())));
+                        if (Ids.empty()) throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnSelectReferences"));
+                        return Ids;
+                    };
+                    auto Address = [](winrt::TextBox const& Input)
+                    {
+                        auto Value = winrt::to_string(Input.Text());
+                        std::uint32_t AddressValue = 0;
+                        if (!::ParseIpv4(Value, AddressValue))
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnInvalidAddress"));
+                        return Value;
+                    };
+                    auto Port = [](winrt::TextBox const& Input)
+                    {
+                        auto Value = winrt::to_string(Input.Text());
+                        unsigned int PortValue = 0;
+                        auto Parsed = std::from_chars(Value.data(), Value.data() + Value.size(), PortValue);
+                        if (Parsed.ec != std::errc() || Parsed.ptr != Value.data() + Value.size() ||
+                            PortValue < 1 || PortValue > 65535)
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnInvalidPort"));
+                        return PortValue;
+                    };
+                    if (Kind == "Network" && Action == L"HcnCreate")
+                    {
+                        Settings["Type"] = "ICS";
+                        Settings["IsolateSwitch"] = true;
+                        Settings["Flags"] = ::NanaBox::HcnNetworkFlags::EnableDns | ::NanaBox::HcnNetworkFlags::EnableDhcp;
+                    }
+                    else if (Kind == "Endpoint" && Action == L"HcnCreate")
+                    {
+                        if (!this->HcnParentNetworkComboBox().SelectedItem())
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnSelectParentNetwork"));
+                        Data["NetworkId"] = Selected(this->HcnParentNetworkComboBox());
+                    }
+                    else if (Kind == "Namespace" && Action == L"HcnCreate")
+                        Settings["Type"] = Selected(this->HcnNamespaceTypeComboBox());
+                    else if (Kind == "Namespace" && Action == L"HcnModify")
+                    {
+                        auto Ids = References();
+                        if (Ids.size() != 1) throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnSelectNamespaceEndpoint"));
+                        Settings = {{"ResourceType", "Endpoint"}, {"RequestType", Selected(this->HcnNamespaceActionComboBox())},
+                            {"Settings", {{"EndpointId", Ids[0]}}}};
+                    }
+                    else if (Kind == "LoadBalancer")
+                    {
+                        Settings["HostComputeEndpoints"] = References();
+                        Settings["FrontendVIPs"] = Json::array({Address(this->HcnFrontendIpTextBox())});
+                        Settings["PortMappings"] = Json::array({{
+                            {"Protocol", this->HcnProtocolComboBox().SelectedIndex() == 1 ? 17 : 6},
+                            {"ExternalPort", Port(this->HcnExternalPortTextBox())},
+                            {"InternalPort", Port(this->HcnInternalPortTextBox())}}});
+                    }
+                    else if (Kind == "Route" && Action == L"HcnCreate")
+                    {
+                        auto Destination = winrt::to_string(this->HcnDestinationTextBox().Text());
+                        auto Slash = Destination.find('/');
+                        std::uint32_t NetworkAddress = 0;
+                        unsigned int Prefix = 0;
+                        if (Slash == std::string::npos || !::ParseIpv4(std::string_view(Destination).substr(0, Slash), NetworkAddress))
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Subnet"));
+                        auto PrefixEnd = Destination.data() + Destination.size();
+                        auto ParsedPrefix = std::from_chars(Destination.data() + Slash + 1, PrefixEnd, Prefix);
+                        if (ParsedPrefix.ec != std::errc() || ParsedPrefix.ptr != PrefixEnd || Prefix > 32 ||
+                            (Prefix == 0 ? NetworkAddress != 0 : (NetworkAddress & ~(0xffffffffu << (32 - Prefix))) != 0))
+                            throw winrt::hresult_invalid_argument(::GetSettingsString(L"InvalidIpv4Subnet"));
+                        Settings["HostComputeEndpoints"] = References();
+                        Settings["Setting"] = Json::array({{
+                            {"DestinationPrefix", Destination}, {"NextHop", Address(this->HcnNextHopTextBox())},
+                            {"NeedEncap", this->HcnEncapsulationCheckBox().IsChecked().Value()}}});
+                    }
+                    else throw winrt::hresult_invalid_argument(::GetSettingsString(L"HcnExpertRequired"));
+                    Data["Settings"] = std::move(Settings);
+                }
             }
             if ((Action == L"HcnModify" || Action == L"HcnDelete") &&
                 ::MessageBoxW(this->m_WindowHandle, ::GetSettingsString(L"HostManagementConfirm").c_str(),
@@ -2440,7 +2590,7 @@ namespace winrt::NanaBox::implementation
         auto Lifetime = this->get_strong();
         winrt::apartment_context Foreground;
         using Json = nlohmann::json;
-        Json Result, Items;
+        Json Result, Items, ParentNetworks, EndpointReferences;
         std::wstring ErrorText;
         try
         {
@@ -2451,7 +2601,19 @@ namespace winrt::NanaBox::implementation
                 return Json::parse(winrt::to_string(Operations->Manage(Command, winrt::to_hstring(Request.dump()))));
             };
             Result = Run(Action, Data);
-            if (Action == L"HcnList") Items = Result.at("Items");
+            if (Action == L"HcnList")
+            {
+                Items = Result.at("Items");
+                auto Kind = Data.at("Kind").get<std::string>();
+                try
+                {
+                    if (Kind == "Endpoint")
+                        ParentNetworks = Run(L"HcnList", Json{{"Kind", "Network"}}).at("Items");
+                    if (Kind == "Namespace" || Kind == "LoadBalancer" || Kind == "Route")
+                        EndpointReferences = Run(L"HcnList", Json{{"Kind", "Endpoint"}}).at("Items");
+                }
+                catch (...) { Result["ReferenceRefreshError"] = winrt::to_string(Mile::WinRT::ToHResultError().message()); }
+            }
             else if (Action != L"HcnInspect")
             {
                 try { Items = Run(L"HcnList", Json{{"Kind", Data.at("Kind")}}).at("Items"); }
@@ -2469,6 +2631,30 @@ namespace winrt::NanaBox::implementation
             else
             {
                 Result["Success"] = true;
+                if (ParentNetworks.is_array())
+                {
+                    auto ParentChoice = this->HcnParentNetworkComboBox();
+                    ParentChoice.Items().Clear();
+                    for (auto const& Parent : ParentNetworks)
+                        if (Parent.value("Managed", false))
+                            ::AddPickerItem(ParentChoice, winrt::to_hstring(Parent.at("Name").get<std::string>()),
+                                winrt::to_hstring(Parent.at("Id").get<std::string>()));
+                    if (ParentChoice.Items().Size()) ParentChoice.SelectedIndex(0);
+                }
+                if (EndpointReferences.is_array())
+                {
+                    auto ReferenceList = this->HcnEndpointReferencesList();
+                    ReferenceList.Items().Clear();
+                    for (auto const& Reference : EndpointReferences)
+                    {
+                        if (!Reference.value("Managed", false)) continue;
+                        winrt::Windows::UI::Xaml::Controls::ListViewItem ReferenceItem;
+                        ReferenceItem.Content(winrt::box_value(winrt::to_hstring(Reference.at("Name").get<std::string>())));
+                        ReferenceItem.Tag(winrt::box_value(winrt::to_hstring(Reference.at("Id").get<std::string>())));
+                        winrt::AutomationProperties::SetAutomationId(ReferenceItem, L"HcnEndpointReference");
+                        ReferenceList.Items().Append(ReferenceItem);
+                    }
+                }
                 if (Items.is_array())
                 {
                     auto Box = this->HcnResourceComboBox();
@@ -2736,8 +2922,14 @@ namespace winrt::NanaBox::implementation
             else if (Action == L"HcsServiceProperties" || Action == L"HcsSystemProperties")
             {
                 if (Action == L"HcsSystemProperties") Data["Id"] = Selected(this->HcsSystemsComboBox());
-                auto Query = winrt::to_string(this->HcsQueryTextBox().Text());
-                Data["Query"] = Query.empty() ? Json::object() : Json::parse(Query);
+                Data["Query"] = Json::object();
+                if (this->HcsQueryExpertCheckBox().IsChecked().Value())
+                {
+                    auto Query = winrt::to_string(this->HcsQueryTextBox().Text());
+                    if (!Query.empty()) Data["Query"] = Json::parse(Query);
+                }
+                else if (this->HcsQueryModeComboBox().SelectedIndex() > 0)
+                    Data["Query"]["PropertyTypes"] = Json::array({Selected(this->HcsQueryModeComboBox())});
                 if (!Data["Query"].is_object())
                     throw winrt::hresult_invalid_argument(L"Property query must be a JSON object.");
             }

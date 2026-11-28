@@ -499,8 +499,8 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="ProcessorCountTextBox.AutomationProperties.HelpText" xml:space="preserve"><value>选择分配给客户机的虚拟 CPU 核心数量。</value></data>
   <data name="ProcessorCountTextBox.AutomationProperties.Name" xml:space="preserve"><value>虚拟处理器数量</value></data>
   <data name="ProcessorCountTextBox.ToolTipService.ToolTip" xml:space="preserve"><value>选择分配给客户机的虚拟 CPU 核心数量。</value></data>
-  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU 使用率上限（0 表示默认值，100000 表示 100%）</value></data>
-  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU 使用率上限（0 表示默认值，100000 表示 100%）</value></data>
+  <data name="ProcessorLimitTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU 使用率上限（%），0 表示自动</value></data>
+  <data name="ProcessorLimitTextBox.Header" xml:space="preserve"><value>CPU 使用率上限（%），0 表示自动</value></data>
   <data name="ProcessorWeightTextBox.AutomationProperties.Name" xml:space="preserve"><value>CPU 调度权重（0 表示默认值，1 至 10000）</value></data>
   <data name="ProcessorWeightTextBox.Header" xml:space="preserve"><value>CPU 调度权重（0 表示默认值，1 至 10000）</value></data>
   <data name="ProductNameLabel.Text" xml:space="preserve"><value>产品名称</value></data>
@@ -882,4 +882,30 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="InvalidIpv4Subnet" xml:space="preserve"><value>请输入有效的 IPv4 子网，例如 192.168.100.0/24。</value></data>
   <data name="InvalidIpv4Gateway" xml:space="preserve"><value>请输入所选子网内有效的网关地址。</value></data>
   <data name="HcnExpertRequired" xml:space="preserve"><value>请启用专家选项以创建或修改此类资源。常用虚拟网络可在宿主机网络页面创建。</value></data>
+  <data name="HcsQueryMode.Header" xml:space="preserve"><value>查询内容</value></data>
+  <data name="HcsQueryDefault.Content" xml:space="preserve"><value>默认信息</value></data>
+  <data name="HcsQueryBasic.Content" xml:space="preserve"><value>系统基本信息</value></data>
+  <data name="HcsQueryStatistics.Content" xml:space="preserve"><value>性能统计</value></data>
+  <data name="HcnParentNetwork.Header" xml:space="preserve"><value>所属虚拟网络</value></data>
+  <data name="HcnNamespaceType.Header" xml:space="preserve"><value>网络命名空间类型</value></data>
+  <data name="HcnNamespaceHost.Content" xml:space="preserve"><value>宿主机命名空间</value></data>
+  <data name="HcnNamespaceGuest.Content" xml:space="preserve"><value>客户机命名空间</value></data>
+  <data name="HcnNamespaceAction.Header" xml:space="preserve"><value>网卡成员变更</value></data>
+  <data name="HcnNamespaceAdd.Content" xml:space="preserve"><value>添加所选网卡</value></data>
+  <data name="HcnNamespaceRemove.Content" xml:space="preserve"><value>移除所选网卡</value></data>
+  <data name="HcnEndpointReferencesLabel.Text" xml:space="preserve"><value>选择下方受管理的网络端点（点击刷新更新列表）。</value></data>
+  <data name="HcnFrontendIp.Header" xml:space="preserve"><value>前端 IPv4 地址</value></data>
+  <data name="HcnProtocol.Header" xml:space="preserve"><value>传输协议</value></data>
+  <data name="HcnProtocolTcp.Content" xml:space="preserve"><value>TCP</value></data>
+  <data name="HcnProtocolUdp.Content" xml:space="preserve"><value>UDP</value></data>
+  <data name="HcnExternalPort.Header" xml:space="preserve"><value>外部端口</value></data>
+  <data name="HcnInternalPort.Header" xml:space="preserve"><value>内部端口</value></data>
+  <data name="HcnDestination.Header" xml:space="preserve"><value>目标子网（CIDR）</value></data>
+  <data name="HcnNextHop.Header" xml:space="preserve"><value>下一跳 IPv4 地址</value></data>
+  <data name="HcnEncapsulation.Content" xml:space="preserve"><value>启用封装</value></data>
+  <data name="HcnSelectReferences" xml:space="preserve"><value>请至少选择一个受管理的网络端点。必要时刷新列表。</value></data>
+  <data name="HcnSelectNamespaceEndpoint" xml:space="preserve"><value>请选择一个端点以变更命名空间成员。</value></data>
+  <data name="HcnSelectParentNetwork" xml:space="preserve"><value>请选择受管理的所属虚拟网络。如果列表为空，请先创建网络。</value></data>
+  <data name="HcnInvalidAddress" xml:space="preserve"><value>请输入有效的 IPv4 地址。</value></data>
+  <data name="HcnInvalidPort" xml:space="preserve"><value>请输入 1 至 65535 之间的端口号。</value></data>
 </root>

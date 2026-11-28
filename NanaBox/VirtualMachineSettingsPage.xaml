@@ -82,23 +82,97 @@
             ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
             AutomationProperties.AutomationId="SettingsNavigation">
             <ListView.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListView.ItemsPanel>
-          <ListViewItem x:Name="NavGeneral" x:Uid="/VirtualMachineSettingsPage/TabGeneral" Content="General &amp; system" AutomationProperties.AutomationId="TabGeneral" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavGpu" x:Uid="/VirtualMachineSettingsPage/TabGpu" Content="Graphics" AutomationProperties.AutomationId="TabGpu" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavStorage" x:Uid="/VirtualMachineSettingsPage/TabStorage" Content="Storage" AutomationProperties.AutomationId="TabStorage" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavNetwork" x:Uid="/VirtualMachineSettingsPage/TabNetwork" Content="Network" AutomationProperties.AutomationId="TabNetwork" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavShares" x:Uid="/VirtualMachineSettingsPage/TabShares" Content="Shared folders" AutomationProperties.AutomationId="TabShares" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavSession" x:Uid="/VirtualMachineSettingsPage/TabSession" Content="Keyboard &amp; session" AutomationProperties.AutomationId="TabSession" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavSerial" x:Uid="/VirtualMachineSettingsPage/TabSerial" Content="Serial ports" AutomationProperties.AutomationId="TabSerial" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavGuestTools" x:Uid="/VirtualMachineSettingsPage/TabGuestTools" Content="Guest tools" AutomationProperties.AutomationId="TabGuestTools" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavHostManagement" x:Uid="/VirtualMachineSettingsPage/TabHostManagement" Content="Host networking" AutomationProperties.AutomationId="TabHostManagement" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavVmms" x:Uid="/VirtualMachineSettingsPage/TabVmms" Content="Hyper-V manager" AutomationProperties.AutomationId="TabVmms" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavHcn" x:Uid="/VirtualMachineSettingsPage/TabHcn" Content="Network resources" AutomationProperties.AutomationId="TabHcn" HorizontalContentAlignment="Stretch" />
-          <ListViewItem x:Name="NavAdvanced" x:Uid="/VirtualMachineSettingsPage/TabAdvanced" Content="Advanced settings" AutomationProperties.AutomationId="TabAdvanced" HorizontalContentAlignment="Stretch" />
+          <ListViewItem x:Name="NavGeneral" AutomationProperties.Name="General &amp; system" AutomationProperties.AutomationId="TabGeneral" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16" />
+              <TextBlock x:Name="NavGeneralLabel" Grid.Column="1" Text="General &amp; system" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavGpu" AutomationProperties.Name="Graphics" AutomationProperties.AutomationId="TabGpu" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE7F4;" FontSize="16" />
+              <TextBlock x:Name="NavGpuLabel" Grid.Column="1" Text="Graphics" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavStorage" AutomationProperties.Name="Storage" AutomationProperties.AutomationId="TabStorage" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE7F1;" FontSize="16" />
+              <TextBlock x:Name="NavStorageLabel" Grid.Column="1" Text="Storage" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavNetwork" AutomationProperties.Name="Network" AutomationProperties.AutomationId="TabNetwork" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE968;" FontSize="16" />
+              <TextBlock x:Name="NavNetworkLabel" Grid.Column="1" Text="Network" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavShares" AutomationProperties.Name="Shared folders" AutomationProperties.AutomationId="TabShares" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8B7;" FontSize="16" />
+              <TextBlock x:Name="NavSharesLabel" Grid.Column="1" Text="Shared folders" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavSession" AutomationProperties.Name="Keyboard &amp; session" AutomationProperties.AutomationId="TabSession" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE765;" FontSize="16" />
+              <TextBlock x:Name="NavSessionLabel" Grid.Column="1" Text="Keyboard &amp; session" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavSerial" AutomationProperties.Name="Serial ports" AutomationProperties.AutomationId="TabSerial" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE88E;" FontSize="16" />
+              <TextBlock x:Name="NavSerialLabel" Grid.Column="1" Text="Serial ports" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavGuestTools" AutomationProperties.Name="Guest tools" AutomationProperties.AutomationId="TabGuestTools" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE90F;" FontSize="16" />
+              <TextBlock x:Name="NavGuestToolsLabel" Grid.Column="1" Text="Guest tools" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavHostManagement" AutomationProperties.Name="Host networking" AutomationProperties.AutomationId="TabHostManagement" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE943;" FontSize="16" />
+              <TextBlock x:Name="NavHostManagementLabel" Grid.Column="1" Text="Host networking" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavVmms" AutomationProperties.Name="Hyper-V manager" AutomationProperties.AutomationId="TabVmms" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A7;" FontSize="16" />
+              <TextBlock x:Name="NavVmmsLabel" Grid.Column="1" Text="Hyper-V manager" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavHcn" AutomationProperties.Name="Network resources" AutomationProperties.AutomationId="TabHcn" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;" FontSize="16" />
+              <TextBlock x:Name="NavHcnLabel" Grid.Column="1" Text="Network resources" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
+          <ListViewItem x:Name="NavAdvanced" AutomationProperties.Name="Advanced settings" AutomationProperties.AutomationId="TabAdvanced" HorizontalContentAlignment="Stretch" Padding="8,8" MinHeight="42">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9D9;" FontSize="16" />
+              <TextBlock x:Name="NavAdvancedLabel" Grid.Column="1" Text="Advanced settings" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </ListViewItem>
           </ListView>
         </Grid>
       </Border>
       <Grid Grid.Column="1">
-        <ScrollViewer x:Name="SectionGeneral" Visibility="Visible" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <TextBlock x:Name="SectionHeading" Text="General &amp; system" FontSize="24" FontWeight="SemiBold" Margin="24,16,24,4" TextWrapping="Wrap" AutomationProperties.AutomationId="SectionHeading" />
+        <ScrollViewer Grid.Row="1" x:Name="SectionGeneral" Visibility="Visible" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
 
             <TextBlock
@@ -192,7 +266,7 @@
             </Grid>
             <StackPanel x:Name="ResourceAllocationPanel" Spacing="8">
               <TextBlock x:Name="SettingsLabel11" x:Uid="/VirtualMachineSettingsPage/ResourceAllocationHeading" Text="Resource allocation" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <TextBox x:Name="ProcessorLimitTextBox" x:Uid="/VirtualMachineSettingsPage/ProcessorLimitTextBox" Header="CPU limit (0 = default; 100000 = 100%)" AutomationProperties.Name="CPU limit (0 = default; 100000 = 100%)" AutomationProperties.AutomationId="ProcessorLimitTextBox" />
+              <TextBox x:Name="ProcessorLimitTextBox" x:Uid="/VirtualMachineSettingsPage/ProcessorLimitTextBox" Header="CPU usage limit (%) — 0 = automatic" AutomationProperties.Name="CPU usage limit (%) — 0 = automatic" AutomationProperties.AutomationId="ProcessorLimitTextBox" />
               <TextBox x:Name="ProcessorWeightTextBox" x:Uid="/VirtualMachineSettingsPage/ProcessorWeightTextBox" Header="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.Name="CPU scheduling weight (0 = default; 1–10000)" AutomationProperties.AutomationId="ProcessorWeightTextBox" />
               <CheckBox x:Name="MemoryOvercommitCheckBox" x:Uid="/VirtualMachineSettingsPage/MemoryOvercommitCheckBox" Content="Allow pagefile-backed virtual machine memory" AutomationProperties.Name="Allow pagefile-backed virtual machine memory" AutomationProperties.AutomationId="MemoryOvercommitCheckBox" />
               <CheckBox x:Name="DeferredCommitCheckBox" x:Uid="/VirtualMachineSettingsPage/DeferredCommitCheckBox" Content="Defer memory commit until first access" AutomationProperties.Name="Defer memory commit until first access" AutomationProperties.AutomationId="DeferredCommitCheckBox" />
@@ -276,7 +350,7 @@
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionGpu" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionGpu" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel16"
               x:Uid="/VirtualMachineSettingsPage/GpuTitle"
@@ -362,7 +436,7 @@
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionStorage" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionStorage" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel26"
               x:Uid="/VirtualMachineSettingsPage/ScsiDeviceTitle"
@@ -461,7 +535,7 @@
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionNetwork" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionNetwork" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel39"
               x:Uid="/VirtualMachineSettingsPage/NetworkAdapterTitle"
@@ -515,7 +589,7 @@
             <TextBox Visibility="Collapsed" x:Name="NetworkDiagnosticsTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="240" AutomationProperties.AutomationId="NetworkDiagnosticsTextBox" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionShares" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionShares" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="12" MaxWidth="920" HorizontalAlignment="Stretch">
             <StackPanel x:Name="Plan9ShareSection" Spacing="4">
               <TextBlock x:Name="SettingsLabel51"
@@ -587,7 +661,7 @@
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionSession" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionSession" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel59"
               x:Uid="/VirtualMachineSettingsPage/KeyboardTitle"
@@ -1101,7 +1175,7 @@
             <StackPanel x:Name="DevicePanel" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionSerial" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionSerial" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel92"
               x:Uid="/VirtualMachineSettingsPage/ComPortsTitle"
@@ -1201,7 +1275,7 @@
               TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionGuestTools" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionGuestTools" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel107" x:Uid="/VirtualMachineSettingsPage/GuestToolsTitle" Text="Guest agent" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel108" x:Uid="/VirtualMachineSettingsPage/GuestToolsNote" Text="Install the NanaBox guest agent in the Windows or Linux VM, then start the VM to query it over Hyper-V sockets." TextWrapping="Wrap" />
@@ -1245,7 +1319,7 @@
             <TextBox Visibility="Collapsed" x:Name="GuestToolsResult" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" AutomationProperties.AutomationId="GuestToolsResult" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionHostManagement" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionHostManagement" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel41" x:Uid="/VirtualMachineSettingsPage/HostNetworksTitle" Text="Virtual networks on this computer" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" TextWrapping="Wrap" />
             <ComboBox x:Name="HostNetworksComboBox" x:Uid="/VirtualMachineSettingsPage/HostNetworksPicker" Header="Available networks" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HostNetworksComboBox" />
@@ -1309,7 +1383,7 @@
             <TextBox Visibility="Collapsed" x:Name="HostManagementResult" x:Uid="/VirtualMachineSettingsPage/HostManagementResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="220" AutomationProperties.AutomationId="HostManagementResult" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionVmms" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionVmms" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="10" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel144" x:Uid="/VirtualMachineSettingsPage/VmmsTitle" Text="Hyper-V virtual machine manager" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
             <TextBlock x:Name="SettingsLabel145" x:Uid="/VirtualMachineSettingsPage/VmmsNote" Text="Manage VMs registered with Hyper-V Virtual Machine Management Service. Standalone NanaBox HCS configurations are managed separately; HCS inventory is read-only." TextWrapping="Wrap" Opacity="0.75" />
@@ -1320,6 +1394,11 @@
                   <Button x:Name="SettingsLabel147" x:Uid="/VirtualMachineSettingsPage/HcsInventoryButton" Content="HCS inventory" Tag="HcsInventory" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsInventoryButton" />
                 </StackPanel>
                 <ComboBox x:Name="HcsSystemsComboBox" x:Uid="/VirtualMachineSettingsPage/HcsSystemsComboBox" Header="HCS compute system" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcsSystemsComboBox" />
+                <ComboBox x:Name="HcsQueryModeComboBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryMode" Header="Information to retrieve" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="HcsQueryModeComboBox">
+                  <ComboBoxItem x:Name="HcsQueryDefault" x:Uid="/VirtualMachineSettingsPage/HcsQueryDefault" Content="Default information" Tag="Default" AutomationProperties.AutomationId="HcsQueryDefault" />
+                  <ComboBoxItem x:Name="HcsQueryBasic" x:Uid="/VirtualMachineSettingsPage/HcsQueryBasic" Content="Basic system information" Tag="Basic" AutomationProperties.AutomationId="HcsQueryBasic" />
+                  <ComboBoxItem x:Name="HcsQueryStatistics" x:Uid="/VirtualMachineSettingsPage/HcsQueryStatistics" Content="Performance statistics" Tag="Statistics" AutomationProperties.AutomationId="HcsQueryStatistics" />
+                </ComboBox>
                 <CheckBox x:Name="HcsQueryExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryExpert" Content="Customize diagnostic query (expert)" AutomationProperties.AutomationId="HcsQueryExpertCheckBox" />
                 <StackPanel x:Name="HcsQueryExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
                   <TextBox x:Name="HcsQueryTextBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryTextBox" Header="Optional HCS property query (JSON)" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" AutomationProperties.AutomationId="HcsQueryTextBox" />
@@ -1490,7 +1569,7 @@
             <TextBox Visibility="Collapsed" x:Name="VmmsResultTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsResultTextBox" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="460" AutomationProperties.AutomationId="VmmsResultTextBox" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionHcn" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionHcn" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <TextBlock x:Name="SettingsLabel224" x:Uid="/VirtualMachineSettingsPage/HcnResourceNote" Text="Manage specialist virtual network resources. System-owned resources can be inspected but cannot be changed here. To create a normal virtual network, open Host networking." TextWrapping="Wrap" Opacity="0.75" />
             <ComboBox x:Name="HcnKindComboBox" x:Uid="/VirtualMachineSettingsPage/HcnKind" Header="Resource type" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="HcnKindChanged" AutomationProperties.AutomationId="HcnKindComboBox">
@@ -1506,7 +1585,41 @@
               <Button x:Name="SettingsLabel231" x:Uid="/VirtualMachineSettingsPage/HcnInspect" Content="Inspect" Tag="HcnInspect" Click="HcnResourceButtonClick" AutomationProperties.AutomationId="HcnInspect" />
             </StackPanel>
             <TextBox x:Name="HcnNameTextBox" x:Uid="/VirtualMachineSettingsPage/HcnName" Header="Network name (network creation)" AutomationProperties.AutomationId="HcnNameTextBox" />
-            <TextBox x:Name="HcnNetworkIdTextBox" x:Uid="/VirtualMachineSettingsPage/HcnNetworkId" Header="Parent network ID (endpoint creation)" AutomationProperties.AutomationId="HcnNetworkIdTextBox" />
+            <TextBox x:Name="HcnNetworkIdTextBox" Visibility="Collapsed" x:Uid="/VirtualMachineSettingsPage/HcnNetworkId" Header="Parent network ID (endpoint creation)" AutomationProperties.AutomationId="HcnNetworkIdTextBox" />
+            <StackPanel x:Name="HcnGuidedPanel" Spacing="8">
+              <StackPanel x:Name="HcnParentNetworkPanel" Visibility="Collapsed" Spacing="4">
+                <ComboBox x:Name="HcnParentNetworkComboBox" x:Uid="/VirtualMachineSettingsPage/HcnParentNetwork" Header="Parent virtual network" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcnParentNetworkComboBox">
+                </ComboBox>
+              </StackPanel>
+              <StackPanel x:Name="HcnNamespacePanel" Visibility="Collapsed" Spacing="8">
+                <ComboBox x:Name="HcnNamespaceTypeComboBox" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceType" Header="Network namespace type" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="HcnNamespaceTypeComboBox">
+                  <ComboBoxItem x:Name="HcnNamespaceHost" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceHost" Content="Host namespace" Tag="Host" AutomationProperties.AutomationId="HcnNamespaceHost" />
+                  <ComboBoxItem x:Name="HcnNamespaceGuest" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceGuest" Content="Guest namespace" Tag="Guest" AutomationProperties.AutomationId="HcnNamespaceGuest" />
+                </ComboBox>
+                <ComboBox x:Name="HcnNamespaceActionComboBox" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceAction" Header="Endpoint membership change" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="HcnNamespaceActionComboBox">
+                  <ComboBoxItem x:Name="HcnNamespaceAdd" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceAdd" Content="Add selected endpoint" Tag="Add" AutomationProperties.AutomationId="HcnNamespaceAdd" />
+                  <ComboBoxItem x:Name="HcnNamespaceRemove" x:Uid="/VirtualMachineSettingsPage/HcnNamespaceRemove" Content="Remove selected endpoint" Tag="Remove" AutomationProperties.AutomationId="HcnNamespaceRemove" />
+                </ComboBox>
+              </StackPanel>
+              <StackPanel x:Name="HcnEndpointReferencesPanel" Visibility="Collapsed" Spacing="4">
+                <TextBlock x:Name="HcnEndpointReferencesLabel" x:Uid="/VirtualMachineSettingsPage/HcnEndpointReferencesLabel" Text="Select managed network endpoints below (refresh to update the list)." TextWrapping="Wrap" />
+                <ListView x:Name="HcnEndpointReferencesList" SelectionMode="Multiple" MaxHeight="144" AutomationProperties.AutomationId="HcnEndpointReferencesList" />
+              </StackPanel>
+              <StackPanel x:Name="HcnLoadBalancerPanel" Visibility="Collapsed" Spacing="8">
+                <TextBox x:Name="HcnFrontendIpTextBox" x:Uid="/VirtualMachineSettingsPage/HcnFrontendIp" Header="Frontend IPv4 address" PlaceholderText="192.0.2.100" AutomationProperties.AutomationId="HcnFrontendIpTextBox" />
+                <ComboBox x:Name="HcnProtocolComboBox" x:Uid="/VirtualMachineSettingsPage/HcnProtocol" Header="Transport protocol" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="HcnProtocolComboBox">
+                  <ComboBoxItem x:Name="HcnProtocolTcp" x:Uid="/VirtualMachineSettingsPage/HcnProtocolTcp" Content="TCP" Tag="6" AutomationProperties.AutomationId="HcnProtocolTcp" />
+                  <ComboBoxItem x:Name="HcnProtocolUdp" x:Uid="/VirtualMachineSettingsPage/HcnProtocolUdp" Content="UDP" Tag="17" AutomationProperties.AutomationId="HcnProtocolUdp" />
+                </ComboBox>
+                <TextBox x:Name="HcnExternalPortTextBox" x:Uid="/VirtualMachineSettingsPage/HcnExternalPort" Header="External port" PlaceholderText="80" AutomationProperties.AutomationId="HcnExternalPortTextBox" />
+                <TextBox x:Name="HcnInternalPortTextBox" x:Uid="/VirtualMachineSettingsPage/HcnInternalPort" Header="Internal port" PlaceholderText="80" AutomationProperties.AutomationId="HcnInternalPortTextBox" />
+              </StackPanel>
+              <StackPanel x:Name="HcnRoutePanel" Visibility="Collapsed" Spacing="8">
+                <TextBox x:Name="HcnDestinationTextBox" x:Uid="/VirtualMachineSettingsPage/HcnDestination" Header="Destination subnet (CIDR)" PlaceholderText="192.0.2.0/24" AutomationProperties.AutomationId="HcnDestinationTextBox" />
+                <TextBox x:Name="HcnNextHopTextBox" x:Uid="/VirtualMachineSettingsPage/HcnNextHop" Header="Next-hop IPv4 address" PlaceholderText="192.0.2.1" AutomationProperties.AutomationId="HcnNextHopTextBox" />
+                <CheckBox x:Name="HcnEncapsulationCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnEncapsulation" Content="Enable encapsulation" AutomationProperties.AutomationId="HcnEncapsulationCheckBox" />
+              </StackPanel>
+            </StackPanel>
             <CheckBox x:Name="HcnExpertCheckBox" x:Uid="/VirtualMachineSettingsPage/HcnExpert" Content="Edit native network resource settings (expert)" AutomationProperties.AutomationId="HcnExpertCheckBox" />
             <StackPanel x:Name="HcnExpertCheckBoxPanel" Visibility="Collapsed" Spacing="8">
               <TextBlock x:Name="SettingsLabel232" x:Uid="/VirtualMachineSettingsPage/HcnSettingsNote" Text="For endpoint creation, enter a managed network ID. For a namespace, use Type Host or Guest; attach managed endpoints with ResourceType Endpoint and Settings.EndpointId. For networks and endpoints, use Policy modification requests. Load balancers and SDN routes reference managed endpoint IDs; SDN routes require recreation to change settings." TextWrapping="Wrap" Opacity="0.75" />
@@ -1522,7 +1635,7 @@
             <TextBox Visibility="Collapsed" x:Name="HcnResultTextBox" x:Uid="/VirtualMachineSettingsPage/HcnResult" Header="Operation result" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="220" AutomationProperties.AutomationId="HcnResultTextBox" />
           </StackPanel>
         </ScrollViewer>
-        <ScrollViewer x:Name="SectionAdvanced" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" x:Name="SectionAdvanced" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <StackPanel Padding="24,12,24,20" Spacing="8" MaxWidth="920" HorizontalAlignment="Stretch">
             <StackPanel x:Name="HcsExtensionsSection" Spacing="8">
               <TextBlock x:Name="SettingsLabel235" x:Uid="/VirtualMachineSettingsPage/HcsExtensionsTitle" Text="Advanced HCS creation settings" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />

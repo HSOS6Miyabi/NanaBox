@@ -178,7 +178,7 @@ try {
     Set-Text 'NameTextBox' 'UI automation saved'
     Set-Text 'ProcessorCountTextBox' '4'
     Set-Text 'MemorySizeTextBox' '4096'
-    Set-Text 'ProcessorLimitTextBox' '75000'
+    Set-Text 'ProcessorLimitTextBox' '75'
     Set-Text 'ProcessorWeightTextBox' '250'
     Set-Check 'MemoryOvercommitCheckBox' $true
     Set-Check 'DeferredCommitCheckBox' $true
@@ -533,6 +533,64 @@ try {
 
     if (-not $HostIntegration) {
         Select-Tab 'TabHcn'
+        Set-Check 'HcnExpertCheckBox' $false
+        Select-Choice 'HcnKindComboBox' 'HcnKindNetwork'
+        Set-Text 'HcnNameTextBox' 'Guided network'
+        Invoke-Control 'HcnCreate'
+        $guidedNetwork = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
+        Invoke-Control 'HcnInspect'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.Type -eq 'ICS'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindEndpoint'
+        Invoke-Control 'HcnList'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and $v.Items[0].Kind -eq 'Endpoint'}
+        $null = Select-ByName 'HcnParentNetworkComboBox' 'Guided network [managed]'
+        Invoke-Control 'HcnCreate'
+        $guidedEndpoint = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate' -and $v.Kind -eq 'Endpoint'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindNamespace'
+        Select-Choice 'HcnNamespaceTypeComboBox' 'HcnNamespaceGuest'
+        Invoke-Control 'HcnCreate'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate' -and $v.Kind -eq 'Namespace'}
+        Invoke-Control 'HcnInspect'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.Type -eq 'Guest'}
+        Confirm-Change 'HcnDelete'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindLoadBalancer'
+        Invoke-Control 'HcnList'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and $v.Items[0].Kind -eq 'LoadBalancer'}
+        (Pattern (Find-Control 'HcnEndpointReference') ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
+        Set-Text 'HcnFrontendIpTextBox' '192.0.2.100'
+        Set-Text 'HcnExternalPortTextBox' '8080'
+        Set-Text 'HcnInternalPortTextBox' '80'
+        Invoke-Control 'HcnCreate'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate' -and $v.Kind -eq 'LoadBalancer'}
+        Invoke-Control 'HcnInspect'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.PortMappings[0].ExternalPort -eq 8080}
+        Confirm-Change 'HcnDelete'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindRoute'
+        Invoke-Control 'HcnList'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and $v.Items[0].Kind -eq 'Route'}
+        (Pattern (Find-Control 'HcnEndpointReference') ([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
+        Set-Text 'HcnDestinationTextBox' '192.0.2.0/24'
+        Set-Text 'HcnNextHopTextBox' '192.0.2.1'
+        Invoke-Control 'HcnCreate'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate' -and $v.Kind -eq 'Route'}
+        Invoke-Control 'HcnInspect'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and $v.Properties.Setting[0].DestinationPrefix -eq '192.0.2.0/24'}
+        Confirm-Change 'HcnDelete'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindEndpoint'
+        Invoke-Control 'HcnList'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and $v.Items[0].Kind -eq 'Endpoint'}
+        $null = Select-ByName 'HcnResourceComboBox' ('Endpoint [managed] ('+$guidedEndpoint.Id)
+        Confirm-Change 'HcnDelete'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
+        Select-Choice 'HcnKindComboBox' 'HcnKindNetwork'
+        Invoke-Control 'HcnList'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnList' -and $v.Items[0].Kind -eq 'Network'}
+        $null = Select-ByName 'HcnResourceComboBox' ('Guided network [managed] ('+$guidedNetwork.Id)
+        Confirm-Change 'HcnDelete'
+        $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnDelete'}
         foreach ($kind in @('Network','Endpoint','Namespace','LoadBalancer','Route')) {
             Select-Choice 'HcnKindComboBox' "HcnKind$kind"
             Invoke-Control 'HcnList'
@@ -542,6 +600,7 @@ try {
             $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnInspect' -and -not $v.Managed}
             Confirm-Change 'HcnDelete'
             $null = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -eq $false -and $v.Operation -eq 'HcnDelete'}
+            Set-Check 'HcnExpertCheckBox' $true
             Set-Text 'HcnNameTextBox' 'Test resource'
             Set-Text 'HcnNetworkIdTextBox' '85c8668e-36fe-447f-aae0-ba159a0142a7'
             $settings = switch ($kind) {
@@ -551,7 +610,6 @@ try {
                 'Route' { '{"HostComputeEndpoints":["85c8668e-36fe-447f-aae0-ba159a0142a7"],"Setting":[{"DestinationPrefix":"192.0.2.0/24","NextHop":"192.0.2.1","NeedEncap":false}],"SchemaVersion":{"Major":2,"Minor":0}}' }
                 default { '{"SchemaVersion":{"Major":2,"Minor":0}}' }
             }
-            Set-Check 'HcnExpertCheckBox' $true
             Set-Text 'HcnSettingsTextBox' $settings
             Invoke-Control 'HcnCreate'
             $created = Wait-Result 'HcnResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcnCreate'}
@@ -581,12 +639,11 @@ try {
         Select-Tab 'TabVmms'
         Invoke-Control 'HcsInventoryButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsInventory' -and $v.Items[0].Id -eq 'mock-hcs'}
-        Set-Check 'HcsQueryExpertCheckBox' $true
-        Set-Text 'HcsQueryTextBox' '{"PropertyTypes":["Basic"]}'
+        Select-Choice 'HcsQueryModeComboBox' 'HcsQueryBasic'
         Invoke-Control 'HcsServicePropertiesButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsServiceProperties' -and $v.Properties.Query.PropertyTypes[0] -eq 'Basic'}
         $null = Select-ByName 'HcsSystemsComboBox' 'mock-hcs'
-        Set-Text 'HcsQueryTextBox' '{"PropertyTypes":["Statistics"]}'
+        Select-Choice 'HcsQueryModeComboBox' 'HcsQueryStatistics'
         Invoke-Control 'HcsSystemPropertiesButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsSystemProperties' -and $v.Properties.Id -eq 'mock-hcs' -and $v.Properties.Query.PropertyTypes[0] -eq 'Statistics'}
         Invoke-Control 'VmmsListButton'
@@ -979,7 +1036,7 @@ try {
     Assert-Equal @($saved.VirtualSmbShares | Where-Object {$_}).Count 0 'SMB removed'
     Select-Tab 'TabGeneral'
     Assert-Equal (Get-Text 'NameTextBox') 'UI automation saved' 'Reloaded name'
-    Assert-Equal (Get-Text 'ProcessorLimitTextBox') '75000' 'Reloaded CPU limit'
+    Assert-Equal (Get-Text 'ProcessorLimitTextBox') '75' 'Reloaded CPU limit'
     Assert-Equal (Get-Text 'ProcessorWeightTextBox') '250' 'Reloaded CPU weight'
     Assert-Equal (Get-Text 'StorageIopsMaximumTextBox') '1000' 'Reloaded IOPS limit'
     Assert-Equal (Get-Text 'StorageBandwidthMaximumTextBox') '10485760' 'Reloaded bandwidth limit'
