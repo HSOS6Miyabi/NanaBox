@@ -218,6 +218,7 @@ namespace NanaBox
         winrt::hstring const& CustomSettings);
     void DeleteManagedNetwork(winrt::guid const& Id);
     winrt::hstring RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments);
+    bool HostManagementSelfTest();
 
     HcnEndpoint HcnCreateEndpoint(
         HcnNetwork const& NetworkHandle,

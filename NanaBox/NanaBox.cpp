@@ -103,6 +103,7 @@ int WINAPI wWinMain(
         try
         {
             if (!NanaBox::GuestToolsSelfTest()) return 33;
+            if (!NanaBox::HostManagementSelfTest()) return 36;
             NanaBox::VirtualMachineConfiguration Config;
             Config.Name = "SelfTest";
             Config.GuestType = NanaBox::GuestType::Windows;

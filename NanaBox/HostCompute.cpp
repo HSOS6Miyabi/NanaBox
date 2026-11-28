@@ -971,6 +971,112 @@ try {
 )PS";
 }
 
+namespace
+{
+    std::string RunHostScript(std::wstring const& Script, DWORD Timeout)
+    {
+        auto Encoded = EncodeHostCommand(Script.data(), Script.size() * sizeof(wchar_t));
+        constexpr wchar_t Bootstrap[] =
+            L"$ErrorActionPreference='Stop';"
+            L"$scriptText=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd()));"
+            L"& ([ScriptBlock]::Create($scriptText));";
+        std::wstring Command = L"powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand ";
+        Command += EncodeHostCommand(Bootstrap, (ARRAYSIZE(Bootstrap) - 1) * sizeof(wchar_t));
+        wchar_t System[MAX_PATH]{}, Temp[MAX_PATH]{}, Name[40]{};
+        auto N = ::GetSystemDirectoryW(System, ARRAYSIZE(System));
+        if (!N || N >= ARRAYSIZE(System)) winrt::throw_last_error();
+        N = ::GetTempPathW(ARRAYSIZE(Temp), Temp);
+        if (!N || N >= ARRAYSIZE(Temp)) winrt::throw_last_error();
+        GUID Id{};
+        winrt::check_hresult(::CoCreateGuid(&Id));
+        winrt::check_bool(::StringFromGUID2(Id, Name, ARRAYSIZE(Name)) != 0);
+        std::wstring Exe = std::wstring(System) + L"\\WindowsPowerShell\\v1.0\\powershell.exe";
+        std::wstring File = std::wstring(Temp) + L"NanaBox-" + Name + L".log";
+        SECURITY_ATTRIBUTES Security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+        HANDLE RawOutput = ::CreateFileW(File.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+        if (RawOutput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
+        winrt::handle Output(RawOutput);
+        std::wstring InputFile = std::wstring(Temp) + L"NanaBox-" + Name + L".input";
+        HANDLE RawInput = ::CreateFileW(InputFile.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE,
+            &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+        if (RawInput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
+        winrt::handle Input(RawInput);
+        // The encoded script consists entirely of ASCII base64 characters.
+        // Keep the process command line independent of the payload length.
+        std::string Bytes(Encoded.begin(), Encoded.end());
+        DWORD Written = 0;
+        winrt::check_bool(::WriteFile(Input.get(), Bytes.data(), static_cast<DWORD>(Bytes.size()), &Written, nullptr));
+        if (Written != Bytes.size()) winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_WRITE_FAULT));
+        LARGE_INTEGER Beginning{};
+        winrt::check_bool(::SetFilePointerEx(Input.get(), Beginning, nullptr, FILE_BEGIN));
+
+        SIZE_T AttributeSize = 0;
+        ::InitializeProcThreadAttributeList(nullptr, 1, 0, &AttributeSize);
+        if (!AttributeSize) winrt::throw_last_error();
+        auto Attributes = std::make_unique<BYTE[]>(AttributeSize);
+        auto AttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(Attributes.get());
+        winrt::check_bool(::InitializeProcThreadAttributeList(AttributeList, 1, 0, &AttributeSize));
+        auto DeleteAttributes = Mile::ScopeExitTaskHandler([&]() { ::DeleteProcThreadAttributeList(AttributeList); });
+        HANDLE Inherited[] = {Input.get(), Output.get()};
+        winrt::check_bool(::UpdateProcThreadAttribute(AttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+            Inherited, sizeof(Inherited), nullptr, nullptr));
+
+        STARTUPINFOEXW Startup{};
+        Startup.StartupInfo.cb = sizeof(Startup);
+        Startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+        Startup.StartupInfo.hStdOutput = Startup.StartupInfo.hStdError = Output.get();
+        Startup.StartupInfo.hStdInput = Input.get();
+        Startup.lpAttributeList = AttributeList;
+        PROCESS_INFORMATION Process{};
+        winrt::check_bool(::CreateProcessW(Exe.c_str(), Command.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
+            nullptr, nullptr, &Startup.StartupInfo, &Process));
+        winrt::handle Child(Process.hProcess), Thread(Process.hThread);
+        DWORD Wait = ::WaitForSingleObject(Child.get(), Timeout);
+        if (Wait == WAIT_TIMEOUT)
+        {
+            ::TerminateProcess(Child.get(), ERROR_TIMEOUT);
+            ::WaitForSingleObject(Child.get(), 5000);
+            throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT), L"Host management timed out. Refresh the affected resources before retrying.");
+        }
+        if (Wait != WAIT_OBJECT_0) winrt::throw_last_error();
+        DWORD Exit = 0;
+        winrt::check_bool(::GetExitCodeProcess(Child.get(), &Exit));
+        LARGE_INTEGER Size{}, Start{};
+        winrt::check_bool(::GetFileSizeEx(Output.get(), &Size));
+        if (Size.QuadPart < 0 || Size.QuadPart > 4 * 1024 * 1024) throw winrt::hresult_error(E_UNEXPECTED);
+        winrt::check_bool(::SetFilePointerEx(Output.get(), Start, nullptr, FILE_BEGIN));
+        std::string Result(static_cast<size_t>(Size.QuadPart), '\0');
+        DWORD Read = 0;
+        if (!Result.empty())
+            winrt::check_bool(::ReadFile(Output.get(), Result.data(), static_cast<DWORD>(Result.size()), &Read, nullptr));
+        Result.resize(Read);
+        if (Exit != 0)
+            throw winrt::hresult_error(E_FAIL, winrt::to_hstring(Result.empty() ? "Host management failed." : Result));
+        return Result;
+    }
+}
+
+bool NanaBox::HostManagementSelfTest()
+{
+    // Exercise the same process, stdin, handle inheritance and UTF-8 output
+    // used by both host management backends, beyond the Win32 command limit.
+    std::wstring Script = L"$ErrorActionPreference='Stop';"
+        L"[Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false);"
+        L"$value='";
+    Script.append(48000, L'x');
+    Script += L"';[Console]::WriteLine((ConvertTo-Json -InputObject @{Length=$value.Length;Text=[string][char]0x6D4B} -Compress));exit 0";
+    auto Result = nlohmann::json::parse(RunHostScript(Script, 30000));
+    if (Result["Length"] != 48000 || Result["Text"] != winrt::to_string(winrt::hstring(L"\u6D4B")))
+        return false;
+    try { (void)RunHostScript(L"[Console]::Error.WriteLine('test failure');exit 7", 30000); }
+    catch (winrt::hresult_error const& Error)
+    {
+        return std::wstring_view(Error.message().c_str()).find(L"test failure") != std::wstring_view::npos;
+    }
+    return false;
+}
+
 winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::hstring const& Arguments)
 {
     auto Data = nlohmann::json::parse(winrt::to_string(Arguments));
@@ -993,59 +1099,5 @@ winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::h
     Script += EncodeHostCommand(Payload.data(), Payload.size());
     Script += L"')));";
     Script += Vmms ? VmmsManagementScript : ManagementScript;
-    std::wstring Command = L"powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand ";
-    Command += EncodeHostCommand(Script.data(), Script.size() * sizeof(wchar_t));
-    if (Command.size() > 32000) throw winrt::hresult_invalid_argument();
-
-    wchar_t System[MAX_PATH]{}, Temp[MAX_PATH]{}, Name[40]{};
-    auto N = ::GetSystemDirectoryW(System, ARRAYSIZE(System));
-    if (!N || N >= ARRAYSIZE(System)) winrt::throw_last_error();
-    N = ::GetTempPathW(ARRAYSIZE(Temp), Temp);
-    if (!N || N >= ARRAYSIZE(Temp)) winrt::throw_last_error();
-    GUID Id{};
-    winrt::check_hresult(::CoCreateGuid(&Id));
-    winrt::check_bool(::StringFromGUID2(Id, Name, ARRAYSIZE(Name)) != 0);
-    std::wstring Exe = std::wstring(System) + L"\\WindowsPowerShell\\v1.0\\powershell.exe";
-    std::wstring File = std::wstring(Temp) + L"NanaBox-" + Name + L".log";
-    SECURITY_ATTRIBUTES Security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-    HANDLE RawOutput = ::CreateFileW(File.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
-    if (RawOutput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
-    winrt::handle Output(RawOutput);
-    HANDLE RawInput = ::CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-        &Security, OPEN_EXISTING, 0, nullptr);
-    if (RawInput == INVALID_HANDLE_VALUE) winrt::throw_last_error();
-    winrt::handle Input(RawInput);
-
-    STARTUPINFOW Startup{};
-    Startup.cb = sizeof(Startup);
-    Startup.dwFlags = STARTF_USESTDHANDLES;
-    Startup.hStdOutput = Startup.hStdError = Output.get();
-    Startup.hStdInput = Input.get();
-    PROCESS_INFORMATION Process{};
-    winrt::check_bool(::CreateProcessW(Exe.c_str(), Command.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-        nullptr, nullptr, &Startup, &Process));
-    winrt::handle Child(Process.hProcess), Thread(Process.hThread);
-    DWORD Wait = ::WaitForSingleObject(Child.get(), Vmms ? 30u * 60u * 1000u : 60000u);
-    if (Wait == WAIT_TIMEOUT)
-    {
-        ::TerminateProcess(Child.get(), ERROR_TIMEOUT);
-        ::WaitForSingleObject(Child.get(), 5000);
-        throw winrt::hresult_error(HRESULT_FROM_WIN32(ERROR_TIMEOUT), L"Host management timed out. Refresh the affected resources before retrying.");
-    }
-    if (Wait != WAIT_OBJECT_0) winrt::throw_last_error();
-    DWORD Exit = 0;
-    winrt::check_bool(::GetExitCodeProcess(Child.get(), &Exit));
-    LARGE_INTEGER Size{}, Start{};
-    winrt::check_bool(::GetFileSizeEx(Output.get(), &Size));
-    if (Size.QuadPart < 0 || Size.QuadPart > 4 * 1024 * 1024) throw winrt::hresult_error(E_UNEXPECTED);
-    winrt::check_bool(::SetFilePointerEx(Output.get(), Start, nullptr, FILE_BEGIN));
-    std::string Result(static_cast<size_t>(Size.QuadPart), '\0');
-    DWORD Read = 0;
-    if (!Result.empty())
-        winrt::check_bool(::ReadFile(Output.get(), Result.data(), static_cast<DWORD>(Result.size()), &Read, nullptr));
-    Result.resize(Read);
-    if (Exit != 0)
-        throw winrt::hresult_error(E_FAIL, winrt::to_hstring(Result.empty() ? "Host management failed." : Result));
-    return winrt::to_hstring(nlohmann::json::parse(Result).dump());
+    return winrt::to_hstring(nlohmann::json::parse(RunHostScript(Script, Vmms ? 30u * 60u * 1000u : 60000u)).dump());
 }
