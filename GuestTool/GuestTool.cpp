@@ -8,8 +8,6 @@
 #include <hvsocket.h>
 #include <bcrypt.h>
 #include <iphlpapi.h>
-#include <objbase.h>
-#pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -929,10 +927,26 @@ namespace
 #ifdef _WIN32
     Json HostRequest(std::wstring vmId,Json const& request)
     {
-        if(vmId.empty())GuestFail("Missing VM runtime GUID");
-        if(vmId.front()!=L'{')vmId=L"{"+vmId+L"}";
-        GUID vm{};
-        if(FAILED(CLSIDFromString(vmId.c_str(),&vm)))GuestFail("Invalid VM runtime GUID");
+        if(vmId.size()==38&&vmId.front()==L'{'&&vmId.back()==L'}')vmId=vmId.substr(1,36);
+        if(vmId.size()!=36||vmId[8]!=L'-'||vmId[13]!=L'-'||vmId[18]!=L'-'||vmId[23]!=L'-')
+            GuestFail("Invalid VM runtime GUID");
+        auto number=[&](std::size_t start,std::size_t count)
+        {
+            unsigned long value=0;
+            for(std::size_t i=start;i<start+count;++i)
+            {
+                auto c=vmId[i];
+                unsigned digit=c>=L'0'&&c<=L'9'?unsigned(c-L'0'):
+                    c>=L'a'&&c<=L'f'?unsigned(c-L'a'+10):
+                    c>=L'A'&&c<=L'F'?unsigned(c-L'A'+10):16u;
+                if(digit>=16)GuestFail("Invalid VM runtime GUID");
+                value=(value<<4)|digit;
+            }
+            return value;
+        };
+        GUID vm{number(0,8),static_cast<unsigned short>(number(9,4)),static_cast<unsigned short>(number(14,4)),{}};
+        vm.Data4[0]=static_cast<unsigned char>(number(19,2));vm.Data4[1]=static_cast<unsigned char>(number(21,2));
+        for(std::size_t i=0;i<6;++i)vm.Data4[2+i]=static_cast<unsigned char>(number(24+2*i,2));
         auto resource=request.at("ResourceType").get<std::string>();
         unsigned port=resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
             resource=="FileExchange"?27457u:27453u;
