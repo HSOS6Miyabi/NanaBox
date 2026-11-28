@@ -1117,7 +1117,7 @@ namespace
         winrt::handle Input(RawInput);
         // The encoded script consists entirely of ASCII base64 characters.
         // Keep the process command line independent of the payload length.
-        std::string Bytes(Encoded.begin(), Encoded.end());
+        std::string Bytes = winrt::to_string(winrt::hstring(Encoded));
         DWORD Written = 0;
         winrt::check_bool(::WriteFile(Input.get(), Bytes.data(), static_cast<DWORD>(Bytes.size()), &Written, nullptr));
         if (Written != Bytes.size()) winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_WRITE_FAULT));
