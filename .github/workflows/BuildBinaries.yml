@@ -98,6 +98,12 @@ jobs:
         & .\GuestTool\nanabox-guest-tool.exe --unicode-input-ui-test
         if ($LASTEXITCODE -ne 0) { throw 'Windows Unicode input UI test failed.' }
         .\GuestTool\BuildWindowsGuestTool.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
+    - name: Install WinFsp SDK and build Windows 9P clients
+      shell: pwsh
+      run: |
+        .\Tests\InstallWinFspSdk.ps1
+        .\GuestTool\BuildWindowsPlan9.ps1
+        .\GuestTool\BuildWindowsPlan9.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
     - name: Bundle the pinned Mile.Cirno release
       shell: pwsh
       run: .\GuestTool\PrepareCirnoPackage.ps1

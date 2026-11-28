@@ -14,7 +14,7 @@ if ($PrepareMaintenance) {
     return
 }
 if ($service -and $service.Status -ne 'Stopped' -and -not $service.CanStop) {
-    throw 'Native Virtual SMB is active. Run this script with -PrepareMaintenance and restart Windows before removal.'
+    throw 'A native share transport is active. Unmount managed Plan 9 shares, or run this script with -PrepareMaintenance and restart Windows before removal.'
 }
 if ($service -and $service.Status -ne 'Stopped') {
     Stop-Service -Name $name
@@ -40,5 +40,7 @@ if (Test-Path -LiteralPath $root) {
         if (-not (Get-ChildItem -LiteralPath $client -Force)) { Remove-Item -LiteralPath $client }
     }
     if (Test-Path -LiteralPath $binary) { Remove-Item -LiteralPath $binary -Force }
+    $plan9 = Join-Path $root 'nanabox-plan9-winfsp.exe'
+    if (Test-Path -LiteralPath $plan9) { Remove-Item -LiteralPath $plan9 -Force }
     if (-not (Get-ChildItem -LiteralPath $root -Force)) { Remove-Item -LiteralPath $root }
 }

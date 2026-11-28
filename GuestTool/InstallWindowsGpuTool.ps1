@@ -6,7 +6,9 @@ param(
     [string]$CirnoArchive,
     [string]$Executable,
     [switch]$UseExistingDokany,
-    [switch]$DisableAutomaticGpuRestart
+    [switch]$DisableAutomaticGpuRestart,
+    [switch]$EnableWinFspPlan9,
+    [string]$WinFspPlan9Executable
 )
 $ErrorActionPreference = 'Stop'
 if (-not [Environment]::Is64BitProcess) { throw 'Use native 64-bit PowerShell.' }
@@ -27,6 +29,8 @@ $root = Join-Path $env:ProgramFiles 'NanaBox Guest GPU'
 $client = Join-Path $root 'Cirno'
 $shared = Join-Path $env:ProgramData 'NanaBox Guest Shares'
 $destination = Join-Path $root 'nanabox-gpu.exe'
+$plan9Root = Join-Path $env:ProgramData 'NanaBox Guest 9P'
+$plan9Binary = Join-Path $root 'nanabox-plan9-winfsp.exe'
 function Protect-Directory([string]$Path,[switch]$UserRead) {
     $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
     $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
@@ -52,7 +56,7 @@ function Protect-Directory([string]$Path,[switch]$UserRead) {
 }
 $service = Get-Service -Name $name -ErrorAction SilentlyContinue
 if ($service -and $service.Status -ne 'Stopped' -and -not $service.CanStop) {
-    throw 'The native VSMB transport is active. Run UninstallWindowsGpuTool.ps1 -PrepareMaintenance and restart Windows before updating the service.'
+    throw 'A native share transport is active. Unmount managed Plan 9 shares, or run UninstallWindowsGpuTool.ps1 -PrepareMaintenance and restart Windows before updating the service.'
 }
 if ($Backend -eq 'VirtualSmb' -and ($CirnoDirectory -or $CirnoArchive -or $DokanyDriver -or $UseExistingDokany)) {
     throw 'Mile.Cirno and Dokany options require -Backend Plan9.'
@@ -61,6 +65,18 @@ $windowsBuild = [int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Wi
 if ($Backend -eq 'VirtualSmb' -and $windowsBuild -lt 18362) {
     throw 'Native Virtual SMB requires Windows build 18362 or later.'
 }
+if ($EnableWinFspPlan9) {
+    $winfsp = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\WOW6432Node\WinFsp' -Name InstallDir -ErrorAction Stop).InstallDir
+    $runtime = Join-Path $winfsp ('bin\winfsp-' + $(if ($architecture -eq 'arm64') {'a64'} else {'x64'}) + '.dll')
+    if (-not (Test-Path -LiteralPath $runtime -PathType Leaf)) { throw 'Install the native WinFsp runtime before enabling Plan 9.' }
+    if (-not $WinFspPlan9Executable) {
+        $WinFspPlan9Executable = if ($architecture -eq 'arm64') { Join-Path $PSScriptRoot 'arm64\nanabox-plan9-winfsp.exe' }
+        else { Join-Path $PSScriptRoot 'nanabox-plan9-winfsp.exe' }
+    }
+    $WinFspPlan9Executable = (Resolve-Path -LiteralPath $WinFspPlan9Executable).Path
+    if ((Get-PeMachine $WinFspPlan9Executable) -ne (Get-ArchitectureMachine $architecture)) { throw 'Wrong WinFsp Plan 9 client architecture.' }
+    Protect-Directory $plan9Root -UserRead
+} elseif ($WinFspPlan9Executable) { throw 'WinFspPlan9Executable requires -EnableWinFspPlan9.' }
 Protect-Directory $root
 if ($Backend -eq 'VirtualSmb') { Protect-Directory $shared -UserRead }
 else { Protect-Directory $client }
@@ -114,6 +130,7 @@ function Copy-ProtectedFile([string]$Source,[string]$Destination) {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 Copy-ProtectedFile $binary $destination
+if ($EnableWinFspPlan9) { Copy-ProtectedFile $WinFspPlan9Executable $plan9Binary }
 if ($Backend -eq 'Plan9') {
     Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll' } | ForEach-Object {
         Copy-ProtectedFile $_.FullName (Join-Path $client $_.Name)
@@ -126,6 +143,12 @@ if ($Backend -eq 'Plan9') {
     New-ItemProperty -Path $key -Name CirnoPath -Value (Join-Path $client 'Mile.Cirno.exe') -PropertyType String -Force | Out-Null
 } else {
     Remove-ItemProperty -Path $key -Name CirnoPath -ErrorAction SilentlyContinue
+}
+if ($EnableWinFspPlan9) {
+    New-ItemProperty -Path $key -Name WinFspPlan9Path -Value $plan9Binary -PropertyType String -Force | Out-Null
+} else {
+    Remove-ItemProperty -Path $key -Name WinFspPlan9Path -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $plan9Binary) { Remove-Item -LiteralPath $plan9Binary -Force }
 }
 New-ItemProperty -Path $key -Name AutomaticRestart -Value $(if ($DisableAutomaticGpuRestart) {'0'} else {'1'}) -PropertyType String -Force | Out-Null
 $image = '"' + $destination + '"'

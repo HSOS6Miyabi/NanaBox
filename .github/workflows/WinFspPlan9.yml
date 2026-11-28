@@ -3,6 +3,10 @@ on:
   push:
     paths:
       - 'GuestTool/Plan9Client.h'
+      - 'GuestTool/WindowsPlan9Mounts.h'
+      - 'GuestTool/WddmGuest.cpp'
+      - 'GuestTool/BuildWindowsGuestTool.ps1'
+      - 'Tests/WindowsPlan9ManagerIntegration.py'
       - 'GuestTool/WinFspPlan9.cpp'
       - 'GuestTool/BuildWindowsPlan9.ps1'
       - 'Tests/InstallWinFspSdk.ps1'
@@ -11,6 +15,10 @@ on:
   pull_request:
     paths:
       - 'GuestTool/Plan9Client.h'
+      - 'GuestTool/WindowsPlan9Mounts.h'
+      - 'GuestTool/WddmGuest.cpp'
+      - 'GuestTool/BuildWindowsGuestTool.ps1'
+      - 'Tests/WindowsPlan9ManagerIntegration.py'
       - 'GuestTool/WinFspPlan9.cpp'
       - 'GuestTool/BuildWindowsPlan9.ps1'
       - 'Tests/InstallWinFspSdk.ps1'
@@ -33,7 +41,10 @@ jobs:
         shell: pwsh
         run: |
           .\GuestTool\BuildWindowsPlan9.ps1
+          .\GuestTool\BuildWindowsGuestTool.ps1
           python Tests/WinFspPlan9Integration.py GuestTool/nanabox-plan9-winfsp.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python Tests/WindowsPlan9ManagerIntegration.py GuestTool/nanabox-gpu.exe GuestTool/nanabox-plan9-winfsp.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           .\GuestTool\BuildWindowsPlan9.ps1 -Architecture arm64 -OutputDirectory (Join-Path $PWD 'GuestTool\arm64')
       - uses: actions/upload-artifact@v7
@@ -43,6 +54,7 @@ jobs:
             GuestTool/nanabox-plan9-winfsp.exe
             GuestTool/arm64/nanabox-plan9-winfsp.exe
             GuestTool/Plan9Client.h
+            GuestTool/WindowsPlan9Mounts.h
             GuestTool/WinFspPlan9.cpp
             GuestTool/BuildWindowsPlan9.ps1
             GuestTool/README.md

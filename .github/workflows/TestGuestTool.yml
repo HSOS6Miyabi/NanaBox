@@ -111,6 +111,9 @@ jobs:
             GuestTool/WddmMapping.h
             GuestTool/VsmbProtocol.h
             GuestTool/NativeVsmb.h
+            GuestTool/WindowsPlan9Mounts.h
+            GuestTool/Plan9Client.h
+            GuestTool/WinFspPlan9.cpp
             GuestTool/nanabox-gpu.exe
             GuestTool/arm64/*.exe
             GuestTool/Cirno.zip
