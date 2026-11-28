@@ -8,6 +8,12 @@
 #include <hvsocket.h>
 #include <bcrypt.h>
 #include <iphlpapi.h>
+#include <wtsapi32.h>
+#include <userenv.h>
+#include <sddl.h>
+#pragma comment(lib, "wtsapi32.lib")
+#pragma comment(lib, "userenv.lib")
+#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -633,6 +639,7 @@ namespace
             static_cast<int>(input.size()), value.data(), n, nullptr, nullptr)) GuestFail("Invalid UTF-16");
         return value;
     }
+#include "WindowsUnicodeInput.h"
 #endif
 
     Json Information(bool exchange, bool clock)
@@ -682,9 +689,11 @@ namespace
     {
         std::unique_ptr<Exchange> Files;
         bool Clock;
+        bool UnicodeInput;
         std::unique_ptr<Network> Net;
     public:
-        Agent(fs::path const& root, bool clock, bool network = false,fs::path const& loopback={}) : Clock(clock)
+        Agent(fs::path const& root, bool clock, bool network = false, fs::path const& loopback = {},
+            bool unicodeInput = false) : Clock(clock), UnicodeInput(unicodeInput && !network)
         {
             if (!root.empty()) Files = std::make_unique<Exchange>(root);
             if (network) Net = std::make_unique<Network>(loopback);
@@ -702,7 +711,7 @@ namespace
                 auto const& settings = request.at("Settings");
                 Json result;
                 if (resource == "Heartbeat" || resource == "GuestInformation" ||
-                    resource == "TimeSync" || resource == "FileExchange")
+                    resource == "TimeSync" || resource == "FileExchange" || resource == "KeyboardInput")
                     Fields(request, {"Version","ResourceType","RequestType","Settings"});
                 if (resource == "Heartbeat" && action == "Query")
                 {
@@ -714,6 +723,7 @@ namespace
                 {
                     Fields(settings, {});
                     result = Information(static_cast<bool>(Files), Clock);
+                    result["Capabilities"]["UnicodeInput"] = UnicodeInput;
                 }
                 else if (resource == "TimeSync")
                 {
@@ -727,6 +737,27 @@ namespace
                     }
                     else GuestFail("Unsupported clock operation");
                     result = {{"UnixMilliseconds", Now()}, {"ClockSetEnabled", Clock}};
+                }
+                else if (resource == "KeyboardInput")
+                {
+                    if (action == "Query")
+                    {
+                        Fields(settings, {});
+                        result = {{"Enabled", UnicodeInput}};
+                    }
+                    else if (action == "Type")
+                    {
+                        Fields(settings, {"Mode", "Text"});
+                        if (!UnicodeInput) GuestFail("Guest Unicode input is disabled");
+#ifdef _WIN32
+                        auto mode = settings.at("Mode").get<std::string>();
+                        if (mode != "Console" && mode != "Enhanced") GuestFail("Invalid guest input session mode");
+                        result = TypeInteractiveUnicode(settings.at("Text").get<std::string>(), mode == "Enhanced");
+#else
+                        GuestFail("Windows Unicode input requires a Windows guest");
+#endif
+                    }
+                    else GuestFail("Unsupported keyboard input operation");
                 }
                 else if (resource == "FileExchange")
                 {
@@ -950,7 +981,7 @@ namespace
         auto resource=request.at("ResourceType").get<std::string>();
         unsigned port=resource=="Plan9Shares"?27456u:
             (resource=="Heartbeat"||resource=="GuestInformation"||resource=="TimeSync"||
-                resource=="FileExchange"?27457u:27453u);
+                resource=="FileExchange"||resource=="KeyboardInput"?27457u:27453u);
         WSADATA data{};
         if(WSAStartup(MAKEWORD(2,2),&data))GuestFail("WSAStartup failed");
         struct Wsa{~Wsa(){WSACleanup();}} cleanup;
@@ -1000,6 +1031,9 @@ namespace
     {
         NetworkValidationTest();
         DnsSelfTest();
+#ifdef _WIN32
+        UnicodeInputSelfTest();
+#endif
         auto root = fs::temp_directory_path() / ("NanaBox-GuestTool-" + Token());
         Require(fs::create_directory(root), "Cannot create test directory");
 #ifndef _WIN32
@@ -1022,6 +1056,9 @@ namespace
         Require(call("GuestInformation", "Query").at("Capabilities").at("FileExchange") == true, "Capabilities failed");
         Require(call("TimeSync", "Query").at("ClockSetEnabled") == false, "Clock capability failed");
         bad("TimeSync", "Update", {{"UnixMilliseconds", 1700000000000ull}});
+        Require(call("KeyboardInput", "Query").at("Enabled") == false, "Input must be opt-in");
+        bad("KeyboardInput", "Type", {{"Text","example"},{"Mode","Console"}});
+        bad("KeyboardInput", "Query", {{"Text","example"}});
         for (auto name : {"../escape", "CON.dll", "a:b", ".hidden", "bad.", "COM1.txt"})
             bad("FileExchange", "BeginUpload", {{"Name", name}, {"Size", 0}, {"Overwrite", false}});
         std::vector<unsigned char> data(Chunk + 19);
@@ -1086,6 +1123,7 @@ namespace
 
     fs::path ExchangeRoot;
     bool AllowClock = false;
+    bool AllowUnicodeInput = false;
     bool NetworkMode = false;
     bool DnsMode = false;
     bool BindMode = false;
@@ -1115,7 +1153,7 @@ namespace
         if (!StatusHandle) return;
         try
         {
-            Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState);
+            Agent agent(ExchangeRoot, AllowClock, NetworkMode, LoopbackState, AllowUnicodeInput);
             Status(SERVICE_RUNNING);
             Serve(agent, NetworkMode, DnsMode, BindMode);
             Status(SERVICE_STOPPED);
@@ -1136,6 +1174,14 @@ int main(int argc, char** argv)
     try
     {
 #ifdef _WIN32
+        if (argc == 4 && (std::wstring_view(argv[1]) == L"--unicode-input-child" ||
+            std::wstring_view(argv[1]) == L"--unicode-input-test-child"))
+            return UnicodeInputChild(argv[2], argv[3], std::wstring_view(argv[1]) == L"--unicode-input-test-child");
+        if (argc == 2 && std::wstring_view(argv[1]) == L"--unicode-input-ui-test")
+        {
+            UnicodeInputUiTest();
+            return 0;
+        }
         if(argc==4 && std::wstring_view(argv[1])==L"--send")
         {
             auto result=HostRequest(argv[2],ReadRequestFile(argv[3]));
@@ -1161,6 +1207,7 @@ int main(int argc, char** argv)
 #endif
             if (arg == "--exchange-root" && i + 1 < argc) ExchangeRoot = fs::path(argv[++i]);
             else if (arg == "--allow-clock-set") AllowClock = true;
+            else if (arg == "--allow-unicode-input") AllowUnicodeInput = true;
             else if (arg == "--service") service = true;
             else if (arg == "--network") NetworkMode = true;
             else if (arg == "--dns-tunnel") DnsMode = true;
@@ -1169,6 +1216,8 @@ int main(int argc, char** argv)
             else if (arg != "--serve") GuestFail("Unknown GuestTool option");
         }
         if ((DnsMode || BindMode || !LoopbackState.empty()) && !NetworkMode) GuestFail("Network integration options require network mode");
+        if (AllowUnicodeInput && (!service || NetworkMode))
+            GuestFail("Unicode input requires the Windows interactive integration service");
 #ifdef _WIN32
         if (service)
         {

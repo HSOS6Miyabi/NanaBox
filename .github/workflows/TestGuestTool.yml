@@ -88,6 +88,7 @@ jobs:
           path: |
             GuestTool/GuestTool.cpp
             GuestTool/GuestNetwork.h
+            GuestTool/WindowsUnicodeInput.h
             GuestTool/DnsTunnel.h
             GuestTool/LoopbackRouting.h
             GuestTool/BindCoordinator.h

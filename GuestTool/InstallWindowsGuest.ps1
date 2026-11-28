@@ -3,6 +3,7 @@ param(
     [switch]$EnableFileExchange,
     [switch]$AllowClockSet,
     [switch]$EnableDnsTunnel,
+    [switch]$EnableUnicodeInput,
     [string]$NativeExecutable
 )
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,7 @@ $NativeExecutable = (Resolve-Path -LiteralPath $NativeExecutable).Path
 & $NativeExecutable --self-test
 if ($LASTEXITCODE -ne 0) { throw 'Native GuestTool self-test failed.' }
 
-function Initialize-ProtectedDirectory([string]$Path) {
+function Initialize-ProtectedDirectory([string]$Path,[switch]$UserExecute) {
     $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
     $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
     $exists = Test-Path -LiteralPath $Path
@@ -42,12 +43,17 @@ function Initialize-ProtectedDirectory([string]$Path) {
             $sid,'FullControl','ContainerInherit, ObjectInherit','None','Allow')
         $acl.AddAccessRule($rule)
     }
+    if ($UserExecute) {
+        $users = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
+        $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
+            $users,'ReadAndExecute','ContainerInherit, ObjectInherit','None','Allow'))
+    }
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
 
 $taskName = 'NanaBox Guest Network Service'
 $nativeDir = Join-Path $env:ProgramFiles 'NanaBox GuestTool'
-Initialize-ProtectedDirectory $nativeDir
+Initialize-ProtectedDirectory $nativeDir -UserExecute:$EnableUnicodeInput
 $nativeTarget = Join-Path $nativeDir 'nanabox-guest-tool.exe'
 $nativeArgs = '--service'
 if ($EnableFileExchange) {
@@ -56,6 +62,7 @@ if ($EnableFileExchange) {
     $nativeArgs += ' --exchange-root "{0}"' -f $exchange
 }
 if ($AllowClockSet) { $nativeArgs += ' --allow-clock-set' }
+if ($EnableUnicodeInput) { $nativeArgs += ' --allow-unicode-input' }
 
 $networkService = Get-Service -Name 'NanaBoxGuestNetwork' -ErrorAction SilentlyContinue
 if ($networkService -and $networkService.Status -ne 'Stopped') {
