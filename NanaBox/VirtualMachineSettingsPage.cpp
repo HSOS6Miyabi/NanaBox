@@ -64,6 +64,108 @@ namespace
         return Mile::WinRT::GetLocalizedString(winrt::hstring(ResourcePath), Fallback);
     }
 
+    using VmmsFieldMap = std::map<std::wstring_view, std::vector<LPCWSTR>>;
+
+    VmmsFieldMap const& VmmsActionFields()
+    {
+        static const VmmsFieldMap Fields = {
+            {L"VmmsCreate", {L"VmmsNameTextBox", L"VmmsGenerationComboBox", L"VmmsMemoryTextBox", L"VmmsPathTextBox"}},
+            {L"VmmsRename", {L"VmmsNameTextBox"}},
+            {L"VmmsCheckpointCreate", {L"VmmsNameTextBox"}},
+            {L"VmmsCheckpointRename", {L"VmmsNameTextBox", L"VmmsCheckpointsComboBox"}},
+            {L"VmmsSetMemory", {L"VmmsMemoryTextBox"}},
+            {L"VmmsDynamicMemory", {L"VmmsMemoryTextBox", L"SettingsLabel206", L"VmmsMinimumMemoryTextBox", L"VmmsMaximumMemoryTextBox", L"VmmsMemoryBufferTextBox", L"VmmsMemoryPriorityTextBox"}},
+            {L"VmmsStaticMemory", {L"VmmsMemoryTextBox"}},
+            {L"VmmsSetProcessor", {L"VmmsProcessorTextBox"}},
+            {L"VmmsCheckpointRestore", {L"VmmsCheckpointsComboBox"}},
+            {L"VmmsCheckpointRemove", {L"VmmsCheckpointsComboBox"}},
+            {L"VmmsCheckpointExport", {L"VmmsCheckpointsComboBox", L"VmmsPathTextBox"}},
+            {L"VmmsImportRegister", {L"VmmsPathTextBox"}},
+            {L"VmmsImportCopy", {L"VmmsPathTextBox", L"VmmsDestinationTextBox"}},
+            {L"VmmsExport", {L"VmmsPathTextBox"}},
+            {L"VmmsMoveStorage", {L"VmmsPathTextBox"}},
+            {L"VmmsMigrate", {L"SettingsLabel207", L"SettingsLabel208", L"VmmsRemoteHostTextBox", L"VmmsRemotePathTextBox"}},
+            {L"VmmsReplicationEnable", {L"SettingsLabel207", L"SettingsLabel208", L"VmmsRemoteHostTextBox", L"VmmsReplicaPortTextBox", L"VmmsReplicaFrequencyTextBox", L"VmmsReplicaHistoryTextBox", L"VmmsReplicaCertificateTextBox", L"VmmsReplicaAuthComboBox", L"VmmsReplicaCompressionCheckBox"}},
+            {L"VmmsCpuPolicy", {L"VmmsCpuReserveTextBox", L"VmmsCpuMaximumTextBox", L"VmmsCpuWeightTextBox", L"VmmsCpuNestedCheckBox"}},
+            {L"VmmsGpuAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsGpuSourceComboBox", L"SettingsLabel212", L"VmmsGpuVRAMGrid", L"VmmsGpuEncodeGrid", L"VmmsGpuDecodeGrid", L"VmmsGpuComputeGrid"}},
+            {L"VmmsGpuRemove", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
+            {L"VmmsGpuQuotas", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"SettingsLabel212", L"VmmsGpuVRAMGrid", L"VmmsGpuEncodeGrid", L"VmmsGpuDecodeGrid", L"VmmsGpuComputeGrid"}},
+            {L"VmmsDiskAttach", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberTextBox", L"VmmsControllerLocationTextBox"}},
+            {L"VmmsDiskDetach", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
+            {L"VmmsDiskQoS", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDiskMinIopsTextBox", L"VmmsDiskMaxIopsTextBox"}},
+            {L"VmmsDvdAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicePathTextBox", L"VmmsControllerTypeComboBox", L"VmmsControllerNumberTextBox", L"VmmsControllerLocationTextBox"}},
+            {L"VmmsDvdMount", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDevicePathTextBox"}},
+            {L"VmmsDvdRemove", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
+            {L"VmmsNicAdd", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDeviceNameTextBox"}},
+            {L"VmmsNicRemove", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
+            {L"VmmsNicConnect", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsDeviceSwitchComboBox"}},
+            {L"VmmsNicDisconnect", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox"}},
+            {L"VmmsNicMac", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicMacTextBox"}},
+            {L"VmmsNicVlan", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicVlanTextBox"}},
+            {L"VmmsNicGuard", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsNicDhcpGuardCheckBox", L"VmmsNicRouterGuardCheckBox", L"VmmsNicSpoofCheckBox"}},
+            {L"VmmsIntegration", {L"SettingsLabel210", L"SettingsLabel211", L"VmmsDevicesComboBox", L"VmmsIntegrationEnabledCheckBox"}},
+            {L"VmmsSecureBoot", {L"VmmsSecureBootCheckBox", L"VmmsSecureBootTemplateComboBox"}},
+            {L"VmmsAutomaticActions", {L"VmmsAutomaticStartComboBox", L"VmmsAutomaticStopComboBox", L"VmmsAutomaticDelayTextBox"}},
+            {L"VmmsCheckpointPolicy", {L"VmmsCheckpointTypeComboBox", L"VmmsAutomaticCheckpointsCheckBox"}},
+        };
+        return Fields;
+    }
+
+    void UpdateVmmsActionFields(winrt::FrameworkElement const& Root, winrt::ComboBox const& Picker)
+    {
+        auto Item = Picker.SelectedItem().try_as<winrt::Windows::UI::Xaml::Controls::ComboBoxItem>();
+        if (!Item) return;
+        auto Action = winrt::unbox_value<winrt::hstring>(Item.Tag());
+        auto const& Fields = ::VmmsActionFields();
+        auto Current = Fields.find(std::wstring_view(Action.c_str()));
+        for (auto const& Entry : Fields)
+            for (auto Name : Entry.second)
+                if (auto Control = Root.FindName(Name).try_as<winrt::FrameworkElement>())
+                    Control.Visibility(Current != Fields.end() &&
+                        std::any_of(Current->second.begin(), Current->second.end(),
+                            [Name](LPCWSTR Candidate) { return std::wstring_view(Candidate) == Name; })
+                        ? winrt::Visibility::Visible : winrt::Visibility::Collapsed);
+    }
+
+    std::wstring DescribeVmmsParameters(winrt::FrameworkElement const& Root, winrt::hstring const& Action)
+    {
+        auto const& Fields = ::VmmsActionFields();
+        auto Current = Fields.find(std::wstring_view(Action.c_str()));
+        if (Current == Fields.end()) return {};
+        std::wstring Result;
+        using namespace winrt::Windows::UI::Xaml::Controls;
+        auto Add = [&](winrt::hstring const& Label, winrt::hstring const& Value)
+        {
+            if (!Label.empty() && !Value.empty())
+                Result += L"\n" + std::wstring(Label.c_str()) + L": " + Value.c_str();
+        };
+        auto Describe = [&](winrt::FrameworkElement const& Control)
+        {
+            if (auto Input = Control.try_as<TextBox>())
+                Add(winrt::unbox_value_or<winrt::hstring>(Input.Header(), winrt::hstring()), Input.Text());
+            else if (auto Choice = Control.try_as<ComboBox>())
+            {
+                if (auto Selected = Choice.SelectedItem().try_as<ComboBoxItem>())
+                    Add(winrt::unbox_value_or<winrt::hstring>(Choice.Header(), winrt::hstring()),
+                        winrt::unbox_value_or<winrt::hstring>(Selected.Content(), winrt::hstring()));
+            }
+            else if (auto Check = Control.try_as<CheckBox>())
+                Add(winrt::unbox_value_or<winrt::hstring>(Check.Content(), winrt::hstring()),
+                    ::GetSettingsString(Check.IsChecked().Value() ? L"ResultYes" : L"ResultNo"));
+        };
+        for (auto Name : Current->second)
+            if (auto Control = Root.FindName(Name).try_as<winrt::FrameworkElement>())
+            {
+                if (auto Group = Control.try_as<Grid>())
+                {
+                    for (auto Child : Group.Children())
+                        if (auto Field = Child.try_as<winrt::FrameworkElement>()) Describe(Field);
+                }
+                else Describe(Control);
+            }
+        return Result;
+    }
+
     void ShowSettingsError(
         _In_ HWND WindowHandle)
     {
@@ -763,6 +865,13 @@ namespace winrt::NanaBox::implementation
             }
         });
         this->SettingsNavigation().SelectedIndex(0);
+        this->VmmsActionComboBox().SelectionChanged([Weak = this->get_weak()](
+            winrt::IInspectable const& Sender, winrt::SelectionChangedEventArgs const&)
+        {
+            if (auto Page = Weak.get())
+                ::UpdateVmmsActionFields(Page->as<winrt::FrameworkElement>(), Sender.as<winrt::ComboBox>());
+        });
+        ::UpdateVmmsActionFields(this->as<winrt::FrameworkElement>(), this->VmmsActionComboBox());
         this->SectionHeading().Text(::GetSettingsString(L"TabGeneral.Content"));
         this->SizeChanged([Weak = this->get_weak()](winrt::IInspectable const&, winrt::Windows::UI::Xaml::SizeChangedEventArgs const& Args)
         {
@@ -2865,7 +2974,7 @@ namespace winrt::NanaBox::implementation
                         Data["StartAction"] = Selected(this->VmmsAutomaticStartComboBox());
                         Data["StopAction"] = Selected(this->VmmsAutomaticStopComboBox());
                         Data["Delay"] = Number(this->VmmsAutomaticDelayTextBox(), 0, 2147483647);
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsCheckpointPolicy")
                     {
@@ -2873,7 +2982,7 @@ namespace winrt::NanaBox::implementation
                         Data["Enabled"] = this->VmmsAutomaticCheckpointsCheckBox().IsChecked().Value();
                         if (Data["Type"] == "Disabled" && Data["Enabled"] == true)
                             throw winrt::hresult_invalid_argument(L"Automatic checkpoints require checkpoints to be enabled.");
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsTpmDisable" || Action == L"VmmsDeleteSavedState")
                     {
@@ -2916,7 +3025,7 @@ namespace winrt::NanaBox::implementation
                         Data["Priority"] = Number(this->VmmsMemoryPriorityTextBox(), 0, 100);
                         if (Data["MinimumMiB"] > Data["MemoryMiB"] || Data["MemoryMiB"] > Data["MaximumMiB"])
                             throw winrt::hresult_invalid_argument(L"Invalid dynamic memory range.");
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsMigrate" || Action == L"VmmsReplicationEnable")
                     {
@@ -2935,7 +3044,7 @@ namespace winrt::NanaBox::implementation
                             Data["Thumbprint"] = winrt::to_string(this->VmmsReplicaCertificateTextBox().Text());
                             Data["Compression"] = this->VmmsReplicaCompressionCheckBox().IsChecked().Value();
                         }
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsCpuPolicy")
                     {
@@ -2944,7 +3053,7 @@ namespace winrt::NanaBox::implementation
                         Data["Weight"] = Number(this->VmmsCpuWeightTextBox(), 1, 10000);
                         Data["Nested"] = this->VmmsCpuNestedCheckBox().IsChecked().Value();
                         if (Data["Reserve"] > Data["Maximum"]) throw winrt::hresult_invalid_argument(L"CPU reserve exceeds maximum.");
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsGpuAdd" || Action == L"VmmsGpuRemove" || Action == L"VmmsGpuQuotas")
                     {
@@ -2973,7 +3082,7 @@ namespace winrt::NanaBox::implementation
                                 throw winrt::hresult_invalid_argument(L"Specify at least one GPU quota to change.");
                             Data["Quotas"] = std::move(Quotas);
                         }
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsDiskAttach" || Action == L"VmmsDvdAdd" || Action == L"VmmsNicAdd" || Action == L"VmmsSecureBoot")
                     {
@@ -2993,7 +3102,7 @@ namespace winrt::NanaBox::implementation
                             if (Action == L"VmmsDiskAttach" && Data["Path"].get<std::string>().empty())
                                 throw winrt::hresult_invalid_argument(L"Choose a virtual disk file.");
                         }
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsDiskDetach" || Action == L"VmmsDiskQoS" ||
                         Action == L"VmmsDvdMount" || Action == L"VmmsDvdRemove" ||
@@ -3024,7 +3133,7 @@ namespace winrt::NanaBox::implementation
                         else if (Action == L"VmmsIntegration")
                             Data["Enabled"] = this->VmmsIntegrationEnabledCheckBox().IsChecked().Value();
                         Confirmation += L"\n" + std::wstring(winrt::unbox_value<winrt::hstring>(this->VmmsDevicesComboBox().SelectedItem().as<Item>().Content()).c_str());
-                        Confirmation += L"\n" + std::wstring(winrt::to_hstring(Data.dump(2)).c_str());
+                        Confirmation += ::DescribeVmmsParameters(this->as<winrt::FrameworkElement>(), Action);
                     }
                     else if (Action == L"VmmsSetMemory" || Action == L"VmmsStaticMemory")
                     {

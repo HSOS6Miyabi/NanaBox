@@ -1528,7 +1528,7 @@
                 <ComboBox x:Name="VmmsDevicesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsDevicesComboBox" Header="Selected device or integration service" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsDevicesComboBox"></ComboBox>
                 <ComboBox x:Name="VmmsGpuSourceComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuSourceComboBox" Header="Physical GPU for new partition" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="VmmsGpuSourceComboBox" />
                 <TextBlock x:Name="SettingsLabel212" x:Uid="/VirtualMachineSettingsPage/VmmsGpuQuotaNote" TextWrapping="Wrap" Opacity="0.75" Text="GPU-PV: select a physical GPU or automatic selection. Leave unused quota fields blank to use driver defaults when adding, or preserve existing values when editing. Encode, decode and compute units are driver-defined. Shut down the VM before changing GPU partitions." />
-                <Grid ColumnSpacing="8">
+                <Grid x:Name="VmmsGpuVRAMGrid" ColumnSpacing="8">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -1538,7 +1538,7 @@
                   <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalVRAMTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalVRAMTextBox" Header="Optimal VRAM (bytes)" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalVRAMTextBox" />
                   <TextBox Grid.Column="2" x:Name="VmmsGpuMaxVRAMTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxVRAMTextBox" Header="Maximum VRAM (bytes)" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxVRAMTextBox" />
                 </Grid>
-                <Grid ColumnSpacing="8">
+                <Grid x:Name="VmmsGpuEncodeGrid" ColumnSpacing="8">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -1548,7 +1548,7 @@
                   <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalEncodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalEncodeTextBox" Header="Optimal video encode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalEncodeTextBox" />
                   <TextBox Grid.Column="2" x:Name="VmmsGpuMaxEncodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxEncodeTextBox" Header="Maximum video encode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxEncodeTextBox" />
                 </Grid>
-                <Grid ColumnSpacing="8">
+                <Grid x:Name="VmmsGpuDecodeGrid" ColumnSpacing="8">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -1558,7 +1558,7 @@
                   <TextBox Grid.Column="1" x:Name="VmmsGpuOptimalDecodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuOptimalDecodeTextBox" Header="Optimal video decode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuOptimalDecodeTextBox" />
                   <TextBox Grid.Column="2" x:Name="VmmsGpuMaxDecodeTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsGpuMaxDecodeTextBox" Header="Maximum video decode" InputScope="Number" AutomationProperties.AutomationId="VmmsGpuMaxDecodeTextBox" />
                 </Grid>
-                <Grid ColumnSpacing="8">
+                <Grid x:Name="VmmsGpuComputeGrid" ColumnSpacing="8">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -1583,7 +1583,7 @@
                 <CheckBox x:Name="VmmsNicSpoofCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsNicSpoofCheckBox" Content="Allow MAC address spoofing" AutomationProperties.AutomationId="VmmsNicSpoofCheckBox" />
                 <CheckBox x:Name="VmmsIntegrationEnabledCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsIntegrationEnabledCheckBox" Content="Enable selected integration service" AutomationProperties.AutomationId="VmmsIntegrationEnabledCheckBox" />
                 <CheckBox x:Name="VmmsSecureBootCheckBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootCheckBox" Content="Enable Secure Boot" AutomationProperties.AutomationId="VmmsSecureBootCheckBox" />
-                <ComboBox x:Name="VmmsSecureBootTemplateComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootTemplateComboBox" Header="Secure Boot template" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsSecureBootTemplateComboBox"><ComboBoxItem Tag="MicrosoftWindows" Content="MicrosoftWindows" AutomationProperties.AutomationId="VmmsMicrosoftWindows" /><ComboBoxItem Tag="MicrosoftUEFICertificateAuthority" Content="MicrosoftUEFICertificateAuthority" AutomationProperties.AutomationId="VmmsMicrosoftUEFICertificateAuthority" /><ComboBoxItem Tag="OpenSourceShieldedVM" Content="OpenSourceShieldedVM" AutomationProperties.AutomationId="VmmsOpenSourceShieldedVM" /></ComboBox>
+                <ComboBox x:Name="VmmsSecureBootTemplateComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsSecureBootTemplateComboBox" Header="Secure Boot template" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsSecureBootTemplateComboBox"><ComboBoxItem x:Name="VmmsMicrosoftWindowsLabel" x:Uid="/VirtualMachineSettingsPage/VmmsMicrosoftWindows" Tag="MicrosoftWindows" Content="Microsoft Windows" AutomationProperties.AutomationId="VmmsMicrosoftWindows" /><ComboBoxItem x:Name="VmmsMicrosoftUEFICertificateAuthorityLabel" x:Uid="/VirtualMachineSettingsPage/VmmsMicrosoftUEFICertificateAuthority" Tag="MicrosoftUEFICertificateAuthority" Content="Microsoft UEFI CA (Linux and other operating systems)" AutomationProperties.AutomationId="VmmsMicrosoftUEFICertificateAuthority" /><ComboBoxItem x:Name="VmmsOpenSourceShieldedVMLabel" x:Uid="/VirtualMachineSettingsPage/VmmsOpenSourceShieldedVM" Tag="OpenSourceShieldedVM" Content="Open-source shielded VM" AutomationProperties.AutomationId="VmmsOpenSourceShieldedVM" /></ComboBox>
                 <ComboBox x:Name="VmmsAutomaticStartComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBox" Header="Automatic start action" AutomationProperties.AutomationId="VmmsAutomaticStartComboBox" SelectedIndex="1" HorizontalAlignment="Stretch"><ComboBoxItem x:Name="SettingsLabel213" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxNothing" Tag="Nothing" Content="Do nothing" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxNothing" /><ComboBoxItem x:Name="SettingsLabel214" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxStartIfRunning" Tag="StartIfRunning" Content="Start if previously running" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxStartIfRunning" /><ComboBoxItem x:Name="SettingsLabel215" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStartComboBoxStart" Tag="Start" Content="Always start" AutomationProperties.AutomationId="VmmsAutomaticStartComboBoxStart" /></ComboBox>
                 <ComboBox x:Name="VmmsAutomaticStopComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBox" Header="Automatic stop action" AutomationProperties.AutomationId="VmmsAutomaticStopComboBox" SelectedIndex="1" HorizontalAlignment="Stretch"><ComboBoxItem x:Name="SettingsLabel216" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxTurnOff" Tag="TurnOff" Content="Turn off" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxTurnOff" /><ComboBoxItem x:Name="SettingsLabel217" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxSave" Tag="Save" Content="Save state" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxSave" /><ComboBoxItem x:Name="SettingsLabel218" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticStopComboBoxShutDown" Tag="ShutDown" Content="Shut down guest" AutomationProperties.AutomationId="VmmsAutomaticStopComboBoxShutDown" /></ComboBox>
                 <TextBox x:Name="VmmsAutomaticDelayTextBox" x:Uid="/VirtualMachineSettingsPage/VmmsAutomaticDelayTextBox" Header="Automatic start delay (seconds)" AutomationProperties.AutomationId="VmmsAutomaticDelayTextBox" Text="0" InputScope="Number" />

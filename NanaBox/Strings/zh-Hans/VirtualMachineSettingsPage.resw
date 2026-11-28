@@ -931,4 +931,7 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="LayoutChinese" xml:space="preserve"><value>中文（简体）</value></data>
   <data name="LayoutKorean" xml:space="preserve"><value>韩语</value></data>
   <data name="LayoutSpanish" xml:space="preserve"><value>西班牙语</value></data>
+  <data name="VmmsMicrosoftWindows.Content" xml:space="preserve"><value>Microsoft Windows</value></data>
+  <data name="VmmsMicrosoftUEFICertificateAuthority.Content" xml:space="preserve"><value>Microsoft UEFI 证书颁发机构（Linux 等操作系统）</value></data>
+  <data name="VmmsOpenSourceShieldedVM.Content" xml:space="preserve"><value>开源屏蔽虚拟机</value></data>
 </root>

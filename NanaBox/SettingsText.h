@@ -6,6 +6,9 @@ namespace NanaBox::SettingsText
 {
     struct Entry { std::wstring_view Key; wchar_t const* English; wchar_t const* Chinese; };
     inline constexpr Entry Strings[] = {
+        {L"VmmsOpenSourceShieldedVM.Content", L"Open-source shielded VM", L"\u5f00\u6e90\u5c4f\u853d\u865a\u62df\u673a"},
+        {L"VmmsMicrosoftUEFICertificateAuthority.Content", L"Microsoft UEFI CA (Linux and other operating systems)", L"Microsoft UEFI \u8bc1\u4e66\u9881\u53d1\u673a\u6784\uff08Linux \u7b49\u64cd\u4f5c\u7cfb\u7edf\uff09"},
+        {L"VmmsMicrosoftWindows.Content", L"Microsoft Windows", L"Microsoft Windows"},
         {L"LayoutSpanish", L"Spanish", L"\u897f\u73ed\u7259\u8bed"},
         {L"LayoutKorean", L"Korean", L"\u97e9\u8bed"},
         {L"LayoutChinese", L"Chinese (Simplified)", L"\u4e2d\u6587\uff08\u7b80\u4f53\uff09"},
@@ -814,6 +817,9 @@ namespace NanaBox::SettingsText
     };
     struct Binding { wchar_t const* Element; wchar_t const* Property; wchar_t const* Key; };
     inline constexpr Binding Bindings[] = {
+        {L"VmmsOpenSourceShieldedVMLabel", L"Content", L"VmmsOpenSourceShieldedVM.Content"},
+        {L"VmmsMicrosoftUEFICertificateAuthorityLabel", L"Content", L"VmmsMicrosoftUEFICertificateAuthority.Content"},
+        {L"VmmsMicrosoftWindowsLabel", L"Content", L"VmmsMicrosoftWindows.Content"},
         {L"ReloadButton", L"AutomationProperties.Name", L"ReloadButton.AutomationProperties.Name"},
         {L"SettingsLabel1", L"Text", L"ReloadButtonTextBlock.Text"},
         {L"OpenButton", L"AutomationProperties.Name", L"OpenButton.AutomationProperties.Name"},

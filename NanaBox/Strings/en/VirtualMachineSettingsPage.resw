@@ -931,4 +931,7 @@ UseExtendedMaxVpPerSocketLimit</value></data>
   <data name="LayoutChinese" xml:space="preserve"><value>Chinese (Simplified)</value></data>
   <data name="LayoutKorean" xml:space="preserve"><value>Korean</value></data>
   <data name="LayoutSpanish" xml:space="preserve"><value>Spanish</value></data>
+  <data name="VmmsMicrosoftWindows.Content" xml:space="preserve"><value>Microsoft Windows</value></data>
+  <data name="VmmsMicrosoftUEFICertificateAuthority.Content" xml:space="preserve"><value>Microsoft UEFI CA (Linux and other operating systems)</value></data>
+  <data name="VmmsOpenSourceShieldedVM.Content" xml:space="preserve"><value>Open-source shielded VM</value></data>
 </root>
