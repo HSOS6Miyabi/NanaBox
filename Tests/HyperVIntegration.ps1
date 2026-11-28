@@ -115,9 +115,10 @@ function Test-WindowsPlan9([string]$runtimeId,$cfg) {
         if (-not $status.Plan9Enabled) { throw 'Install WinFsp and enable Windows 9P on the disposable test guest.' }
         $missing = @($shares | Where-Object {
             $share = $_
+            $port = if ($null -eq $share.Port) { 50001 } else { [uint32]$share.Port }
             -not @($status.Shares | Where-Object {
                 $_.Name -ceq $share.Name -and $_.Available -and [bool]$_.ReadOnly -eq [bool]$share.ReadOnly -and
-                [uint32]$_.Port -eq [uint32]$share.Port
+                [uint32]$_.Port -eq $port
             }).Count
         })
         if (-not $missing.Count) { break }
