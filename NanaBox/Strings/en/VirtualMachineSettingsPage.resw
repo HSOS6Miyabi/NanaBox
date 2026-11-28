@@ -1522,4 +1522,16 @@
   <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve">
     <value>Enable automatic checkpoints</value>
   </data>
+  <data name="HcsSystemsComboBox.Header" xml:space="preserve">
+    <value>HCS compute system</value>
+  </data>
+  <data name="HcsQueryTextBox.Header" xml:space="preserve">
+    <value>Optional HCS property query (JSON)</value>
+  </data>
+  <data name="HcsServicePropertiesButton.Content" xml:space="preserve">
+    <value>HCS service properties</value>
+  </data>
+  <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
+    <value>Selected HCS system properties</value>
+  </data>
 </root>

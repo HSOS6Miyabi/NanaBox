@@ -2359,6 +2359,14 @@ namespace winrt::NanaBox::implementation
                     MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return;
             }
             else if (Action == L"VmmsInspect") Data["Id"] = Selected(this->VmmsMachinesComboBox());
+            else if (Action == L"HcsServiceProperties" || Action == L"HcsSystemProperties")
+            {
+                if (Action == L"HcsSystemProperties") Data["Id"] = Selected(this->HcsSystemsComboBox());
+                auto Query = winrt::to_string(this->HcsQueryTextBox().Text());
+                Data["Query"] = Query.empty() ? Json::object() : Json::parse(Query);
+                if (!Data["Query"].is_object())
+                    throw winrt::hresult_invalid_argument(L"Property query must be a JSON object.");
+            }
             else if (Action != L"VmmsList" && Action != L"HcsInventory") throw winrt::hresult_invalid_argument();
             this->m_VmmsRunning = true;
             this->VmmsForm().IsEnabled(false);
@@ -2395,7 +2403,22 @@ namespace winrt::NanaBox::implementation
             co_await Foreground;
             this->m_VmmsRunning = false;
             this->VmmsForm().IsEnabled(true);
-            if (Action != L"HcsInventory" && Result.value("Success", true))
+            if (Action == L"HcsInventory" && Result.value("Success", true))
+            {
+                auto Box = this->HcsSystemsComboBox();
+                Box.Items().Clear();
+                for (auto const& Entry : Result.at("Items"))
+                {
+                    auto Id = Entry.at("Id").get<std::string>();
+                    Item Value;
+                    Value.Tag(winrt::box_value(winrt::to_hstring(Id)));
+                    Value.Content(winrt::box_value(winrt::to_hstring(Id + " - " +
+                        Entry.value("SystemType", std::string()) + " - " + Entry.value("State", std::string()))));
+                    Box.Items().Append(Value);
+                }
+                if (Box.Items().Size()) Box.SelectedIndex(0);
+            }
+            else if (std::wstring_view(Action.c_str()).starts_with(L"Vmms") && Result.value("Success", true))
             {
                 auto Fill = [](winrt::ComboBox const& Box, Json const& Items, std::string const& Preferred)
                 {

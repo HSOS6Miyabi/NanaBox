@@ -194,6 +194,13 @@ namespace NanaBox
             }
             else if (Action == "HcsInventory")
                 Result = Json{{"Items", Json::array({Json{{"Id", "mock-hcs"}, {"SystemType", "VirtualMachine"}, {"State", "Running"}}})}};
+            else if (Action == "HcsServiceProperties" || Action == "HcsSystemProperties")
+            {
+                if (!A.at("Query").is_object()) throw winrt::hresult_invalid_argument();
+                if (Action == "HcsSystemProperties" && Text("Id") != "mock-hcs") throw winrt::hresult_invalid_argument();
+                Result["Properties"] = Json{{"Query", A.at("Query")},
+                    {"Id", Action == "HcsSystemProperties" ? Text("Id") : "mock-service"}};
+            }
             else if (Action.starts_with("Vmms"))
             {
                 std::string Selected;

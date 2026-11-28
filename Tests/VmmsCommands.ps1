@@ -66,6 +66,7 @@ function Set-VM { [CmdletBinding(SupportsShouldProcess)] param($VM,[string]$Auto
 function Remove-VMSavedState { [CmdletBinding(SupportsShouldProcess)] param($VM) Record-Call 'Remove-VMSavedState' $PSBoundParameters; $VM.State='Off' }
 function Rename-VMSnapshot { [CmdletBinding(SupportsShouldProcess)] param($VMSnapshot,[string]$NewName) Record-Call 'Rename-VMSnapshot' $PSBoundParameters; $VMSnapshot.Name=$NewName }
 function Export-VMSnapshot { param($VMSnapshot,[string]$Path) Record-Call 'Export-VMSnapshot' $PSBoundParameters }
+function Get-VMSecurity { param($VM) @{TpmEnabled=$false;Shielded=$false;EncryptStateAndVmMigrationTraffic=$false} }
 function Get-VMKeyProtector { param($VM) if ($a.MockProtector) { [byte[]]@(1,2,3) } }
 function Set-VMKeyProtector { [CmdletBinding(SupportsShouldProcess)] param($VM,[switch]$NewLocalKeyProtector) Record-Call 'Set-VMKeyProtector' $PSBoundParameters }
 function Enable-VMTPM { [CmdletBinding(SupportsShouldProcess)] param($VM) Record-Call 'Enable-VMTPM' $PSBoundParameters }

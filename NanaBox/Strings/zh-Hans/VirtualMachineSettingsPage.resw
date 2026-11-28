@@ -1522,4 +1522,16 @@
   <data name="VmmsAutomaticCheckpointsCheckBox.Content" xml:space="preserve">
     <value>启用自动检查点</value>
   </data>
+  <data name="HcsSystemsComboBox.Header" xml:space="preserve">
+    <value>HCS 计算系统</value>
+  </data>
+  <data name="HcsQueryTextBox.Header" xml:space="preserve">
+    <value>HCS 属性查询（可选，JSON）</value>
+  </data>
+  <data name="HcsServicePropertiesButton.Content" xml:space="preserve">
+    <value>查询 HCS 服务属性</value>
+  </data>
+  <data name="HcsSystemPropertiesButton.Content" xml:space="preserve">
+    <value>查询所选 HCS 计算系统属性</value>
+  </data>
 </root>

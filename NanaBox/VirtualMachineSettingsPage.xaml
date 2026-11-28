@@ -1691,6 +1691,12 @@
                   <Button x:Uid="/VirtualMachineSettingsPage/VmmsListButton" Content="Refresh VMs" Tag="VmmsList" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsListButton" />
                   <Button x:Uid="/VirtualMachineSettingsPage/HcsInventoryButton" Content="HCS inventory" Tag="HcsInventory" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsInventoryButton" />
                 </StackPanel>
+                <ComboBox x:Name="HcsSystemsComboBox" x:Uid="/VirtualMachineSettingsPage/HcsSystemsComboBox" Header="HCS compute system" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="HcsSystemsComboBox" />
+                <TextBox x:Name="HcsQueryTextBox" x:Uid="/VirtualMachineSettingsPage/HcsQueryTextBox" Header="Optional HCS property query (JSON)" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" AutomationProperties.AutomationId="HcsQueryTextBox" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Uid="/VirtualMachineSettingsPage/HcsServicePropertiesButton" Content="HCS service properties" Tag="HcsServiceProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsServicePropertiesButton" />
+                  <Button x:Uid="/VirtualMachineSettingsPage/HcsSystemPropertiesButton" Content="Selected HCS system properties" Tag="HcsSystemProperties" Click="VmmsButtonClick" AutomationProperties.AutomationId="HcsSystemPropertiesButton" />
+                </StackPanel>
                 <ComboBox x:Name="VmmsMachinesComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsMachinesComboBox" Header="Registered VM" HorizontalAlignment="Stretch" SelectionChanged="VmmsSelectionChanged" AutomationProperties.AutomationId="VmmsMachinesComboBox" />
                 <Button x:Uid="/VirtualMachineSettingsPage/VmmsInspectButton" Content="Inspect selected VM and checkpoints" Tag="VmmsInspect" Click="VmmsButtonClick" AutomationProperties.AutomationId="VmmsInspectButton" />
                 <ComboBox x:Name="VmmsActionComboBox" x:Uid="/VirtualMachineSettingsPage/VmmsActionComboBox" Header="Operation" HorizontalAlignment="Stretch" SelectedIndex="0" AutomationProperties.AutomationId="VmmsActionComboBox">

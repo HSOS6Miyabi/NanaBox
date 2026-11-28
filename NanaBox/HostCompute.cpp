@@ -1266,7 +1266,15 @@ function Describe-Devices($vm) {
 function VmDetails($vm) {
     $cpu = Get-VMProcessor -VM $vm
     $memory = Get-VMMemory -VM $vm
+    $security = $null
+    if ($vm.Generation -eq 2) {
+        try {
+            $settings = Get-VMSecurity -VM $vm
+            $security = @{TpmEnabled=$settings.TpmEnabled; Shielded=$settings.Shielded; EncryptStateAndVmMigrationTraffic=$settings.EncryptStateAndVmMigrationTraffic; HasKeyProtector=(([byte[]](Get-VMKeyProtector -VM $vm)).Length -gt 0)}
+        } catch { $security = @{Error=$_.Exception.Message} }
+    }
     @{
+        Security=$security
         VM=(VmInfo $vm)
         Devices=@(Describe-Devices $vm)
         Switches=@(Get-VMSwitch | ForEach-Object { [pscustomobject]@{Id=[string]$_.Id;Name=$_.Name;State=[string]$_.SwitchType} })
@@ -1342,12 +1350,12 @@ try {
             }
             'VmmsLocalKeyProtector' {
                 if ($vm.Generation -ne 2 -or [string]$vm.State -ne 'Off') { throw 'Shut down the Generation 2 VM before provisioning a key protector.' }
-                if (@(Get-VMKeyProtector -VM $vm).Count -gt 0) { throw 'A key protector is already configured. It will not be replaced.' }
+                if (([byte[]](Get-VMKeyProtector -VM $vm)).Length -gt 0) { throw 'A key protector is already configured. It will not be replaced.' }
                 Set-VMKeyProtector -VM $vm -NewLocalKeyProtector -Confirm:$false | Out-Null
             }
             'VmmsTpmEnable' {
                 if ($vm.Generation -ne 2 -or [string]$vm.State -ne 'Off') { throw 'Shut down the Generation 2 VM before enabling TPM.' }
-                if (@(Get-VMKeyProtector -VM $vm).Count -eq 0) { throw 'Provision a key protector before enabling TPM.' }
+                if (([byte[]](Get-VMKeyProtector -VM $vm)).Length -eq 0) { throw 'Provision a key protector before enabling TPM.' }
                 Enable-VMTPM -VM $vm -Confirm:$false | Out-Null
             }
             'VmmsTpmDisable' {
@@ -1998,6 +2006,30 @@ winrt::hstring NanaBox::RunHostManagement(winrt::hstring const& Action, winrt::h
     Data["Action"] = winrt::to_string(Action);
     if (std::wstring_view(Action.c_str()).starts_with(L"Hcn"))
         return winrt::to_hstring(HcnManagement(winrt::to_string(Action), Data).dump());
+    if (Action == L"HcsServiceProperties" || Action == L"HcsSystemProperties")
+    {
+        auto Query = Data.value("Query", nlohmann::json::object());
+        if (!Query.is_object()) throw winrt::hresult_invalid_argument(L"Property query must be a JSON object.");
+        auto QueryText = Query.empty() ? winrt::hstring() : winrt::to_hstring(Query.dump());
+        winrt::hstring Result;
+        if (Action == L"HcsServiceProperties")
+            Result = NanaBox::HcsGetServiceProperties(QueryText);
+        else
+        {
+            auto Id = Data.at("Id").get<std::string>();
+            if (Id.empty() || Id.find('\0') != std::string::npos) throw winrt::hresult_invalid_argument();
+            NanaBox::HcsSystem System;
+            // The HCS API requires GENERIC_ALL even for property queries.
+            // Do not register callbacks or perform any state-changing operation.
+            winrt::check_hresult(::HcsOpenComputeSystem(winrt::to_hstring(Id).c_str(), GENERIC_ALL, System.put()));
+            NanaBox::HcsOperation Operation(::HcsCreateOperation(nullptr, nullptr));
+            winrt::check_pointer(Operation.get());
+            winrt::check_hresult(::HcsGetComputeSystemProperties(System.get(), Operation.get(),
+                QueryText.empty() ? nullptr : QueryText.c_str()));
+            Result = ::WaitForOperationResult(Operation);
+        }
+        return winrt::to_hstring(nlohmann::json{{"Properties", nlohmann::json::parse(winrt::to_string(Result))}}.dump());
+    }
     if (Action == L"HcsInventory")
     {
         NanaBox::HcsOperation Operation(::HcsCreateOperation(nullptr, nullptr));

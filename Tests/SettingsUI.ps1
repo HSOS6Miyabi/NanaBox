@@ -507,6 +507,13 @@ try {
         Select-Tab 'TabVmms'
         Invoke-Control 'HcsInventoryButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsInventory' -and $v.Items[0].Id -eq 'mock-hcs'}
+        Set-Text 'HcsQueryTextBox' '{"PropertyTypes":["Basic"]}'
+        Invoke-Control 'HcsServicePropertiesButton'
+        $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsServiceProperties' -and $v.Properties.Query.PropertyTypes[0] -eq 'Basic'}
+        $null = Select-ByName 'HcsSystemsComboBox' 'mock-hcs'
+        Set-Text 'HcsQueryTextBox' '{"PropertyTypes":["Statistics"]}'
+        Invoke-Control 'HcsSystemPropertiesButton'
+        $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'HcsSystemProperties' -and $v.Properties.Id -eq 'mock-hcs' -and $v.Properties.Query.PropertyTypes[0] -eq 'Statistics'}
         Invoke-Control 'VmmsListButton'
         $null = Wait-Result 'VmmsResultTextBox' {param($v) $v.Success -and $v.Operation -eq 'VmmsList'}
         function Invoke-Vmms([string]$action) {
